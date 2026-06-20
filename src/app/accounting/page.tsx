@@ -9,7 +9,7 @@ export default function AccountingPage() {
         <p style={{ margin: 0, fontSize: '0.75rem', color: 'rgba(42,22,40,0.6)', fontWeight: 600, letterSpacing: '0.2em', fontFamily: 'Inter, sans-serif', textTransform: 'uppercase' }}>
           UAE Compliance Workspace • Financial Services
         </p>
-        <h1 style={{ margin: '0.35rem 0 0', fontSize: '2.25rem', fontWeight: 700, color: '#2A1628', letterSpacing: '-0.02em', fontFamily: 'Cormorant, serif' }}>
+        <h1 style={{ margin: '0.35rem 0 0', fontSize: '2.25rem', fontWeight: 300, color: '#2A1628', letterSpacing: '-0.02em', fontFamily: 'Cormorant, serif' }}>
           Accounting Operations & <span style={{ fontFamily: 'Cormorant, serif', fontStyle: 'italic' }}>AI Bookkeeping</span>
         </h1>
       </div>
@@ -21,7 +21,7 @@ export default function AccountingPage() {
             <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
           </svg>
         </div>
-        <h2 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#2A1628', margin: 0, fontFamily: 'Inter, sans-serif', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+        <h2 style={{ fontSize: '1rem', fontWeight: 600, color: '#2A1628', margin: 0, fontFamily: 'Inter, sans-serif', letterSpacing: '0.18em', textTransform: 'uppercase' }}>
           Accounting & Bookkeeping Workspace
         </h2>
         <p style={{ margin: 0, fontSize: '0.875rem', textAlign: 'center', maxWidth: '380px', lineHeight: 1.8, fontFamily: 'Inter, sans-serif', fontWeight: 300 }}>

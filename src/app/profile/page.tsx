@@ -9,7 +9,7 @@ export default function ProfilePage() {
         <p style={{ margin: 0, fontSize: '0.75rem', color: 'rgba(44,26,14,0.6)', fontWeight: 600, letterSpacing: '0.2em', fontFamily: 'Inter, sans-serif', textTransform: 'uppercase' }}>
           System Settings • User Identity
         </p>
-        <h1 style={{ margin: '0.35rem 0 0', fontSize: '2.25rem', fontWeight: 700, color: '#2C1A0E', letterSpacing: '-0.02em', fontFamily: 'Cormorant, serif' }}>
+        <h1 style={{ margin: '0.35rem 0 0', fontSize: '2.25rem', fontWeight: 300, color: '#2C1A0E', letterSpacing: '-0.02em', fontFamily: 'Cormorant, serif' }}>
           Identity & <span style={{ fontFamily: 'Cormorant, serif', fontStyle: 'italic' }}>Security</span> Credentials
         </h1>
       </div>
@@ -21,7 +21,7 @@ export default function ProfilePage() {
             <circle cx="12" cy="7" r="4"></circle>
           </svg>
         </div>
-        <h2 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#2C1A0E', margin: 0, fontFamily: 'Inter, sans-serif', letterSpacing: '0.05em' }}>USER PROFILE</h2>
+        <h2 style={{ fontSize: '1rem', fontWeight: 600, color: '#2C1A0E', margin: 0, fontFamily: 'Inter, sans-serif', letterSpacing: '0.18em', textTransform: 'uppercase' }}>USER PROFILE</h2>
         <p style={{ margin: 0, fontSize: '0.875rem', textAlign: 'center', maxWidth: '380px', lineHeight: 1.8, fontFamily: 'Inter, sans-serif', fontWeight: 300 }}>
           Coming Soon
         </p>
