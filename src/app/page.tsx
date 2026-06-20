@@ -109,7 +109,7 @@ export default function DashboardPage() {
         <div>
           <p style={{ margin: 0, fontSize: '0.8125rem', color: 'rgba(44,26,14,0.5)', fontWeight: 500 }}>Monday, 16 June 2026</p>
           <h1 style={{ margin: '0.25rem 0 0', fontSize: '1.5rem', fontWeight: 800, color: '#2C1A0E', letterSpacing: '-0.02em' }}>
-            Good morning, Mahesh 👋
+            Good morning, Mahesh
           </h1>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem' }}>

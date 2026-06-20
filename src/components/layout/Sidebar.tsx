@@ -131,11 +131,12 @@ const NAV_SECTIONS: NavSection[] = [
 /* ── Props ────────────────────────────────────────────────────────────────── */
 interface SidebarProps {
   collapsed: boolean;
+  hidden: boolean;
   onToggle: () => void;
 }
 
 /* ── Component ────────────────────────────────────────────────────────────── */
-export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export default function Sidebar({ collapsed, hidden, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const isFinancial = pathname === '/accounting' || pathname.startsWith('/accounting/');
 
@@ -154,10 +155,10 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   return (
     <aside
       style={{
-        width: collapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)',
+        width: hidden ? 0 : collapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)',
         minHeight: '100vh',
         background: 'var(--bg-sidebar)',
-        transition: 'width 300ms cubic-bezier(0.4,0,0.2,1), background-color 300ms ease',
+        transition: 'width 300ms cubic-bezier(0.4,0,0.2,1), background-color 300ms ease, opacity 300ms cubic-bezier(0.4,0,0.2,1)',
         flexShrink: 0,
         display: 'flex',
         flexDirection: 'column',
@@ -165,6 +166,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         top: 0,
         zIndex: 40,
         overflow: 'hidden',
+        opacity: hidden ? 0 : 1,
+        pointerEvents: hidden ? 'none' : 'auto',
       }}
     >
       {/* ── Logo ── */}
@@ -173,10 +176,10 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           height: 'var(--topbar-height)',
           display: 'flex',
           alignItems: 'center',
-          padding: collapsed ? '0 1.125rem' : '0 1.25rem',
+          padding: collapsed ? '0' : '0 1.25rem',
           borderBottom: '1px solid rgba(255,255,255,0.06)',
           flexShrink: 0,
-          gap: '0.75rem',
+          gap: collapsed ? 0 : '0.75rem',
           overflow: 'hidden',
           whiteSpace: 'nowrap',
           justifyContent: collapsed ? 'center' : 'flex-start',
@@ -204,16 +207,21 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           />
         </div>
 
-        {!collapsed && (
-          <div>
-            <p style={{ color: '#f1f5f9', fontSize: '1rem', fontWeight: 600, lineHeight: 1.2, margin: 0, fontFamily: 'var(--font-serif), Georgia, serif' }}>
-              Inc<span style={{ color: dotColor, transition: 'color 300ms ease' }}>·</span>Hub
-            </p>
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.6875rem', fontWeight: 500, margin: 0, letterSpacing: '0.05em', textTransform: 'uppercase', transition: 'color 300ms ease' }}>
-              {subtext}
-            </p>
-          </div>
-        )}
+        <div style={{
+          display: collapsed ? 'none' : 'block',
+          opacity: collapsed ? 0 : 1,
+          visibility: collapsed ? 'hidden' : 'visible',
+          transition: 'opacity 200ms ease, visibility 200ms ease',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+        }}>
+          <p style={{ color: '#f1f5f9', fontSize: '1rem', fontWeight: 600, lineHeight: 1.2, margin: 0, fontFamily: 'var(--font-serif), Georgia, serif' }}>
+            Inc<span style={{ color: dotColor, transition: 'color 300ms ease' }}>·</span>Hub
+          </p>
+          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.6875rem', fontWeight: 500, margin: 0, letterSpacing: '0.05em', textTransform: 'uppercase', transition: 'color 300ms ease' }}>
+            {subtext}
+          </p>
+        </div>
       </div>
 
       {/* ── Navigation ── */}
@@ -221,7 +229,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         {NAV_SECTIONS.map((section, si) => (
           <div key={si} style={{ marginBottom: '0.25rem' }}>
             {/* Section title */}
-            {section.title && !collapsed && (
+            {section.title && (
               <p
                 style={{
                   color: 'rgba(246,241,232,0.35)',
@@ -231,6 +239,11 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   textTransform: 'uppercase',
                   padding: '0.625rem 1.25rem 0.375rem',
                   margin: 0,
+                  opacity: collapsed ? 0 : 1,
+                  visibility: collapsed ? 'hidden' : 'visible',
+                  transition: 'opacity 200ms ease, visibility 200ms ease, height 200ms ease',
+                  height: collapsed ? 0 : 'auto',
+                  overflow: 'hidden',
                 }}
               >
                 {section.title}
@@ -254,7 +267,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.75rem',
-                    padding: collapsed ? '0.625rem 1.125rem' : '0.625rem 1.25rem',
+                    padding: collapsed ? '0.625rem 0' : '0.625rem 1.25rem',
                     margin: '0.125rem 0.5rem',
                     borderRadius: '0.5rem',
                     textDecoration: 'none',
@@ -306,32 +319,41 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
                   <Icon style={{ width: 18, height: 18, flexShrink: 0 }} />
 
-                  {!collapsed && (
-                    <>
-                      <span style={{ flex: 1, fontSize: '0.875rem', fontWeight: isActive ? 600 : 400 }}>
-                        {item.label}
-                      </span>
-                      {item.badge !== undefined && (
-                        <span
-                          style={{
-                            background: isActive
-                              ? isFinancial
-                                ? '#E8760A'
-                                : '#B8892A'
-                              : 'rgba(255,255,255,0.1)',
-                            color: isActive ? '#ffffff' : '#94a3b8',
-                            fontSize: '0.6875rem',
-                            fontWeight: 600,
-                            padding: '0.1rem 0.45rem',
-                            borderRadius: '9999px',
-                            minWidth: 20,
-                            textAlign: 'center',
-                          }}
-                        >
-                          {item.badge}
-                        </span>
-                      )}
-                    </>
+                  <span style={{
+                    display: collapsed ? 'none' : 'block',
+                    flex: 1,
+                    fontSize: '0.875rem',
+                    fontWeight: isActive ? 600 : 400,
+                    opacity: collapsed ? 0 : 1,
+                    visibility: collapsed ? 'hidden' : 'visible',
+                    transition: 'opacity 200ms ease, visibility 200ms ease',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {item.label}
+                  </span>
+                  {item.badge !== undefined && (
+                    <span
+                      style={{
+                        display: collapsed ? 'none' : 'inline-block',
+                        background: isActive
+                          ? isFinancial
+                            ? '#E8760A'
+                            : '#B8892A'
+                          : 'rgba(255,255,255,0.1)',
+                        color: isActive ? '#ffffff' : '#94a3b8',
+                        fontSize: '0.6875rem',
+                        fontWeight: 600,
+                        padding: '0.1rem 0.45rem',
+                        borderRadius: '9999px',
+                        minWidth: 20,
+                        textAlign: 'center',
+                        opacity: collapsed ? 0 : 1,
+                        visibility: collapsed ? 'hidden' : 'visible',
+                        transition: 'opacity 200ms ease, visibility 200ms ease',
+                      }}
+                    >
+                      {item.badge}
+                    </span>
                   )}
                 </Link>
               );
@@ -350,8 +372,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: collapsed ? 'center' : 'flex-start',
-            gap: '0.75rem',
-            padding: '0.625rem 0.75rem',
+            gap: collapsed ? 0 : '0.75rem',
+            padding: collapsed ? '0.625rem 0' : '0.625rem 0.75rem',
             borderRadius: '0.5rem',
             border: 'none',
             background: 'transparent',
@@ -379,9 +401,17 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)',
             }}
           />
-          {!collapsed && (
-            <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>Collapse</span>
-          )}
+          <span style={{
+            display: collapsed ? 'none' : 'block',
+            fontSize: '0.875rem',
+            fontWeight: 500,
+            opacity: collapsed ? 0 : 1,
+            visibility: collapsed ? 'hidden' : 'visible',
+            transition: 'opacity 200ms ease, visibility 200ms ease',
+            whiteSpace: 'nowrap',
+          }}>
+            Collapse
+          </span>
         </button>
       </div>
     </aside>

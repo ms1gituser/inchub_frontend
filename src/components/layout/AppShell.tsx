@@ -19,6 +19,7 @@ interface AppShellProps {
  */
 export default function AppShell({ children }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [hidden, setHidden] = useState(false);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -66,12 +67,76 @@ export default function AppShell({ children }: AppShellProps) {
 
   return (
     <PermissionProvider>
-      <div style={{ display: 'flex', minHeight: '100vh' }}>
-        <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
+      <div style={{ display: 'flex', minHeight: '100vh', position: 'relative' }}>
+        <Sidebar
+          collapsed={collapsed}
+          hidden={hidden}
+          onToggle={() => {
+            setCollapsed((c) => !c);
+            if (hidden) setHidden(false);
+          }}
+        />
+
+        {/* Floating Sidebar Expand/Collapse Arrow */}
+        {!hidden && (
+          <button
+            onClick={() => setCollapsed((c) => !c)}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            style={{
+              position: 'absolute',
+              left: collapsed ? 'calc(var(--sidebar-collapsed-width) - 12px)' : 'calc(var(--sidebar-width) - 12px)',
+              top: '75px',
+              width: 24,
+              height: 24,
+              borderRadius: '50%',
+              background: isFinancial ? '#F6F2EE' : '#F6F1E8',
+              border: `1px solid ${isFinancial ? '#DDD0C4' : '#DDD4BE'}`,
+              color: isFinancial ? '#2A1628' : '#2C1A0E',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              zIndex: 50,
+              boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+              transition: 'left 300ms cubic-bezier(0.4,0,0.2,1), background-color 150ms, color 150ms',
+              outline: 'none',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = isFinancial ? '#EDE6DE' : '#EDE7D8';
+              e.currentTarget.style.color = isFinancial ? '#E8760A' : '#B8892A';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = isFinancial ? '#F6F2EE' : '#F6F1E8';
+              e.currentTarget.style.color = isFinancial ? '#2A1628' : '#2C1A0E';
+            }}
+          >
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{
+                transition: 'transform 300ms cubic-bezier(0.4,0,0.2,1)',
+                transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)',
+              }}
+            >
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+        )}
 
         {/* Right column: topbar + page content */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
-          <TopNavbar />
+          <TopNavbar
+            sidebarCollapsed={hidden}
+            onToggleSidebar={() => {
+              setHidden((h) => !h);
+            }}
+          />
           <main
             id="main-content"
             style={{

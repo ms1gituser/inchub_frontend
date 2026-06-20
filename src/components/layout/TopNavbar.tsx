@@ -71,8 +71,12 @@ const NOTIFICATIONS = [
   { id: 4, text: 'New comment on deal #4521', time: '3 hr ago',  dot: '#2C1A0E' },
 ];
 
-/* ── Component ────────────────────────────────────────────────────────────── */
-export default function TopNavbar() {
+interface TopNavbarProps {
+  sidebarCollapsed: boolean;
+  onToggleSidebar: () => void;
+}
+
+export default function TopNavbar({ sidebarCollapsed, onToggleSidebar }: TopNavbarProps) {
   const { permissions, allAvailablePermissions, togglePermission } = usePermission();
   const [notifOpen, setNotifOpen]   = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -150,6 +154,40 @@ export default function TopNavbar() {
         backdropFilter: 'blur(8px)',
       }}
     >
+      {/* Sidebar Toggle Switch */}
+      <button
+        onClick={onToggleSidebar}
+        aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 36,
+          height: 36,
+          border: '1px solid var(--border-subtle)',
+          borderRadius: 8,
+          background: '#F6F1E8',
+          color: 'rgba(44,26,14,0.6)',
+          cursor: 'pointer',
+          transition: 'all 150ms',
+          flexShrink: 0,
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = '#EDE7D8';
+          e.currentTarget.style.color = '#2C1A0E';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = '#F6F1E8';
+          e.currentTarget.style.color = 'rgba(44,26,14,0.6)';
+        }}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="3" y1="12" x2="21" y2="12" />
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <line x1="3" y1="18" x2="21" y2="18" />
+        </svg>
+      </button>
+
       {/* ── Search bar ── */}
       <div style={{ flex: 1, maxWidth: 480, position: 'relative' }}>
         <SearchIcon
@@ -187,18 +225,6 @@ export default function TopNavbar() {
             e.currentTarget.style.background = '#F6F1E8';
           }}
         />
-        <kbd
-          style={{
-            position: 'absolute', right: '0.75rem', top: '50%',
-            transform: 'translateY(-50%)',
-            background: '#EDE7D8', border: '1px solid #DDD4BE',
-            borderRadius: 4, padding: '0.1rem 0.4rem',
-            fontSize: '0.625rem', color: 'rgba(44,26,14,0.5)', fontFamily: 'inherit',
-            pointerEvents: 'none',
-          }}
-        >
-          ⌘K
-        </kbd>
       </div>
 
       {/* ── Quick Add button ── */}
