@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { NavSection, NavItem } from '@/types/navigation';
+import type { NavSection } from '@/types/navigation';
 
 /* ── SVG Icons (inline, zero-dependency) ─────────────────────────────────── */
 type IconProps = React.SVGProps<SVGSVGElement>;
@@ -97,7 +96,7 @@ function AccountingIcon(props: IconProps) {
   );
 }
 
-/* ── Nav configuration with Milestone references ────────────────────────── */
+/* ── Nav configuration ────────────────────────────────────────────────────── */
 const NAV_SECTIONS: NavSection[] = [
   {
     items: [
@@ -107,24 +106,24 @@ const NAV_SECTIONS: NavSection[] = [
   {
     title: 'CRM',
     items: [
-      { label: 'Contacts',   href: '/contacts',   icon: ContactsIcon,   milestone: 'M5', milestoneDate: 'July 31, 2026' },
-      { label: 'Leads',      href: '/leads',      icon: LeadsIcon,      milestone: 'M5', milestoneDate: 'July 31, 2026' },
-      { label: 'Deals',      href: '/deals',      icon: DealsIcon,      milestone: 'M5', milestoneDate: 'July 31, 2026' },
-      { label: 'Tasks',      href: '/tasks',      icon: TasksIcon,      milestone: 'M8', milestoneDate: 'August 21, 2026' },
-      { label: 'Accounting', href: '/accounting', icon: AccountingIcon, milestone: 'M1', milestoneDate: 'July 06, 2026' },
+      { label: 'Contacts',  href: '/contacts',  icon: ContactsIcon, badge: 248 },
+      { label: 'Leads',     href: '/leads',     icon: LeadsIcon,    badge: 12  },
+      { label: 'Deals',     href: '/deals',     icon: DealsIcon                },
+      { label: 'Tasks',     href: '/tasks',     icon: TasksIcon,    badge: 5   },
+      { label: 'Accounting', href: '/accounting', icon: AccountingIcon         },
     ],
   },
   {
     title: 'Tools',
     items: [
-      { label: 'Email',      href: '/email',      icon: EmailIcon,      milestone: 'M6', milestoneDate: 'August 07, 2026' },
-      { label: 'Reports',    href: '/reports',    icon: ReportsIcon,    milestone: 'M7', milestoneDate: 'August 14, 2026' },
+      { label: 'Email',     href: '/email',     icon: EmailIcon    },
+      { label: 'Reports',   href: '/reports',   icon: ReportsIcon  },
     ],
   },
   {
     title: 'System',
     items: [
-      { label: 'Settings',   href: '/settings',   icon: SettingsIcon,   milestone: 'M9', milestoneDate: 'September 02, 2026' },
+      { label: 'Settings',  href: '/settings',  icon: SettingsIcon },
     ],
   },
 ];
@@ -140,8 +139,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const isFinancial = pathname === '/accounting' || pathname.startsWith('/accounting/');
 
-  const [activeModalItem, setActiveModalItem] = useState<NavItem | null>(null);
-
   // Brand details
   const dotColor = isFinancial ? '#E8760A' : '#B8892A';
   const subtext = isFinancial ? 'Financial Services' : 'Corporate Services';
@@ -155,364 +152,240 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     : '0 0 0 1px rgba(184,137,42,0.4), 0 4px 12px rgba(44,26,14,0.4)';
 
   return (
-    <>
-      <aside
+    <aside
+      style={{
+        width: collapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)',
+        minHeight: '100vh',
+        background: 'var(--bg-sidebar)',
+        transition: 'width 300ms cubic-bezier(0.4,0,0.2,1), background-color 300ms ease',
+        flexShrink: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'sticky',
+        top: 0,
+        zIndex: 40,
+        overflow: 'hidden',
+      }}
+    >
+      {/* ── Logo ── */}
+      <div
         style={{
-          width: collapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)',
-          minHeight: '100vh',
-          background: 'var(--bg-sidebar)',
-          transition: 'width 300ms cubic-bezier(0.4,0,0.2,1), background-color 300ms ease',
-          flexShrink: 0,
+          height: 'var(--topbar-height)',
           display: 'flex',
-          flexDirection: 'column',
-          position: 'sticky',
-          top: 0,
-          zIndex: 40,
+          alignItems: 'center',
+          padding: collapsed ? '0 1.125rem' : '0 1.25rem',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          flexShrink: 0,
+          gap: '0.75rem',
           overflow: 'hidden',
+          whiteSpace: 'nowrap',
+          justifyContent: collapsed ? 'center' : 'flex-start',
         }}
       >
-        {/* ── Logo ── */}
+        {/* Logo mark */}
         <div
           style={{
-            height: 'var(--topbar-height)',
-            display: 'flex',
-            alignItems: 'center',
-            padding: collapsed ? '0 1.125rem' : '0 1.25rem',
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
-            flexShrink: 0,
-            gap: '0.75rem',
-            overflow: 'hidden',
-            whiteSpace: 'nowrap',
-            justifyContent: collapsed ? 'center' : 'flex-start',
-          }}
-        >
-          {/* Logo mark */}
-          <div
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              background: logoMarkBackground,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-              boxShadow: logoMarkBoxShadow,
-              transition: 'all 300ms ease',
-            }}
-          >
-            <img
-              src="/logo_page_6.svg"
-              alt="IncHub Logo"
-              style={{ width: '65%', height: '65%', objectFit: 'contain' }}
-            />
-          </div>
-
-          {!collapsed && (
-            <div>
-              <p style={{ color: '#f1f5f9', fontSize: '1rem', fontWeight: 600, lineHeight: 1.2, margin: 0, fontFamily: 'var(--font-serif), Georgia, serif' }}>
-                Inc<span style={{ color: dotColor, transition: 'color 300ms ease' }}>·</span>Hub
-              </p>
-              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.6875rem', fontWeight: 500, margin: 0, letterSpacing: '0.05em', textTransform: 'uppercase', transition: 'color 300ms ease' }}>
-                {subtext}
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* ── Navigation ── */}
-        <nav style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '0.75rem 0' }}>
-          {NAV_SECTIONS.map((section, si) => (
-            <div key={si} style={{ marginBottom: '0.25rem' }}>
-              {/* Section title */}
-              {section.title && !collapsed && (
-                <p
-                  style={{
-                    color: 'rgba(246,241,232,0.35)',
-                    fontSize: '0.6875rem',
-                    fontWeight: 600,
-                    letterSpacing: '0.16em',
-                    textTransform: 'uppercase',
-                    padding: '0.625rem 1.25rem 0.375rem',
-                    margin: 0,
-                  }}
-                >
-                  {section.title}
-                </p>
-              )}
-              {section.title && collapsed && (
-                <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)', margin: '0.5rem 1.125rem' }} />
-              )}
-
-              {/* Items */}
-              {section.items.map((item) => {
-                const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
-                const Icon = item.icon;
-                const isScheduled = !!item.milestone;
-
-                const handleClick = (e: React.MouseEvent) => {
-                  if (isScheduled) {
-                    e.preventDefault();
-                    setActiveModalItem(item);
-                  }
-                };
-
-                return (
-                  <Link
-                    key={item.href}
-                    href={isScheduled ? '#' : item.href}
-                    onClick={handleClick}
-                    title={collapsed ? `${item.label} (${item.milestone || 'M4'})` : undefined}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.75rem',
-                      padding: collapsed ? '0.625rem 1.125rem' : '0.625rem 1.25rem',
-                      margin: '0.125rem 0.5rem',
-                      borderRadius: '0.5rem',
-                      textDecoration: 'none',
-                      color: isActive ? '#ffffff' : isScheduled ? 'rgba(246,241,232,0.3)' : 'rgba(246,241,232,0.5)',
-                      background: isActive
-                        ? isFinancial
-                          ? 'linear-gradient(135deg, rgba(232,118,10,0.2) 0%, rgba(42,22,40,0.3) 100%)'
-                          : 'linear-gradient(135deg, rgba(184,137,42,0.2) 0%, rgba(44,26,14,0.3) 100%)'
-                        : 'transparent',
-                      boxShadow: isActive
-                        ? isFinancial
-                          ? 'inset 0 0 0 1px rgba(232,118,10,0.25)'
-                          : 'inset 0 0 0 1px rgba(184,137,42,0.25)'
-                        : 'none',
-                      transition: 'all 150ms ease',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      justifyContent: collapsed ? 'center' : 'flex-start',
-                      position: 'relative',
-                      opacity: isScheduled ? 0.75 : 1,
-                      cursor: 'pointer',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isActive) {
-                        (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.06)';
-                        (e.currentTarget as HTMLAnchorElement).style.color = isScheduled ? 'rgba(246,241,232,0.6)' : 'rgba(246,241,232,0.85)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isActive) {
-                        (e.currentTarget as HTMLAnchorElement).style.background = 'transparent';
-                        (e.currentTarget as HTMLAnchorElement).style.color = isScheduled ? 'rgba(246,241,232,0.3)' : 'rgba(246,241,232,0.5)';
-                      }
-                    }}
-                  >
-                    {/* Active indicator */}
-                    {isActive && (
-                      <span
-                        style={{
-                          position: 'absolute',
-                          left: 0,
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          width: 3,
-                          height: '60%',
-                          background: isFinancial ? '#E8760A' : '#B8892A',
-                          borderRadius: '0 4px 4px 0',
-                        }}
-                      />
-                    )}
-
-                    <Icon style={{ width: 18, height: 18, flexShrink: 0 }} />
-
-                    {!collapsed && (
-                      <>
-                        <span style={{ flex: 1, fontSize: '0.875rem', fontWeight: isActive ? 600 : 400 }}>
-                          {item.label}
-                        </span>
-                        
-                        {isScheduled ? (
-                          <span
-                            style={{
-                              border: '1px solid rgba(184, 137, 42, 0.3)',
-                              color: '#B8892A',
-                              fontSize: '0.625rem',
-                              fontWeight: 600,
-                              padding: '0.05rem 0.3rem',
-                              borderRadius: '4px',
-                              letterSpacing: '0.05em',
-                            }}
-                          >
-                            {item.milestone}
-                          </span>
-                        ) : (
-                          item.badge !== undefined && (
-                            <span
-                              style={{
-                                background: isActive
-                                  ? isFinancial
-                                    ? '#E8760A'
-                                    : '#B8892A'
-                                  : 'rgba(255,255,255,0.1)',
-                                color: isActive ? '#ffffff' : '#94a3b8',
-                                fontSize: '0.6875rem',
-                                fontWeight: 600,
-                                padding: '0.1rem 0.45rem',
-                                borderRadius: '9999px',
-                                minWidth: 20,
-                                textAlign: 'center',
-                              }}
-                            >
-                              {item.badge}
-                            </span>
-                          )
-                        )}
-                      </>
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
-        </nav>
-
-        {/* ── Collapse toggle ── */}
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '0.75rem 0.5rem', flexShrink: 0 }}>
-          <button
-            onClick={onToggle}
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: collapsed ? 'center' : 'flex-start',
-              gap: '0.75rem',
-              padding: '0.625rem 0.75rem',
-              borderRadius: '0.5rem',
-              border: 'none',
-              background: 'transparent',
-              color: 'rgba(246,241,232,0.4)',
-              cursor: 'pointer',
-              transition: 'all 150ms ease',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.06)';
-              (e.currentTarget as HTMLButtonElement).style.color = 'rgba(246,241,232,0.85)';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
-              (e.currentTarget as HTMLButtonElement).style.color = 'rgba(246,241,232,0.4)';
-            }}
-          >
-            <ChevronLeftIcon
-              style={{
-                width: 18,
-                height: 18,
-                flexShrink: 0,
-                transition: 'transform 300ms cubic-bezier(0.4,0,0.2,1)',
-                transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)',
-              }}
-            />
-            {!collapsed && (
-              <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>Collapse</span>
-            )}
-          </button>
-        </div>
-      </aside>
-
-      {/* ── Scheduled Milestone Details Modal ── */}
-      {activeModalItem && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100vw',
-            height: '100vh',
-            background: 'rgba(44, 26, 14, 0.4)',
-            backdropFilter: 'blur(4px)',
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            background: logoMarkBackground,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 9999,
+            flexShrink: 0,
+            boxShadow: logoMarkBoxShadow,
+            transition: 'all 300ms ease',
           }}
-          onClick={() => setActiveModalItem(null)}
         >
-          <div
-            style={{
-              background: '#F6F1E8',
-              border: '1px solid #DDD4BE',
-              borderRadius: 16,
-              padding: '2.5rem',
-              maxWidth: 460,
-              width: '90%',
-              boxShadow: '0 10px 40px rgba(44, 26, 14, 0.12)',
-              position: 'relative',
-              color: '#2C1A0E',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #DDD4BE', paddingBottom: '1rem', marginBottom: '1.25rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#B8892A' }} />
-                <h4 style={{ margin: 0, fontSize: '0.75rem', fontWeight: 700, fontFamily: 'Inter, sans-serif', letterSpacing: '0.15rem', textTransform: 'uppercase', color: '#B8892A' }}>
-                  DEVELOPMENT TIMELINE
-                </h4>
-              </div>
-              <button
-                onClick={() => setActiveModalItem(null)}
-                style={{ background: 'none', border: 'none', fontSize: '1.25rem', color: 'rgba(44,26,14,0.5)', cursor: 'pointer', outline: 'none' }}
-              >
-                &times;
-              </button>
-            </div>
-
-            {/* Content */}
-            <h3 style={{ fontFamily: 'Cormorant, serif', fontSize: '1.75rem', fontWeight: 700, margin: '0 0 0.75rem 0' }}>
-              {activeModalItem.label} <span style={{ fontStyle: 'italic' }}>Workspace</span>
-            </h3>
-            
-            <p style={{ fontFamily: 'Inter, sans-serif', fontWeight: 300, fontSize: '0.875rem', lineHeight: '1.8', color: 'rgba(44,26,14,0.8)', margin: '0 0 1.5rem 0' }}>
-              This interface is scheduled for subsequent system iterations under the project blueprint. Infrastructure scaffolding (M4) is 100% active.
-            </p>
-
-            <div style={{ background: '#ffffff', border: '1px solid #DDD4BE', borderRadius: 8, padding: '1rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
-                <span style={{ color: 'rgba(44,26,14,0.5)', fontWeight: 500 }}>Target Phase</span>
-                <span style={{ fontWeight: 700, color: '#2C1A0E' }}>Milestone {activeModalItem.milestone}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
-                <span style={{ color: 'rgba(44,26,14,0.5)', fontWeight: 500 }}>Delivery Date</span>
-                <span style={{ fontWeight: 700, color: '#B8892A' }}>{activeModalItem.milestoneDate}</span>
-              </div>
-            </div>
-
-            {/* Action */}
-            <button
-              onClick={() => setActiveModalItem(null)}
-              style={{
-                width: '100%',
-                background: '#2C1A0E',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: 8,
-                padding: '0.75rem',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                letterSpacing: '0.16em',
-                textTransform: 'uppercase',
-                fontFamily: 'Inter, sans-serif',
-                cursor: 'pointer',
-                transition: 'background-color 150ms',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = '#4A2E1A')}
-              onMouseLeave={(e) => (e.currentTarget.style.background = '#2C1A0E')}
-            >
-              Acknowledge & Return
-            </button>
-          </div>
+          <img
+            src="/logo_page_6.svg"
+            alt="IncHub Logo"
+            style={{ width: '65%', height: '65%', objectFit: 'contain' }}
+          />
         </div>
-      )}
-    </>
+
+        {!collapsed && (
+          <div>
+            <p style={{ color: '#f1f5f9', fontSize: '1rem', fontWeight: 600, lineHeight: 1.2, margin: 0, fontFamily: 'var(--font-serif), Georgia, serif' }}>
+              Inc<span style={{ color: dotColor, transition: 'color 300ms ease' }}>·</span>Hub
+            </p>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.6875rem', fontWeight: 500, margin: 0, letterSpacing: '0.05em', textTransform: 'uppercase', transition: 'color 300ms ease' }}>
+              {subtext}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* ── Navigation ── */}
+      <nav style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '0.75rem 0' }}>
+        {NAV_SECTIONS.map((section, si) => (
+          <div key={si} style={{ marginBottom: '0.25rem' }}>
+            {/* Section title */}
+            {section.title && !collapsed && (
+              <p
+                style={{
+                  color: 'rgba(246,241,232,0.35)',
+                  fontSize: '0.6875rem',
+                  fontWeight: 600,
+                  letterSpacing: '0.16em',
+                  textTransform: 'uppercase',
+                  padding: '0.625rem 1.25rem 0.375rem',
+                  margin: 0,
+                }}
+              >
+                {section.title}
+              </p>
+            )}
+            {section.title && collapsed && (
+              <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)', margin: '0.5rem 1.125rem' }} />
+            )}
+
+            {/* Items */}
+            {section.items.map((item) => {
+              const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+              const Icon = item.icon;
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  title={collapsed ? item.label : undefined}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: collapsed ? '0.625rem 1.125rem' : '0.625rem 1.25rem',
+                    margin: '0.125rem 0.5rem',
+                    borderRadius: '0.5rem',
+                    textDecoration: 'none',
+                    color: isActive ? '#ffffff' : 'rgba(246,241,232,0.5)',
+                    background: isActive
+                      ? isFinancial
+                        ? 'linear-gradient(135deg, rgba(232,118,10,0.2) 0%, rgba(42,22,40,0.3) 100%)'
+                        : 'linear-gradient(135deg, rgba(184,137,42,0.2) 0%, rgba(44,26,14,0.3) 100%)'
+                      : 'transparent',
+                    boxShadow: isActive
+                      ? isFinancial
+                        ? 'inset 0 0 0 1px rgba(232,118,10,0.25)'
+                        : 'inset 0 0 0 1px rgba(184,137,42,0.25)'
+                      : 'none',
+                    transition: 'all 150ms ease',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    justifyContent: collapsed ? 'center' : 'flex-start',
+                    position: 'relative',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) {
+                      (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.06)';
+                      (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(246,241,232,0.85)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) {
+                      (e.currentTarget as HTMLAnchorElement).style.background = 'transparent';
+                      (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(246,241,232,0.5)';
+                    }
+                  }}
+                >
+                  {/* Active indicator */}
+                  {isActive && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        width: 3,
+                        height: '60%',
+                        background: isFinancial ? '#E8760A' : '#B8892A',
+                        borderRadius: '0 4px 4px 0',
+                      }}
+                    />
+                  )}
+
+                  <Icon style={{ width: 18, height: 18, flexShrink: 0 }} />
+
+                  {!collapsed && (
+                    <>
+                      <span style={{ flex: 1, fontSize: '0.875rem', fontWeight: isActive ? 600 : 400 }}>
+                        {item.label}
+                      </span>
+                      {item.badge !== undefined && (
+                        <span
+                          style={{
+                            background: isActive
+                              ? isFinancial
+                                ? '#E8760A'
+                                : '#B8892A'
+                              : 'rgba(255,255,255,0.1)',
+                            color: isActive ? '#ffffff' : '#94a3b8',
+                            fontSize: '0.6875rem',
+                            fontWeight: 600,
+                            padding: '0.1rem 0.45rem',
+                            borderRadius: '9999px',
+                            minWidth: 20,
+                            textAlign: 'center',
+                          }}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
+      </nav>
+
+      {/* ── Collapse toggle ── */}
+      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '0.75rem 0.5rem', flexShrink: 0 }}>
+        <button
+          onClick={onToggle}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: collapsed ? 'center' : 'flex-start',
+            gap: '0.75rem',
+            padding: '0.625rem 0.75rem',
+            borderRadius: '0.5rem',
+            border: 'none',
+            background: 'transparent',
+            color: 'rgba(246,241,232,0.4)',
+            cursor: 'pointer',
+            transition: 'all 150ms ease',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.06)';
+            (e.currentTarget as HTMLButtonElement).style.color = 'rgba(246,241,232,0.85)';
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+            (e.currentTarget as HTMLButtonElement).style.color = 'rgba(246,241,232,0.4)';
+          }}
+        >
+          <ChevronLeftIcon
+            style={{
+              width: 18,
+              height: 18,
+              flexShrink: 0,
+              transition: 'transform 300ms cubic-bezier(0.4,0,0.2,1)',
+              transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)',
+            }}
+          />
+          {!collapsed && (
+            <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>Collapse</span>
+          )}
+        </button>
+      </div>
+    </aside>
   );
 }
+
 
