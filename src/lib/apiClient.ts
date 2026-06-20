@@ -170,7 +170,7 @@ async function attemptTokenRefresh(): Promise<string | null> {
 
   try {
     const res = await axios.post<{ token: string; refreshToken?: string }>(
-      `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000/api'}/auth/refresh`,
+      `${process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:5000/api'}/auth/refresh`,
       { refreshToken },
       { headers: { 'Content-Type': 'application/json' }, timeout: 10_000 },
     );
@@ -185,7 +185,7 @@ async function attemptTokenRefresh(): Promise<string | null> {
 // ─── Axios instance ───────────────────────────────────────────────────────────
 
 const apiClient: AxiosInstance = axios.create({
-  baseURL:         process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000/api',
+  baseURL:         process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:5000/api',
   timeout:         15_000,
   headers: {
     'Content-Type': 'application/json',
