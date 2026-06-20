@@ -202,9 +202,11 @@ export default function AiChatbot() {
           e.currentTarget.style.boxShadow = '0 8px 30px rgba(184,137,42,0.4)';
         }}
       >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-        </svg>
+        <img
+          src="/logo_page_6.svg"
+          alt="IncHub Chatbot Logo"
+          style={{ width: '55%', height: '55%', objectFit: 'contain' }}
+        />
       </button>
 
       {/* Drawer Overlay */}
@@ -266,9 +268,11 @@ export default function AiChatbot() {
                 boxShadow: '0 0 0 1px rgba(184,137,42,0.3)',
               }}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-              </svg>
+              <img
+                src="/logo_page_6.svg"
+                alt="IncHub Copilot Logo"
+                style={{ width: '65%', height: '65%', objectFit: 'contain' }}
+              />
             </div>
             <div>
               <h2 style={{ fontSize: '0.9375rem', fontWeight: 700, margin: 0, letterSpacing: '-0.01em' }}>IncHub Copilot AI</h2>

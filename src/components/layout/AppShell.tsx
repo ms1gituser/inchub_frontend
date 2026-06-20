@@ -67,7 +67,7 @@ export default function AppShell({ children }: AppShellProps) {
 
   return (
     <PermissionProvider>
-      <div style={{ display: 'flex', minHeight: '100vh', position: 'relative' }}>
+      <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', position: 'relative' }}>
         <Sidebar
           collapsed={collapsed}
           hidden={hidden}
