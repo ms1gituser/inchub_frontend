@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IncHub — Brand Guidelines</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Inter:wght@200;300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  /* ── PARENT ── */
+  --gold:#B8892A;
+  --gold2:#C9A040;
+
+  /* ── CORPORATE SERVICES ── */
+  --cs-primary:#2C1A0E;
+  --cs-mid:#4A2E1A;
+  --cs-warm:#6B3F22;
+  --cs-accent:#B8892A;
+  --cs-bg:#F6F1E8;
+  --cs-bg2:#EDE7D8;
+  --cs-border:#DDD4BE;
+
+  /* ── FINANCIAL SERVICES ── */
+  --fs-primary:#2A1628;
+  --fs-mid:#3D2040;
+  --fs-warm:#5A2D5A;
+  --fs-accent:#E8760A;
+  --fs-accent2:#F09040;
+  --fs-bg:#F6F2EE;
+  --fs-bg2:#EDE6DE;
+  --fs-border:#DDD0C4;
+}
+
+html{font-size:14px}
+body{
+  font-family:'Inter',system-ui,sans-serif;
+  font-weight:300;
+  background:#ECEAE4;
+  color:#111;
+  padding:0;
+}
+
+/* ── PAGE LAYOUT ── */
+.page{max-width:1200px;margin:0 auto;padding:56px 48px}
+
+/* ── COVER ── */
+.cover{
+  background:#fff;
+  border:1px solid #D8D4CC;
+  padding:56px 64px;
+  margin-bottom:3px;
+  display:flex;align-items:flex-start;justify-content:space-between;
+  border-radius:4px 4px 0 0;
+}
+.cover-left{}
+.cover-doc-label{
+  font-size:9px;font-weight:500;letter-spacing:.28em;text-transform:uppercase;
+  color:#999;margin-bottom:32px;
+  display:flex;align-items:center;gap:12px;
+}
+.cover-doc-label::before{content:'';width:28px;height:1px;background:#CCC}
+.cover-logo{
+  font-family:'Cormorant',serif;font-size:64px;font-weight:300;
+  letter-spacing:.02em;line-height:1;margin-bottom:8px;
+}
+.cover-logo .dot-gold{color:var(--gold)}
+.cover-logo .dot-saff{color:var(--fs-accent)}
+.cover-tagline{
+  font-size:13px;font-weight:300;letter-spacing:.08em;
+  color:#888;margin-bottom:0;
+}
+.cover-right{text-align:right;padding-top:8px}
+.cover-version{
+  font-size:9px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;
+  color:#BBB;margin-bottom:12px;
+}
+.cover-meta{font-size:12px;font-weight:300;color:#999;line-height:2}
+.cover-entities{
+  margin-top:20px;
+  display:flex;flex-direction:column;gap:6px;align-items:flex-end;
+}
+.entity-badge{
+  display:inline-block;font-size:9px;font-weight:500;letter-spacing:.14em;
+  text-transform:uppercase;padding:5px 14px;border:1px solid;
+}
+.entity-cs{border-color:rgba(44,26,14,.25);color:var(--cs-primary)}
+.entity-fs{border-color:rgba(232,118,10,.35);color:var(--fs-accent)}
+
+/* ── SECTION HEADER ── */
+.sec-head{
+  padding:20px 0 16px;
+  border-bottom:1px solid #D8D4CC;
+  margin-bottom:24px;
+  display:flex;align-items:baseline;justify-content:space-between;
+}
+.sec-num{
+  font-size:9px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;
+  color:#BBB;margin-right:16px;
+}
+.sec-title{
+  font-size:11px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;
+  color:#555;
+}
+.sec-note{font-size:10px;font-weight:300;color:#AAA;letter-spacing:.04em}
+
+/* ── RULE CARD ── */
+.rule-card{
+  background:#fff;border:1px solid #D8D4CC;
+  padding:40px 48px;margin-bottom:3px;
+}
+.rule-card:last-child{border-radius:0 0 4px 4px}
+
+/* ── DUAL COLUMNS ── */
+.dual{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:3px}
+.col-cs{background:var(--cs-bg);padding:48px;border-radius:0}
+.col-fs{background:var(--fs-bg);padding:48px;border-radius:0}
+
+/* ── DIVISION HEADER ── */
+.div-eyebrow{
+  font-size:8px;font-weight:500;letter-spacing:.28em;text-transform:uppercase;
+  margin-bottom:10px;
+}
+.col-cs .div-eyebrow{color:rgba(44,26,14,.4)}
+.col-fs .div-eyebrow{color:rgba(42,22,40,.4)}
+
+.div-logo{
+  font-family:'Cormorant',serif;font-size:36px;font-weight:400;
+  letter-spacing:.03em;line-height:1;margin-bottom:6px;
+}
+.cs-logo-text{color:var(--cs-primary)}
+.cs-dot{color:var(--cs-accent)}
+.fs-logo-text{color:var(--fs-primary)}
+.fs-dot{color:var(--fs-accent)}
+
+.div-entity{
+  font-size:10px;font-weight:300;letter-spacing:.08em;
+  margin-bottom:6px;
+}
+.col-cs .div-entity{color:var(--cs-warm)}
+.col-fs .div-entity{color:var(--fs-warm)}
+
+.div-scope{
+  font-size:11px;font-weight:300;line-height:1.8;
+  margin-bottom:36px;
+}
+.col-cs .div-scope{color:rgba(44,26,14,.45)}
+.col-fs .div-scope{color:rgba(42,22,40,.45)}
+
+/* ── SWATCHES ── */
+.swatches{display:flex;flex-direction:column;gap:0;margin-bottom:36px;border:1px solid}
+.col-cs .swatches{border-color:var(--cs-border)}
+.col-fs .swatches{border-color:var(--fs-border)}
+
+.swatch-row{
+  display:grid;grid-template-columns:72px 1fr;
+  border-bottom:1px solid;
+}
+.col-cs .swatch-row{border-color:var(--cs-border)}
+.col-fs .swatch-row{border-color:var(--fs-border)}
+.swatch-row:last-child{border-bottom:none}
+
+.sw-color{width:72px;height:72px;flex-shrink:0}
+.sw-info{padding:12px 16px;display:flex;flex-direction:column;justify-content:center;gap:3px}
+.sw-name{font-size:12px;font-weight:500}
+.sw-hex{font-size:11px;font-weight:400;font-family:'Courier New',monospace;letter-spacing:.04em}
+.sw-rgb{font-size:10px;font-weight:300;opacity:.5;font-family:'Courier New',monospace}
+.sw-role{font-size:10px;font-weight:300;opacity:.45;margin-top:2px}
+
+/* ── TYPOGRAPHY ── */
+.type-row{
+  display:grid;grid-template-columns:200px 1fr;
+  gap:32px;align-items:baseline;
+  padding:20px 0;border-bottom:1px solid #E8E4DC;
+}
+.type-row:last-child{border-bottom:none}
+.type-meta{display:flex;flex-direction:column;gap:4px}
+.type-label{font-size:9px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:#AAA}
+.type-spec{font-size:10px;font-weight:300;color:#888;font-family:'Courier New',monospace;line-height:1.6}
+.type-sample-serif-xl{font-family:'Cormorant',serif;font-size:52px;font-weight:300;line-height:.95;letter-spacing:-.02em;color:#2C1A0E}
+.type-sample-serif-xl em{font-style:italic;color:var(--gold)}
+.type-sample-serif-lg{font-family:'Cormorant',serif;font-size:36px;font-weight:400;line-height:1.05;color:#2C1A0E}
+.type-sample-serif-md{font-family:'Cormorant',serif;font-size:24px;font-weight:300;line-height:1.15;color:#2C1A0E;font-style:italic}
+.type-sample-sans-md{font-size:14px;font-weight:300;line-height:1.85;color:#555;max-width:480px}
+.type-sample-sans-sm{font-size:11px;font-weight:400;color:#777;line-height:1.7;max-width:480px}
+.type-sample-label{font-size:9px;font-weight:500;letter-spacing:.28em;text-transform:uppercase;color:var(--gold)}
+
+/* ── LOGO VARIANTS ── */
+.logo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin-bottom:3px}
+.logo-cell{
+  padding:40px 36px;
+  display:flex;flex-direction:column;gap:12px;
+}
+.logo-cell-label{font-size:8px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.3)}
+.logo-cell-label-dark{font-size:8px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:rgba(0,0,0,.3)}
+.logo-main{font-family:'Cormorant',serif;font-size:38px;font-weight:400;letter-spacing:.03em;line-height:1}
+.logo-sub{font-size:11px;font-weight:300;letter-spacing:.14em;margin-top:6px}
+.logo-note{font-size:9px;font-weight:300;margin-top:8px;line-height:1.6}
+
+/* ── USAGE TABLE ── */
+.usage-table{width:100%;border-collapse:collapse}
+.usage-table th{
+  font-size:8px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;
+  color:#999;padding:10px 16px;text-align:left;
+  border-bottom:1px solid #E8E4DC;
+}
+.usage-table td{
+  font-size:11px;font-weight:300;color:#555;
+  padding:12px 16px;border-bottom:1px solid #F0EDE8;
+  vertical-align:top;line-height:1.7;
+}
+.usage-table tr:last-child td{border-bottom:none}
+.dot-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:10px;font-weight:500;
+}
+.dot-b{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.tag-cs{
+  display:inline-block;font-size:8px;font-weight:500;letter-spacing:.14em;
+  text-transform:uppercase;padding:3px 8px;
+  background:rgba(44,26,14,.08);color:var(--cs-primary);
+}
+.tag-fs{
+  display:inline-block;font-size:8px;font-weight:500;letter-spacing:.14em;
+  text-transform:uppercase;padding:3px 8px;
+  background:rgba(232,118,10,.1);color:var(--fs-accent);
+}
+.tag-parent{
+  display:inline-block;font-size:8px;font-weight:500;letter-spacing:.14em;
+  text-transform:uppercase;padding:3px 8px;
+  background:rgba(184,137,42,.1);color:var(--gold);
+}
+
+/* ── DO / DON'T ── */
+.rules-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.rule-do{border-left:3px solid #6DAE78;padding:16px 20px;background:rgba(109,174,120,.05)}
+.rule-dont{border-left:3px solid #C4695A;padding:16px 20px;background:rgba(196,105,90,.05)}
+.rule-label{font-size:8px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;margin-bottom:8px}
+.rule-do .rule-label{color:#6DAE78}
+.rule-dont .rule-label{color:#C4695A}
+.rule-text{font-size:11px;font-weight:300;color:#555;line-height:1.7}
+
+/* ── PREVIEW CARDS ── */
+.preview-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px}
+.preview-dark{padding:40px;position:relative;overflow:hidden}
+.preview-light{padding:40px;border:1px solid}
+.preview-cs-dark{background:var(--cs-primary)}
+.preview-cs-light{background:var(--cs-bg);border-color:var(--cs-border)}
+.preview-fs-dark{background:var(--fs-primary)}
+.preview-fs-light{background:var(--fs-bg);border-color:var(--fs-border)}
+
+.pv-glow-cs{position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 80% 100%,rgba(184,137,42,.08) 0%,transparent 65%);pointer-events:none}
+.pv-glow-fs{position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 80% 100%,rgba(232,118,10,.08) 0%,transparent 65%);pointer-events:none}
+
+.pv-tag{font-size:8px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.pv-tag::before{content:'';width:18px;height:1px;background:currentColor}
+.pv-h{font-family:'Cormorant',serif;font-size:28px;font-weight:300;line-height:1.1;margin-bottom:10px;font-style:italic}
+.pv-p{font-size:11px;font-weight:300;line-height:1.75;margin-bottom:20px}
+.pv-btn{display:inline-block;font-size:8px;font-weight:500;letter-spacing:.18em;text-transform:uppercase;padding:10px 22px}
+
+/* ── INVOICE SAMPLE ── */
+.invoice{background:#fff;border:1px solid #E0DCD4;overflow:hidden}
+.inv-top{height:6px}
+.inv-body{padding:28px 32px}
+.inv-header-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid #EEE}
+.inv-logo{font-family:'Cormorant',serif;font-size:20px;font-weight:400;letter-spacing:.04em}
+.inv-details{text-align:right}
+.inv-details p{font-size:10px;font-weight:300;color:#888;line-height:1.9}
+.inv-line{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F5F5}
+.inv-line-label{font-size:10px;font-weight:300;color:#888}
+.inv-line-val{font-size:10px;font-weight:500;color:#333}
+.inv-total-row{display:flex;justify-content:space-between;padding:12px 16px;margin-top:12px}
+.inv-total-label{font-size:10px;font-weight:500;letter-spacing:.12em;text-transform:uppercase}
+.inv-total-val{font-size:14px;font-weight:500;font-family:'Cormorant',serif}
+
+/* ── CRM TAG SAMPLES ── */
+.crm-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.crm-tag{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:9px;font-weight:500;letter-spacing:.1em;
+  padding:5px 12px;border-radius:2px;
+}
+
+/* ── FOOTER ── */
+.doc-footer{
+  background:#fff;border:1px solid #D8D4CC;
+  padding:24px 48px;margin-top:3px;border-radius:0 0 4px 4px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.doc-footer p{font-size:10px;font-weight:300;color:#AAA;line-height:1.7}
+.doc-footer-logo{font-family:'Cormorant',serif;font-size:20px;font-weight:400;color:#CCC}
+.doc-footer-logo span{color:var(--gold)}
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- ══ COVER ══ -->
+<div class="cover">
+  <div class="cover-left">
+    <div class="cover-doc-label">Brand Identity Guidelines</div>
+    <div class="cover-logo">
+      Inc<span class="dot-gold">·</span>Hub
+    </div>
+    <div class="cover-tagline">IncHub Group — Dual Brand Identity System</div>
+  </div>
+  <div class="cover-right">
+    <div class="cover-version">Version 1.0 · June 2026</div>
+    <div class="cover-meta">
+      Prepared for: Design Team<br>
+      Issued by: IncHub Group<br>
+      Confidential — Internal Use
+    </div>
+    <div class="cover-entities">
+      <div class="entity-badge entity-cs">Inchub Corporate Services Providers LLC</div>
+      <div class="entity-badge entity-fs">Inchub Financial Services FZCO</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SECTION 1: OVERVIEW ══ -->
+<div class="rule-card" style="border-radius:0">
+  <div class="sec-head">
+    <div><span class="sec-num">01</span><span class="sec-title">Brand Architecture Overview</span></div>
+    <div class="sec-note">One parent. Two distinct identities.</div>
+  </div>
+  <p style="font-size:13px;font-weight:300;line-height:1.9;color:#555;max-width:720px;margin-bottom:28px">
+    IncHub operates two separate legal entities under one parent brand. Each entity has its own primary colour, accent, background, and tone. The parent brand — <strong style="font-weight:500;color:#2C1A0E">IncHub Group</strong> — is expressed only through the gold connector dot and shared credentials. All other visual elements are division-specific and must never be mixed across entities.
+  </p>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:2px">
+    <div style="background:var(--cs-bg);padding:28px 24px;border:1px solid var(--cs-border)">
+      <div style="font-size:8px;font-weight:500;letter-spacing:.24em;text-transform:uppercase;color:rgba(44,26,14,.4);margin-bottom:12px">Division I</div>
+      <div style="font-family:'Cormorant',serif;font-size:22px;font-weight:400;color:var(--cs-primary);margin-bottom:6px">Corporate Services</div>
+      <div style="font-size:10px;font-weight:300;color:rgba(44,26,14,.5);line-height:1.7">Formation · Family Advisory · Governance · Succession · AML · Visa · PRO · Offshore</div>
+      <div style="margin-top:16px;display:flex;gap:8px">
+        <div style="width:24px;height:24px;background:var(--cs-primary);border-radius:2px"></div>
+        <div style="width:24px;height:24px;background:var(--cs-accent);border-radius:2px"></div>
+        <div style="width:24px;height:24px;background:var(--cs-bg2);border-radius:2px;border:1px solid var(--cs-border)"></div>
+      </div>
+    </div>
+    <div style="background:#fff;padding:28px 24px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:16px;border-top:1px solid #E8E4DC;border-bottom:1px solid #E8E4DC">
+      <div style="font-family:'Cormorant',serif;font-size:48px;font-weight:300;color:#2C1A0E;letter-spacing:.04em;line-height:1">Inc<span style="color:var(--gold)">·</span>Hub</div>
+      <div style="font-size:9px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:#BBB;text-align:center">Parent Brand<br>Gold dot is the<br>shared connector</div>
+    </div>
+    <div style="background:var(--fs-bg);padding:28px 24px;border:1px solid var(--fs-border)">
+      <div style="font-size:8px;font-weight:500;letter-spacing:.24em;text-transform:uppercase;color:rgba(42,22,40,.4);margin-bottom:12px">Division II</div>
+      <div style="font-family:'Cormorant',serif;font-size:22px;font-weight:400;color:var(--fs-primary);margin-bottom:6px">Financial Services</div>
+      <div style="font-size:10px;font-weight:300;color:rgba(42,22,40,.5);line-height:1.7">VAT · Corporate Tax · Accounting · Bookkeeping · Payroll · Transfer Pricing · CFO Services</div>
+      <div style="margin-top:16px;display:flex;gap:8px">
+        <div style="width:24px;height:24px;background:var(--fs-primary);border-radius:2px"></div>
+        <div style="width:24px;height:24px;background:var(--fs-accent);border-radius:2px"></div>
+        <div style="width:24px;height:24px;background:var(--fs-bg2);border-radius:2px;border:1px solid var(--fs-border)"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SECTION 2: COLOUR SYSTEM ══ -->
+<div class="rule-card" style="border-radius:0;margin-top:3px">
+  <div class="sec-head">
+    <div><span class="sec-num">02</span><span class="sec-title">Colour System</span></div>
+    <div class="sec-note">Primary · Accent · Background · Borders</div>
+  </div>
+</div>
+
+<div class="dual">
+  <!-- CS COLOURS -->
+  <div class="col-cs">
+    <div class="div-eyebrow">Division I · Corporate Services</div>
+    <div class="div-logo"><span class="cs-logo-text">Inc</span><span class="cs-dot">·</span><span class="cs-logo-text">Hub</span></div>
+    <div class="div-entity">Inchub Corporate Services Providers LLC · Mainland</div>
+    <div class="div-scope">Company Formation · Family Advisory · Governance · Succession · AML · Visa · PRO · Offshore · VARA</div>
+    <div class="swatches">
+      <div class="swatch-row">
+        <div class="sw-color" style="background:#2C1A0E"></div>
+        <div class="sw-info" style="background:#fff">
+          <div class="sw-name" style="color:#2C1A0E">Deep Cognac</div>
+          <div class="sw-hex" style="color:#2C1A0E">#2C1A0E</div>
+          <div class="sw-rgb" style="color:#888">RGB 44 / 26 / 14</div>
+          <div class="sw-role">Primary · Nav · Hero · Dark sections · All headlines</div>
+        </div>
+      </div>
+      <div class="swatch-row">
+        <div class="sw-color" style="background:#4A2E1A"></div>
+        <div class="sw-info" style="background:#fff">
+          <div class="sw-name" style="color:#4A2E1A">Cognac Mid</div>
+          <div class="sw-hex" style="color:#4A2E1A">#4A2E1A</div>
+          <div class="sw-rgb" style="color:#888">RGB 74 / 46 / 26</div>
+          <div class="sw-role">Secondary · Hover states · Mid panels · Card depth</div>
+        </div>
+      </div>
+      <div class="swatch-row">
+        <div class="sw-color" style="background:#6B3F22"></div>
+        <div class="sw-info" style="background:#fff">
+          <div class="sw-name" style="color:#6B3F22">Cognac Warm</div>
+          <div class="sw-hex" style="color:#6B3F22">#6B3F22</div>
+          <div class="sw-rgb" style="color:#888">RGB 107 / 63 / 34</div>
+          <div class="sw-role">Tertiary · Borders · Dividers · Subtle text</div>
+        </div>
+      </div>
+      <div class="swatch-row">
+        <div class="sw-color" style="background:#B8892A"></div>
+        <div class="sw-info" style="background:#fff">
+          <div class="sw-name" style="color:#B8892A">Parent Gold</div>
+          <div class="sw-hex" style="color:#B8892A">#B8892A</div>
+          <div class="sw-rgb" style="color:#888">RGB 184 / 137 / 42</div>
+          <div class="sw-role">Accent · CTAs · Highlights · Shared with parent brand</div>
+        </div>
+      </div>
+      <div class="swatch-row">
+        <div class="sw-color" style="background:#C9A040"></div>
+        <div class="sw-info" style="background:#fff">
+          <div class="sw-name" style="color:#C9A040">Gold Light</div>
+          <div class="sw-hex" style="color:#C9A040">#C9A040</div>
+          <div class="sw-rgb" style="color:#888">RGB 201 / 160 / 64</div>
+          <div class="sw-role">Hover state of gold · Button shimmer</div>
+        </div>
+      </div>
+      <div class="swatch-row">
+        <div class="sw-color" style="background:#F6F1E8;border-right:1px solid var(--cs-border)"></div>
+        <div class="sw-info" style="background:#fff">
+          <div class="sw-name">Warm Parchment</div>
+          <div class="sw-hex">#F6F1E8</div>
+          <div class="sw-rgb" style="color:#888">RGB 246 / 241 / 232</div>
+          <div class="sw-role">Page background · Light panels · Cards</div>
+        </div>
+      </div>
+      <div class="swatch-row" style="border-bottom:none">
+        <div class="sw-color" style="background:#EDE7D8;border-right:1px solid var(--cs-border)"></div>
+        <div class="sw-info" style="background:#fff">
+          <div class="sw-name">Parchment Dark</div>
+          <div class="sw-hex">#EDE7D8</div>
+          <div class="sw-rgb" style="color:#888">RGB 237 / 231 / 216</div>
+          <div class="sw-role">Section alternates · Darker background panels</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FS COLOURS -->
+  <div class="col-fs">
+    <div class="div-eyebrow">Division II · Financial Services</div>
+    <div class="div-logo"><span class="fs-logo-text">Inc</span><span class="fs-dot">·</span><span class="fs-logo-text">Hub</span></div>
+    <div class="div-entity">Inchub Financial Services FZCO · IFZA</div>
+    <div class="div-scope">VAT · Corporate Tax Filing · Accounting · Bookkeeping · Payroll · Transfer Pricing · CFO Services · e-Invoicing</div>
+    <div class="swatches">
+      <div class="swatch-row">
+        <div class="sw-color" style="background:#2A1628"></div>
+        <div class="sw-info" style="background:#fff">
+          <div class="sw-name" style="color:#2A1628">Deep Aubergine</div>
+          <div class="sw-hex" style="color:#2A1628">#2A1628</div>
+          <div class="sw-rgb" style="color:#888">RGB 42 / 22 / 40</div>
+          <div class="sw-role">Primary · Nav · Hero · Dark sections · All headlines</div>
+        </div>
+      </div>
+      <div class="swatch-row">
+        <div class="sw-color" style="background:#3D2040"></div>
+        <div class="sw-info" style="background:#fff">
+          <div class="sw-name" style="color:#3D2040">Aubergine Mid</div>
+          <div class="sw-hex" style="color:#3D2040">#3D2040</div>
+          <div class="sw-rgb" style="color:#888">RGB 61 / 32 / 64</div>
+          <div class="sw-role">Secondary · Hover states · Mid panels · Card depth</div>
+        </div>
+      </div>
+      <div class="swatch-row">
+        <div class="sw-color" style="background:#5A2D5A"></div>
+        <div class="sw-info" style="background:#fff">
+          <div class="sw-name" style="color:#5A2D5A">Aubergine Warm</div>
+          <div class="sw-hex">#5A2D5A</div>
+          <div class="sw-rgb" style="color:#888">RGB 90 / 45 / 90</div>
+          <div class="sw-role">Tertiary · Borders · Dividers · Subtle text</div>
+        </div>
+      </div>
+      <div class="swatch-row">
+        <div class="sw-color" style="background:#E8760A"></div>
+        <div class="sw-info" style="background:#fff">
+          <div class="sw-name" style="color:#E8760A">Deep Saffron</div>
+          <div class="sw-hex" style="color:#E8760A">#E8760A</div>
+          <div class="sw-rgb" style="color:#888">RGB 232 / 118 / 10</div>
+          <div class="sw-role">Primary accent · CTAs · Highlights · Invoice headers</div>
+        </div>
+      </div>
+      <div class="swatch-row">
+        <div class="sw-color" style="background:#F09040"></div>
+        <div class="sw-info" style="background:#fff">
+          <div class="sw-name" style="color:#E8760A">Saffron Light</div>
+          <div class="sw-hex" style="color:#888">#F09040</div>
+          <div class="sw-rgb" style="color:#888">RGB 240 / 144 / 64</div>
+          <div class="sw-role">Hover state of saffron · Button shimmer</div>
+        </div>
+      </div>
+      <div class="swatch-row">
+        <div class="sw-color" style="background:#F6F2EE;border-right:1px solid var(--fs-border)"></div>
+        <div class="sw-info" style="background:#fff">
+          <div class="sw-name">Warm White</div>
+          <div class="sw-hex">#F6F2EE</div>
+          <div class="sw-rgb" style="color:#888">RGB 246 / 242 / 238</div>
+          <div class="sw-role">Page background · Light panels · Cards</div>
+        </div>
+      </div>
+      <div class="swatch-row" style="border-bottom:none">
+        <div class="sw-color" style="background:#EDE6DE;border-right:1px solid var(--fs-border)"></div>
+        <div class="sw-info" style="background:#fff">
+          <div class="sw-name">Warm White Dark</div>
+          <div class="sw-hex">#EDE6DE</div>
+          <div class="sw-rgb" style="color:#888">RGB 237 / 230 / 222</div>
+          <div class="sw-role">Section alternates · Darker background panels</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SECTION 3: TYPOGRAPHY ══ -->
+<div class="rule-card" style="border-radius:0;margin-top:3px">
+  <div class="sec-head">
+    <div><span class="sec-num">03</span><span class="sec-title">Typography</span></div>
+    <div class="sec-note">Shared across both divisions</div>
+  </div>
+  <div class="type-row">
+    <div class="type-meta">
+      <div class="type-label">Display / Headlines</div>
+      <div class="type-spec">Cormorant<br>Weight: 300–500<br>Italic for emphasis<br>Tracking: –0.02em</div>
+    </div>
+    <div class="type-sample-serif-xl">Structure. <em>Protect.</em> Endure.</div>
+  </div>
+  <div class="type-row">
+    <div class="type-meta">
+      <div class="type-label">Section Headings</div>
+      <div class="type-spec">Cormorant<br>Weight: 400<br>Italic for em<br>Size: 36–52px</div>
+    </div>
+    <div class="type-sample-serif-lg">Real Mandates. Verified Outcomes.</div>
+  </div>
+  <div class="type-row">
+    <div class="type-meta">
+      <div class="type-label">Card Headlines</div>
+      <div class="type-spec">Cormorant Italic<br>Weight: 300<br>Size: 22–28px</div>
+    </div>
+    <div class="type-sample-serif-md">Protecting Generational Wealth</div>
+  </div>
+  <div class="type-row">
+    <div class="type-meta">
+      <div class="type-label">Body Copy</div>
+      <div class="type-spec">Inter<br>Weight: 300<br>Size: 13–15px<br>Leading: 1.85</div>
+    </div>
+    <div class="type-sample-sans-md">For families protecting generational wealth and founders building their UAE presence — institutional-grade advisory, precise execution, and long-term partnership on every mandate.</div>
+  </div>
+  <div class="type-row">
+    <div class="type-meta">
+      <div class="type-label">UI / Navigation</div>
+      <div class="type-spec">Inter<br>Weight: 400–500<br>Size: 10–12px<br>Tracking: 0.16–0.28em<br>ALL CAPS</div>
+    </div>
+    <div class="type-sample-sans-sm" style="display:flex;flex-direction:column;gap:8px">
+      <span style="font-size:10px;font-weight:500;letter-spacing:.28em;text-transform:uppercase;color:#888">SECTION EYEBROW LABEL</span>
+      <span style="font-size:11px;font-weight:400;letter-spacing:.16em;text-transform:uppercase;color:#555">NAVIGATION LINK</span>
+      <span style="font-size:10px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:var(--gold)">CTA BUTTON LABEL</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SECTION 4: LOGO VARIANTS ══ -->
+<div class="rule-card" style="border-radius:0;margin-top:3px">
+  <div class="sec-head">
+    <div><span class="sec-num">04</span><span class="sec-title">Logo Variants</span></div>
+    <div class="sec-note">The dot shifts colour per division</div>
+  </div>
+</div>
+<div class="logo-grid" style="margin-bottom:3px">
+  <!-- Parent on white -->
+  <div class="logo-cell" style="background:#fff;border:1px solid #E8E4DC">
+    <div class="logo-cell-label-dark">Parent Brand · Light Background</div>
+    <div class="logo-main" style="color:#2C1A0E">Inc<span style="color:#B8892A">·</span>Hub</div>
+    <div class="logo-sub" style="color:rgba(44,26,14,.4);font-size:11px;font-weight:300;letter-spacing:.14em;font-family:'Cormorant',serif">Group</div>
+    <div class="logo-note" style="color:#AAA;font-size:9px">Use on white, parchment, or light backgrounds. Dot always gold on parent brand materials.</div>
+  </div>
+  <!-- Corporate Services dark -->
+  <div class="logo-cell" style="background:var(--cs-primary)">
+    <div class="logo-cell-label">Corporate Services · Dark Background</div>
+    <div class="logo-main" style="color:#F6F1E8">Inc<span style="color:#B8892A">·</span>Hub</div>
+    <div class="logo-sub" style="color:rgba(246,241,232,.4);font-size:11px;font-weight:300;letter-spacing:.14em;font-family:'Cormorant',serif">Corporate Services</div>
+    <div class="logo-note" style="color:rgba(246,241,232,.3);font-size:9px">Gold dot retained. Used on all Corporate Services dark sections, nav, footers.</div>
+  </div>
+  <!-- Financial Services dark -->
+  <div class="logo-cell" style="background:var(--fs-primary)">
+    <div class="logo-cell-label">Financial Services · Dark Background</div>
+    <div class="logo-main" style="color:#F6F2EE">Inc<span style="color:#E8760A">·</span>Hub</div>
+    <div class="logo-sub" style="color:rgba(246,242,238,.35);font-size:11px;font-weight:300;letter-spacing:.14em;font-family:'Cormorant',serif">Financial Services</div>
+    <div class="logo-note" style="color:rgba(246,242,238,.3);font-size:9px">Dot shifts to saffron #E8760A. Used on all Financial Services dark sections, nav, footers, invoices.</div>
+  </div>
+  <!-- Corporate Services light -->
+  <div class="logo-cell" style="background:var(--cs-bg);border:1px solid var(--cs-border)">
+    <div class="logo-cell-label-dark" style="color:rgba(44,26,14,.35)">Corporate Services · Light Background</div>
+    <div class="logo-main" style="color:var(--cs-primary)">Inc<span style="color:#B8892A">·</span>Hub</div>
+    <div class="logo-sub" style="color:rgba(44,26,14,.35);font-size:11px;font-weight:300;letter-spacing:.14em;font-family:'Cormorant',serif">Corporate Services</div>
+    <div class="logo-note" style="color:#BBB;font-size:9px">Used on parchment backgrounds — email letterhead, proposals, engagement letters.</div>
+  </div>
+  <!-- Financial Services light -->
+  <div class="logo-cell" style="background:var(--fs-bg);border:1px solid var(--fs-border)">
+    <div class="logo-cell-label-dark" style="color:rgba(42,22,40,.35)">Financial Services · Light Background</div>
+    <div class="logo-main" style="color:var(--fs-primary)">Inc<span style="color:#E8760A">·</span>Hub</div>
+    <div class="logo-sub" style="color:rgba(42,22,40,.35);font-size:11px;font-weight:300;letter-spacing:.14em;font-family:'Cormorant',serif">Financial Services</div>
+    <div class="logo-note" style="color:#BBB;font-size:9px">Used on warm-white backgrounds — invoices, accounting reports, VAT letters.</div>
+  </div>
+  <!-- Never mix -->
+  <div class="logo-cell" style="background:#F8F7F5;border:1px solid #E0DDD8;position:relative">
+    <div class="logo-cell-label-dark" style="color:#C4695A">Never Do This</div>
+    <div style="position:relative">
+      <div class="logo-main" style="color:var(--cs-primary);opacity:.3">Inc<span style="color:#E8760A">·</span>Hub</div>
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+        <div style="width:100%;height:2px;background:#C4695A;transform:rotate(-12deg)"></div>
+      </div>
+    </div>
+    <div class="logo-note" style="color:#C4695A;font-size:9px">Never use saffron dot on Corporate Services materials, or gold dot on Financial Services materials. The dot colour is the primary brand signal.</div>
+  </div>
+</div>
+
+<!-- ══ SECTION 5: COMPONENT PREVIEWS ══ -->
+<div class="rule-card" style="border-radius:0;margin-top:3px">
+  <div class="sec-head">
+    <div><span class="sec-num">05</span><span class="sec-title">Component Previews</span></div>
+    <div class="sec-note">Dark panels · Light cards · Buttons · Invoice headers</div>
+  </div>
+</div>
+<div class="preview-grid" style="margin-bottom:3px">
+  <div class="preview-dark preview-cs-dark">
+    <div class="pv-glow-cs"></div>
+    <div class="pv-tag" style="color:rgba(184,137,42,.65)">Family Advisory · DIFC</div>
+    <div class="pv-h" style="color:#F6F1E8">Protecting<br>Generational Wealth</div>
+    <div class="pv-p" style="color:rgba(246,241,232,.42)">Succession frameworks, family constitutions, DIFC family offices — built for families who think in generations.</div>
+    <div class="pv-btn" style="background:#B8892A;color:#2C1A0E">Private Consultation</div>
+    <div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap">
+      <div style="font-size:8px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;padding:5px 12px;border:1px solid rgba(184,137,42,.25);color:rgba(184,137,42,.7)">DIFC</div>
+      <div style="font-size:8px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;padding:5px 12px;border:1px solid rgba(184,137,42,.25);color:rgba(184,137,42,.7)">Succession</div>
+      <div style="font-size:8px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;padding:5px 12px;border:1px solid rgba(184,137,42,.25);color:rgba(184,137,42,.7)">Governance</div>
+    </div>
+  </div>
+  <div class="preview-dark preview-fs-dark">
+    <div class="pv-glow-fs"></div>
+    <div class="pv-tag" style="color:rgba(232,118,10,.7)">VAT &amp; Corporate Tax · FTA Registered</div>
+    <div class="pv-h" style="color:#F6F2EE">UAE Tax Filing,<br>Done Right</div>
+    <div class="pv-p" style="color:rgba(246,242,238,.38)">VAT returns, CT filing, transfer pricing, penalty remediation — handled by FTA-registered tax agents.</div>
+    <div class="pv-btn" style="background:#E8760A;color:#2A1628">Get Started</div>
+    <div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap">
+      <div style="font-size:8px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;padding:5px 12px;border:1px solid rgba(232,118,10,.25);color:rgba(232,118,10,.7)">FTA</div>
+      <div style="font-size:8px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;padding:5px 12px;border:1px solid rgba(232,118,10,.25);color:rgba(232,118,10,.7)">VAT</div>
+      <div style="font-size:8px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;padding:5px 12px;border:1px solid rgba(232,118,10,.25);color:rgba(232,118,10,.7)">CT Filing</div>
+    </div>
+  </div>
+  <div class="preview-light preview-cs-light">
+    <div class="pv-tag" style="color:var(--cs-accent)">Business Formation</div>
+    <div class="pv-h" style="color:var(--cs-primary)">From First Entity<br>to Full Compliance</div>
+    <div class="pv-p" style="color:rgba(44,26,14,.45)">Free zone, mainland, offshore. 30+ jurisdictions. End-to-end implementation by authorised agents.</div>
+    <div class="pv-btn" style="background:var(--cs-primary);color:var(--cs-bg)">Calculate Cost</div>
+  </div>
+  <div class="preview-light preview-fs-light">
+    <div class="pv-tag" style="color:var(--fs-accent)">Accounting &amp; Bookkeeping</div>
+    <div class="pv-h" style="color:var(--fs-primary)">Your Numbers,<br>Always Accurate</div>
+    <div class="pv-p" style="color:rgba(42,22,40,.45)">Monthly bookkeeping, management accounts, payroll, and CFO advisory for growing UAE businesses.</div>
+    <div class="pv-btn" style="background:var(--fs-primary);color:var(--fs-bg)">View Packages</div>
+  </div>
+</div>
+
+<!-- ══ SECTION 6: INVOICE HEADERS ══ -->
+<div class="rule-card" style="border-radius:0;margin-top:3px">
+  <div class="sec-head">
+    <div><span class="sec-num">06</span><span class="sec-title">Invoice &amp; Document Headers</span></div>
+    <div class="sec-note">Division is immediately identifiable at a glance</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+    <!-- CS Invoice -->
+    <div>
+      <div style="font-size:9px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:#AAA;margin-bottom:12px">Corporate Services Invoice</div>
+      <div class="invoice">
+        <div class="inv-top" style="background:var(--cs-accent)"></div>
+        <div class="inv-body">
+          <div class="inv-header-row">
+            <div>
+              <div class="inv-logo" style="color:var(--cs-primary)">Inc<span style="color:var(--cs-accent)">·</span>Hub</div>
+              <div style="font-size:9px;font-weight:300;color:#AAA;letter-spacing:.1em;margin-top:3px">Corporate Services</div>
+            </div>
+            <div class="inv-details">
+              <p>Invoice #CS-2026-001<br>Date: 07 June 2026<br>Due: 21 June 2026</p>
+            </div>
+          </div>
+          <div class="inv-line"><span class="inv-line-label">Company Formation — IFZA</span><span class="inv-line-val">AED 8,500.00</span></div>
+          <div class="inv-line"><span class="inv-line-label">PRO Services — Q2</span><span class="inv-line-val">AED 2,200.00</span></div>
+          <div class="inv-line"><span class="inv-line-label">AML Policy Setup</span><span class="inv-line-val">AED 3,500.00</span></div>
+          <div class="inv-total-row" style="background:var(--cs-accent)">
+            <span class="inv-total-label" style="color:var(--cs-primary)">Total Due</span>
+            <span class="inv-total-val" style="color:var(--cs-primary)">AED 14,200.00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- FS Invoice -->
+    <div>
+      <div style="font-size:9px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:#AAA;margin-bottom:12px">Financial Services Invoice</div>
+      <div class="invoice">
+        <div class="inv-top" style="background:var(--fs-accent)"></div>
+        <div class="inv-body">
+          <div class="inv-header-row">
+            <div>
+              <div class="inv-logo" style="color:var(--fs-primary)">Inc<span style="color:var(--fs-accent)">·</span>Hub</div>
+              <div style="font-size:9px;font-weight:300;color:#AAA;letter-spacing:.1em;margin-top:3px">Financial Services</div>
+            </div>
+            <div class="inv-details">
+              <p>Invoice #FS-2026-001<br>Date: 07 June 2026<br>Due: 21 June 2026</p>
+            </div>
+          </div>
+          <div class="inv-line"><span class="inv-line-label">VAT Return — Q1 2026</span><span class="inv-line-val">AED 4,500.00</span></div>
+          <div class="inv-line"><span class="inv-line-label">Monthly Bookkeeping — May</span><span class="inv-line-val">AED 1,800.00</span></div>
+          <div class="inv-line"><span class="inv-line-label">Payroll Processing — May</span><span class="inv-line-val">AED 1,200.00</span></div>
+          <div class="inv-total-row" style="background:var(--fs-accent)">
+            <span class="inv-total-label" style="color:var(--fs-primary)">Total Due</span>
+            <span class="inv-total-val" style="color:var(--fs-primary)">AED 7,500.00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SECTION 7: CRM TAGS ══ -->
+<div class="rule-card" style="border-radius:0;margin-top:3px">
+  <div class="sec-head">
+    <div><span class="sec-num">07</span><span class="sec-title">CRM Pipeline Tags</span></div>
+    <div class="sec-note">Colour-coded by division for instant identification</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px">
+    <div>
+      <div style="font-size:9px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:#AAA;margin-bottom:16px">Corporate Services Pipeline Tags</div>
+      <div class="crm-row">
+        <div class="crm-tag" style="background:rgba(44,26,14,.08);color:var(--cs-primary)"><div style="width:8px;height:8px;border-radius:50%;background:var(--cs-primary)"></div>Lead</div>
+        <div class="crm-tag" style="background:rgba(44,26,14,.08);color:var(--cs-primary)"><div style="width:8px;height:8px;border-radius:50%;background:var(--cs-mid)"></div>Proposal Sent</div>
+        <div class="crm-tag" style="background:rgba(44,26,14,.08);color:var(--cs-primary)"><div style="width:8px;height:8px;border-radius:50%;background:var(--cs-warm)"></div>In Progress</div>
+      </div>
+      <div class="crm-row">
+        <div class="crm-tag" style="background:rgba(184,137,42,.1);color:var(--cs-accent)"><div style="width:8px;height:8px;border-radius:50%;background:var(--cs-accent)"></div>Contract Signed</div>
+        <div class="crm-tag" style="background:rgba(184,137,42,.1);color:var(--cs-accent)"><div style="width:8px;height:8px;border-radius:50%;background:var(--cs-accent)"></div>Completed</div>
+      </div>
+      <div style="font-size:10px;font-weight:300;color:#AAA;margin-top:8px;line-height:1.7">Family Advisory · Formation · Governance · AML · Visa · Offshore</div>
+    </div>
+    <div>
+      <div style="font-size:9px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:#AAA;margin-bottom:16px">Financial Services Pipeline Tags</div>
+      <div class="crm-row">
+        <div class="crm-tag" style="background:rgba(42,22,40,.08);color:var(--fs-primary)"><div style="width:8px;height:8px;border-radius:50%;background:var(--fs-primary)"></div>Lead</div>
+        <div class="crm-tag" style="background:rgba(42,22,40,.08);color:var(--fs-primary)"><div style="width:8px;height:8px;border-radius:50%;background:var(--fs-mid)"></div>Proposal Sent</div>
+        <div class="crm-tag" style="background:rgba(42,22,40,.08);color:var(--fs-primary)"><div style="width:8px;height:8px;border-radius:50%;background:var(--fs-warm)"></div>In Progress</div>
+      </div>
+      <div class="crm-row">
+        <div class="crm-tag" style="background:rgba(232,118,10,.1);color:var(--fs-accent)"><div style="width:8px;height:8px;border-radius:50%;background:var(--fs-accent)"></div>Engagement Active</div>
+        <div class="crm-tag" style="background:rgba(232,118,10,.1);color:var(--fs-accent)"><div style="width:8px;height:8px;border-radius:50%;background:var(--fs-accent)"></div>Filed</div>
+      </div>
+      <div style="font-size:10px;font-weight:300;color:#AAA;margin-top:8px;line-height:1.7">VAT · CT Filing · Accounting · Bookkeeping · Payroll · CFO</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SECTION 8: DO / DON'T ══ -->
+<div class="rule-card" style="border-radius:0;margin-top:3px">
+  <div class="sec-head">
+    <div><span class="sec-num">08</span><span class="sec-title">Rules — Do &amp; Don't</span></div>
+  </div>
+  <div class="rules-grid">
+    <div class="rule-do"><div class="rule-label">✓ Do</div><div class="rule-text">Always use cognac + gold for Corporate Services materials — website pages, engagement letters, formation proposals, family advisory documents.</div></div>
+    <div class="rule-dont"><div class="rule-label">✗ Don't</div><div class="rule-text">Never use saffron on Corporate Services materials. Saffron is exclusive to Financial Services — invoices, VAT letters, accounting reports, CRM FS tags.</div></div>
+    <div class="rule-do"><div class="rule-label">✓ Do</div><div class="rule-text">Always use aubergine + saffron for Financial Services — the website FS landing page, VAT correspondence, CT filing cover letters, accounting dashboards, all invoices from Inchub Financial Services FZCO.</div></div>
+    <div class="rule-dont"><div class="rule-label">✗ Don't</div><div class="rule-text">Never mix the two palettes on the same document. If a proposal covers both Corporate and Financial Services, use the parent brand (gold dot, neutral background) and clearly section the two divisions.</div></div>
+    <div class="rule-do"><div class="rule-label">✓ Do</div><div class="rule-text">Use the gold dot on the parent brand homepage and any group-level communications. The dot is the only element that unifies both entities visually.</div></div>
+    <div class="rule-dont"><div class="rule-label">✗ Don't</div><div class="rule-text">Never use the logo without the division name below it when appearing on division-specific materials. Always sub-label: "Corporate Services" or "Financial Services" in lightweight Cormorant.</div></div>
+    <div class="rule-do"><div class="rule-label">✓ Do</div><div class="rule-text">On the CRM, tag every deal, pipeline stage, and client record with the correct division colour. This is how the team instantly knows which entity is billing and which services are in scope.</div></div>
+    <div class="rule-dont"><div class="rule-label">✗ Don't</div><div class="rule-text">Never use blue, green, or any colour outside the defined palette. The brand system is intentionally limited — its power comes from consistency across every touchpoint.</div></div>
+  </div>
+</div>
+
+<!-- ══ SECTION 9: USAGE TABLE ══ -->
+<div class="rule-card" style="border-radius:0;margin-top:3px">
+  <div class="sec-head">
+    <div><span class="sec-num">09</span><span class="sec-title">Application Reference Table</span></div>
+  </div>
+  <table class="usage-table">
+    <thead>
+      <tr>
+        <th>Touchpoint</th>
+        <th>Division</th>
+        <th>Primary Colour</th>
+        <th>Accent</th>
+        <th>Background</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Homepage (parent)</td><td><span class="tag-parent">Group</span></td><td>Cognac #2C1A0E</td><td>Gold #B8892A</td><td>Parchment #F6F1E8</td></tr>
+      <tr><td>Corporate Services website pages</td><td><span class="tag-cs">Corporate</span></td><td>Cognac #2C1A0E</td><td>Gold #B8892A</td><td>Parchment #F6F1E8</td></tr>
+      <tr><td>Financial Services website pages</td><td><span class="tag-fs">Financial</span></td><td>Aubergine #2A1628</td><td>Saffron #E8760A</td><td>Warm White #F6F2EE</td></tr>
+      <tr><td>Corporate Services invoices</td><td><span class="tag-cs">Corporate</span></td><td>Cognac #2C1A0E</td><td>Gold #B8892A</td><td>White #FFFFFF</td></tr>
+      <tr><td>Financial Services invoices</td><td><span class="tag-fs">Financial</span></td><td>Aubergine #2A1628</td><td>Saffron #E8760A</td><td>White #FFFFFF</td></tr>
+      <tr><td>Email signatures — CS team</td><td><span class="tag-cs">Corporate</span></td><td>Cognac #2C1A0E</td><td>Gold #B8892A</td><td>White</td></tr>
+      <tr><td>Email signatures — FS team</td><td><span class="tag-fs">Financial</span></td><td>Aubergine #2A1628</td><td>Saffron #E8760A</td><td>White</td></tr>
+      <tr><td>CRM — Corporate pipeline</td><td><span class="tag-cs">Corporate</span></td><td>Cognac tags</td><td>Gold highlights</td><td>—</td></tr>
+      <tr><td>CRM — Financial pipeline</td><td><span class="tag-fs">Financial</span></td><td>Aubergine tags</td><td>Saffron highlights</td><td>—</td></tr>
+      <tr><td>Engagement letters — CS</td><td><span class="tag-cs">Corporate</span></td><td>Cognac #2C1A0E</td><td>Gold #B8892A</td><td>Parchment / White</td></tr>
+      <tr><td>Engagement letters — FS</td><td><span class="tag-fs">Financial</span></td><td>Aubergine #2A1628</td><td>Saffron #E8760A</td><td>Warm White / White</td></tr>
+      <tr><td>Group proposals (both divisions)</td><td><span class="tag-parent">Group</span></td><td>Cognac #2C1A0E</td><td>Gold #B8892A</td><td>Parchment #F6F1E8</td></tr>
+      <tr><td>Social media — profile assets</td><td><span class="tag-parent">Group</span></td><td>Cognac #2C1A0E</td><td>Gold #B8892A</td><td>Varies</td></tr>
+      <tr><td>Protolabz CRM accounting module</td><td><span class="tag-fs">Financial</span></td><td>Aubergine #2A1628</td><td>Saffron #E8760A</td><td>Warm White #F6F2EE</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- FOOTER -->
+<div class="doc-footer" style="margin-top:3px">
+  <div>
+    <p>IncHub Group · Brand Guidelines v1.0 · June 2026 · Confidential — For Designer Use</p>
+    <p>Questions: contact Mahesh Maddu · Inchub Corporate Services Providers LLC · Al Fajer Business Centre, Al Garhoud, Dubai</p>
+  </div>
+  <div class="doc-footer-logo">Inc<span>·</span>Hub</div>
+</div>
+
+</div>
+</body>
+</html>

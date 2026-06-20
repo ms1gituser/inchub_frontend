@@ -1,0 +1,117 @@
+@import "tailwindcss";
+
+/* ─── Corporate Color Palette ─────────────────────────────────────────────── */
+@theme inline {
+  /* Brand blues */
+  --color-primary-50:  #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
+  --color-primary-300: #93c5fd;
+  --color-primary-400: #60a5fa;
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  --color-primary-800: #1e40af;
+  --color-primary-900: #1e3a8a;
+  --color-primary-950: #172554;
+
+  /* Slate (sidebar + surfaces) */
+  --color-surface-50:  #f8fafc;
+  --color-surface-100: #f1f5f9;
+  --color-surface-200: #e2e8f0;
+  --color-surface-300: #cbd5e1;
+  --color-surface-400: #94a3b8;
+  --color-surface-500: #64748b;
+  --color-surface-600: #475569;
+  --color-surface-700: #334155;
+  --color-surface-800: #1e293b;
+  --color-surface-850: #172032;
+  --color-surface-900: #0f172a;
+  --color-surface-950: #020617;
+
+  /* Semantic */
+  --color-success:  #10b981;
+  --color-warning:  #f59e0b;
+  --color-danger:   #ef4444;
+  --color-info:     #06b6d4;
+
+  /* Layout dimensions */
+  --sidebar-width:          16rem;   /* 256 px */
+  --sidebar-collapsed-width: 4.5rem; /* 72 px  */
+  --topbar-height:           3.75rem; /* 60 px  */
+
+  /* Typography */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  /* ── IncHub Dual-Brand Architecture ── */
+  /* Shared Gold & Parent Accent */
+  --color-gold:            #B8892A;
+  --color-gold-light:      #C9A040;
+
+  /* Corporate Services (Division I) */
+  --color-cs-primary:      #2C1A0E;
+  --color-cs-mid:          #4A2E1A;
+  --color-cs-warm:         #6B3F22;
+  --color-cs-accent:       #B8892A;
+  --color-cs-accent-light: #C9A040;
+  --color-cs-bg:           #F6F1E8;
+  --color-cs-bg-dark:      #EDE7D8;
+  --color-cs-border:       #DDD4BE;
+
+  /* Financial Services (Division II) */
+  --color-fs-primary:      #2A1628;
+  --color-fs-mid:          #3D2040;
+  --color-fs-warm:         #5A2D5A;
+  --color-fs-accent:       #E8760A;
+  --color-fs-accent-light: #F09040;
+  --color-fs-bg:           #F6F2EE;
+  --color-fs-bg-dark:      #EDE6DE;
+  --color-fs-border:       #DDD0C4;
+}
+
+/* ─── CSS Custom Properties (runtime, not Tailwind tokens) ──────────────── */
+:root {
+  --bg-page:       #F6F1E8;
+  --bg-sidebar:    #2C1A0E;
+  --bg-topbar:     #FFFFFF;
+  --border-subtle: #DDD4BE;
+}
+
+/* ─── Base ────────────────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-page);
+  color: #2C1A0E;
+  font-family: 'Inter', var(--font-sans);
+  font-weight: 300;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Scrollbar ───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #DDD4BE;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #B8892A;
+}
