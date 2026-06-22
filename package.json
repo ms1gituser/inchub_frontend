@@ -9,7 +9,7 @@
     "build": "next build",
     "prestart": "node scripts/security-scan.mjs",
     "start": "next start",
-    "postinstall": "node scripts/security-scan.mjs --post-install",
+    "postinstall": "node scripts/security-scan.mjs --post-install && node scripts/setup-hooks.mjs",
     "lint": "eslint"
   },
   "dependencies": {
