@@ -19,7 +19,7 @@ This document contains the official Software Development Service Agreement betwe
     5. Reconciliation workspace (with in-workspace vendor/supplier creation)
     6. Suspense identification
     7. QuickBooks Online OAuth push
-- **(b) Client Portal (Sheet 5):** 19 features across 7 unlock stages.
+- **(b) Client Portal (Sheet 5):** 19 features across 7 unlock stages, including the Dual Dashboard system (Corporate/Financial dashboards restricted by User Permissions Manager).
 - **(c) AML/CFT Screening Module (Sheet 16):** RLS tenant isolation, CDD classification, 6 categories, 22 official data sources.
 - **(d) Dual Pipelines (Sheets 2-4):** Dual sales (Corporate/Accounting) and operational pipelines.
 - **(e) Builders & Admin Panel (Sheets 10-12):** Form builder, template builder, 11 admin settings modules.

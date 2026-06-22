@@ -77,7 +77,7 @@ interface TopNavbarProps {
 }
 
 export default function TopNavbar({ sidebarCollapsed, onToggleSidebar }: TopNavbarProps) {
-  const { permissions, allAvailablePermissions, togglePermission } = usePermission();
+  const { permissions, allAvailablePermissions, togglePermission, currentBrand } = usePermission();
   const [notifOpen, setNotifOpen]   = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [shieldOpen, setShieldOpen]   = useState(false);
@@ -86,6 +86,8 @@ export default function TopNavbar({ sidebarCollapsed, onToggleSidebar }: TopNavb
   const notifRef   = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const shieldRef  = useRef<HTMLDivElement>(null);
+
+  const isFinancial = currentBrand === 'financial';
 
   useEffect(() => {
     let active = true;
@@ -152,6 +154,7 @@ export default function TopNavbar({ sidebarCollapsed, onToggleSidebar }: TopNavb
         top: 0,
         zIndex: 30,
         backdropFilter: 'blur(8px)',
+        transition: 'background-color 300ms ease, border-color 300ms ease',
       }}
     >
       {/* Sidebar Toggle Switch */}
@@ -166,19 +169,19 @@ export default function TopNavbar({ sidebarCollapsed, onToggleSidebar }: TopNavb
           height: 36,
           border: '1px solid var(--border-subtle)',
           borderRadius: 8,
-          background: '#F6F1E8',
-          color: 'rgba(44,26,14,0.6)',
+          background: 'var(--bg-page)',
+          color: isFinancial ? 'rgba(42,22,40,0.6)' : 'rgba(44,26,14,0.6)',
           cursor: 'pointer',
           transition: 'all 150ms',
           flexShrink: 0,
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.background = '#EDE7D8';
-          e.currentTarget.style.color = '#2C1A0E';
+          e.currentTarget.style.background = isFinancial ? '#EDE6DE' : '#EDE7D8';
+          e.currentTarget.style.color = 'var(--color-primary)';
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.background = '#F6F1E8';
-          e.currentTarget.style.color = 'rgba(44,26,14,0.6)';
+          e.currentTarget.style.background = 'var(--bg-page)';
+          e.currentTarget.style.color = isFinancial ? 'rgba(42,22,40,0.6)' : 'rgba(44,26,14,0.6)';
         }}
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -193,7 +196,7 @@ export default function TopNavbar({ sidebarCollapsed, onToggleSidebar }: TopNavb
         <SearchIcon
           style={{
             position: 'absolute', left: '0.875rem', top: '50%',
-            transform: 'translateY(-50%)', width: 16, height: 16, color: 'rgba(44,26,14,0.4)',
+            transform: 'translateY(-50%)', width: 16, height: 16, color: isFinancial ? 'rgba(42,22,40,0.4)' : 'rgba(44,26,14,0.4)',
             pointerEvents: 'none',
           }}
         />
@@ -206,23 +209,23 @@ export default function TopNavbar({ sidebarCollapsed, onToggleSidebar }: TopNavb
             height: 38,
             paddingLeft: '2.25rem',
             paddingRight: '0.875rem',
-            border: '1px solid #DDD4BE',
+            border: '1px solid var(--border-subtle)',
             borderRadius: 8,
-            background: '#F6F1E8',
+            background: 'var(--bg-page)',
             fontSize: '0.875rem',
-            color: '#2C1A0E',
+            color: 'var(--color-primary)',
             outline: 'none',
             transition: 'border-color 150ms, box-shadow 150ms',
           }}
           onFocus={(e) => {
-            e.currentTarget.style.borderColor = '#B8892A';
-            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(184,137,42,0.15)';
+            e.currentTarget.style.borderColor = isFinancial ? '#E8760A' : '#B8892A';
+            e.currentTarget.style.boxShadow = isFinancial ? '0 0 0 3px rgba(232,118,10,0.15)' : '0 0 0 3px rgba(184,137,42,0.15)';
             e.currentTarget.style.background = '#ffffff';
           }}
           onBlur={(e) => {
-            e.currentTarget.style.borderColor = '#DDD4BE';
+            e.currentTarget.style.borderColor = 'var(--border-subtle)';
             e.currentTarget.style.boxShadow = 'none';
-            e.currentTarget.style.background = '#F6F1E8';
+            e.currentTarget.style.background = 'var(--bg-page)';
           }}
         />
       </div>
@@ -233,10 +236,10 @@ export default function TopNavbar({ sidebarCollapsed, onToggleSidebar }: TopNavb
         style={{
           display: 'flex', alignItems: 'center', gap: '0.375rem',
           height: 36, padding: '0 0.875rem',
-          background: 'linear-gradient(135deg, #2C1A0E 0%, #B8892A 100%)',
+          background: isFinancial ? 'linear-gradient(135deg, #2A1628 0%, #E8760A 100%)' : 'linear-gradient(135deg, #2C1A0E 0%, #B8892A 100%)',
           color: '#ffffff', border: 'none', borderRadius: 8,
           fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer',
-          boxShadow: '0 1px 4px rgba(44,26,14,0.3)',
+          boxShadow: isFinancial ? '0 1px 4px rgba(42,22,40,0.3)' : '0 1px 4px rgba(44,26,14,0.3)',
           transition: 'opacity 150ms, transform 150ms',
           whiteSpace: 'nowrap',
         }}
@@ -281,20 +284,20 @@ export default function TopNavbar({ sidebarCollapsed, onToggleSidebar }: TopNavb
           style={{
             position: 'relative', width: 36, height: 36,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            border: '1px solid #DDD4BE', borderRadius: 8,
-            background: shieldOpen ? '#EDE7D8' : '#F6F1E8',
-            color: 'rgba(44,26,14,0.6)', cursor: 'pointer', transition: 'all 150ms',
+            border: '1px solid var(--border-subtle)', borderRadius: 8,
+            background: shieldOpen ? (isFinancial ? '#EDE6DE' : '#EDE7D8') : 'var(--bg-page)',
+            color: isFinancial ? 'rgba(42,22,40,0.6)' : 'rgba(44,26,14,0.6)', cursor: 'pointer', transition: 'all 150ms',
           }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#EDE7D8'; (e.currentTarget as HTMLButtonElement).style.color = '#2C1A0E'; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = shieldOpen ? '#EDE7D8' : '#F6F1E8'; (e.currentTarget as HTMLButtonElement).style.color = 'rgba(44,26,14,0.6)'; }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = isFinancial ? '#EDE6DE' : '#EDE7D8'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-primary)'; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = shieldOpen ? (isFinancial ? '#EDE6DE' : '#EDE7D8') : 'var(--bg-page)'; (e.currentTarget as HTMLButtonElement).style.color = isFinancial ? 'rgba(42,22,40,0.6)' : 'rgba(44,26,14,0.6)'; }}
         >
-          <ShieldIcon style={{ width: 18, height: 18, color: permissions.length > 0 ? '#B8892A' : '#6B3F22' }} />
+          <ShieldIcon style={{ width: 18, height: 18, color: permissions.length > 0 ? (isFinancial ? '#E8760A' : '#B8892A') : (isFinancial ? '#5A2D5A' : '#6B3F22') }} />
           {/* Active indicator badge */}
           <span
             style={{
               position: 'absolute', top: 6, right: 6,
               width: 8, height: 8, borderRadius: '50%',
-              background: permissions.length === allAvailablePermissions.length ? '#B8892A' : permissions.length > 0 ? '#C9A040' : '#6B3F22',
+              background: permissions.length === allAvailablePermissions.length ? (isFinancial ? '#E8760A' : '#B8892A') : permissions.length > 0 ? (isFinancial ? '#F09040' : '#C9A040') : (isFinancial ? '#5A2D5A' : '#6B3F22'),
               border: '2px solid white',
             }}
           />
@@ -306,14 +309,14 @@ export default function TopNavbar({ sidebarCollapsed, onToggleSidebar }: TopNavb
             style={{
               position: 'absolute', top: 'calc(100% + 8px)', right: 0,
               width: 280, background: '#ffffff',
-              border: '1px solid #DDD4BE', borderRadius: 12,
+              border: '1px solid var(--border-subtle)', borderRadius: 12,
               boxShadow: '0 10px 40px rgba(44,26,14,0.12)',
               zIndex: 50, overflow: 'hidden',
             }}
           >
-            <div style={{ padding: '0.875rem 1rem', borderBottom: '1px solid #EDE7D8' }}>
-              <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: '#2C1A0E', display: 'block' }}>Active RBAC Controls</span>
-              <span style={{ fontSize: '0.75rem', color: 'rgba(44,26,14,0.45)' }}>Toggle keys to lock/unlock UI fields</span>
+            <div style={{ padding: '0.875rem 1rem', borderBottom: '1px solid var(--border-subtle)' }}>
+              <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--color-primary)', display: 'block' }}>Active RBAC Controls</span>
+              <span style={{ fontSize: '0.75rem', color: isFinancial ? 'rgba(42,22,40,0.45)' : 'rgba(44,26,14,0.45)' }}>Toggle keys to lock/unlock UI fields</span>
             </div>
             
             <div style={{ maxHeight: 240, overflowY: 'auto', padding: '0.375rem 0' }}>
@@ -327,10 +330,10 @@ export default function TopNavbar({ sidebarCollapsed, onToggleSidebar }: TopNavb
                       display: 'flex', alignItems: 'center', gap: '0.625rem',
                       width: '100%', padding: '0.5rem 1rem', border: 'none',
                       background: 'transparent', cursor: 'pointer', textAlign: 'left',
-                      fontSize: '0.8125rem', color: has ? '#2C1A0E' : 'rgba(44,26,14,0.5)',
+                      fontSize: '0.8125rem', color: has ? 'var(--color-primary)' : (isFinancial ? 'rgba(42,22,40,0.5)' : 'rgba(44,26,14,0.5)'),
                       transition: 'background 150ms'
                     }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F6F1E8'; }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-page)'; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
                   >
                     <span
@@ -338,8 +341,8 @@ export default function TopNavbar({ sidebarCollapsed, onToggleSidebar }: TopNavb
                         width: 14, height: 14, borderRadius: '50%',
                         border: '1px solid #cbd5e1',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        background: has ? '#B8892A' : '#f1f5f9',
-                        borderColor: has ? '#B8892A' : '#cbd5e1',
+                        background: has ? (isFinancial ? '#E8760A' : '#B8892A') : '#f1f5f9',
+                        borderColor: has ? (isFinancial ? '#E8760A' : '#B8892A') : '#cbd5e1',
                         flexShrink: 0
                       }}
                     >
@@ -354,11 +357,11 @@ export default function TopNavbar({ sidebarCollapsed, onToggleSidebar }: TopNavb
                 );
               })}
             </div>
-            <div style={{ borderTop: '1px solid #DDD4BE', padding: '0.625rem 1rem', background: '#F6F1E8', textAlign: 'center' }}>
+            <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '0.625rem 1rem', background: 'var(--bg-page)', textAlign: 'center' }}>
               <Link
                 href="/settings"
                 onClick={() => setShieldOpen(false)}
-                style={{ fontSize: '0.75rem', color: '#B8892A', fontWeight: 600, textDecoration: 'none' }}
+                style={{ fontSize: '0.75rem', color: 'var(--color-accent)', fontWeight: 600, textDecoration: 'none' }}
               >
                 Go to RBAC Sandbox Console →
               </Link>
@@ -376,12 +379,12 @@ export default function TopNavbar({ sidebarCollapsed, onToggleSidebar }: TopNavb
           style={{
             position: 'relative', width: 36, height: 36,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            border: '1px solid #DDD4BE', borderRadius: 8,
-            background: notifOpen ? '#EDE7D8' : '#F6F1E8',
-            color: 'rgba(44,26,14,0.6)', cursor: 'pointer', transition: 'all 150ms',
+            border: '1px solid var(--border-subtle)', borderRadius: 8,
+            background: notifOpen ? (isFinancial ? '#EDE6DE' : '#EDE7D8') : 'var(--bg-page)',
+            color: isFinancial ? 'rgba(42,22,40,0.6)' : 'rgba(44,26,14,0.6)', cursor: 'pointer', transition: 'all 150ms',
           }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#EDE7D8'; (e.currentTarget as HTMLButtonElement).style.color = '#2C1A0E'; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = notifOpen ? '#EDE7D8' : '#F6F1E8'; (e.currentTarget as HTMLButtonElement).style.color = 'rgba(44,26,14,0.6)'; }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = isFinancial ? '#EDE6DE' : '#EDE7D8'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-primary)'; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = notifOpen ? (isFinancial ? '#EDE6DE' : '#EDE7D8') : 'var(--bg-page)'; (e.currentTarget as HTMLButtonElement).style.color = isFinancial ? 'rgba(42,22,40,0.6)' : 'rgba(44,26,14,0.6)'; }}
         >
           <BellIcon style={{ width: 18, height: 18 }} />
           {/* Badge */}
@@ -389,7 +392,7 @@ export default function TopNavbar({ sidebarCollapsed, onToggleSidebar }: TopNavb
             style={{
               position: 'absolute', top: 6, right: 6,
               width: 8, height: 8, borderRadius: '50%',
-              background: '#B8892A', border: '2px solid white',
+              background: 'var(--color-accent)', border: '2px solid white',
             }}
           />
         </button>
@@ -400,14 +403,14 @@ export default function TopNavbar({ sidebarCollapsed, onToggleSidebar }: TopNavb
             style={{
               position: 'absolute', top: 'calc(100% + 8px)', right: 0,
               width: 320, background: '#ffffff',
-              border: '1px solid #DDD4BE', borderRadius: 12,
+              border: '1px solid var(--border-subtle)', borderRadius: 12,
               boxShadow: '0 10px 40px rgba(44,26,14,0.12)',
               zIndex: 50, overflow: 'hidden',
             }}
           >
-            <div style={{ padding: '0.875rem 1rem', borderBottom: '1px solid #EDE7D8', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: '#2C1A0E' }}>Notifications</span>
-              <span style={{ fontSize: '0.75rem', color: '#B8892A', cursor: 'pointer', fontWeight: 500 }}>Mark all read</span>
+            <div style={{ padding: '0.875rem 1rem', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--color-primary)' }}>Notifications</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-accent)', cursor: 'pointer', fontWeight: 500 }}>Mark all read</span>
             </div>
             {NOTIFICATIONS.map((n) => (
               <div
@@ -415,16 +418,16 @@ export default function TopNavbar({ sidebarCollapsed, onToggleSidebar }: TopNavb
                 style={{
                   display: 'flex', gap: '0.75rem', alignItems: 'flex-start',
                   padding: '0.75rem 1rem',
-                  borderBottom: '1px solid #EDE7D8',
+                  borderBottom: '1px solid var(--border-subtle)',
                   cursor: 'pointer', transition: 'background 150ms',
                 }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = '#F6F1E8'; }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-page)'; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
               >
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: n.dot, flexShrink: 0, marginTop: 5 }} />
                 <div>
-                  <p style={{ margin: 0, fontSize: '0.8125rem', color: '#2C1A0E', lineHeight: 1.4 }}>{n.text}</p>
-                  <p style={{ margin: '0.125rem 0 0', fontSize: '0.75rem', color: 'rgba(44,26,14,0.4)' }}>{n.time}</p>
+                  <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--color-primary)', lineHeight: 1.4 }}>{n.text}</p>
+                  <p style={{ margin: '0.125rem 0 0', fontSize: '0.75rem', color: isFinancial ? 'rgba(42,22,40,0.4)' : 'rgba(44,26,14,0.4)' }}>{n.time}</p>
                 </div>
               </div>
             ))}
@@ -432,7 +435,7 @@ export default function TopNavbar({ sidebarCollapsed, onToggleSidebar }: TopNavb
               href="/notifications"
               style={{
                 display: 'block', textAlign: 'center', padding: '0.75rem',
-                fontSize: '0.8125rem', color: '#B8892A', fontWeight: 500,
+                fontSize: '0.8125rem', color: 'var(--color-accent)', fontWeight: 500,
                 textDecoration: 'none',
               }}
               onClick={() => setNotifOpen(false)}
@@ -452,18 +455,18 @@ export default function TopNavbar({ sidebarCollapsed, onToggleSidebar }: TopNavb
           style={{
             display: 'flex', alignItems: 'center', gap: '0.5rem',
             height: 36, padding: '0 0.5rem 0 0.375rem',
-            border: '1px solid #DDD4BE', borderRadius: 8,
-            background: profileOpen ? '#EDE7D8' : '#F6F1E8',
-            color: '#2C1A0E', cursor: 'pointer', transition: 'all 150ms',
+            border: '1px solid var(--border-subtle)', borderRadius: 8,
+            background: profileOpen ? (isFinancial ? '#EDE6DE' : '#EDE7D8') : 'var(--bg-page)',
+            color: 'var(--color-primary)', cursor: 'pointer', transition: 'all 150ms',
           }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#EDE7D8'; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = profileOpen ? '#EDE7D8' : '#F6F1E8'; }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = isFinancial ? '#EDE6DE' : '#EDE7D8'; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = profileOpen ? (isFinancial ? '#EDE6DE' : '#EDE7D8') : 'var(--bg-page)'; }}
         >
           {/* Avatar */}
           <div
             style={{
               width: 26, height: 26, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #C9A040 0%, #B8892A 100%)',
+              background: isFinancial ? 'linear-gradient(135deg, #F09040 0%, #E8760A 100%)' : 'linear-gradient(135deg, #C9A040 0%, #B8892A 100%)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: '0.6875rem', fontWeight: 700, color: '#ffffff',
               flexShrink: 0,
@@ -474,7 +477,7 @@ export default function TopNavbar({ sidebarCollapsed, onToggleSidebar }: TopNavb
           <span style={{ fontSize: '0.8125rem', fontWeight: 500, whiteSpace: 'nowrap' }}>Mahesh</span>
           <ChevronDownIcon
             style={{
-              width: 14, height: 14, color: 'rgba(44,26,14,0.4)',
+              width: 14, height: 14, color: isFinancial ? 'rgba(42,22,40,0.4)' : 'rgba(44,26,14,0.4)',
               transform: profileOpen ? 'rotate(180deg)' : 'rotate(0deg)',
               transition: 'transform 200ms',
             }}
@@ -487,14 +490,14 @@ export default function TopNavbar({ sidebarCollapsed, onToggleSidebar }: TopNavb
             style={{
               position: 'absolute', top: 'calc(100% + 8px)', right: 0,
               width: 200, background: '#ffffff',
-              border: '1px solid #DDD4BE', borderRadius: 12,
+              border: '1px solid var(--border-subtle)', borderRadius: 12,
               boxShadow: '0 10px 40px rgba(44,26,14,0.12)',
               zIndex: 50, overflow: 'hidden',
             }}
           >
-            <div style={{ padding: '0.875rem 1rem', borderBottom: '1px solid #EDE7D8' }}>
-              <p style={{ margin: 0, fontWeight: 700, fontSize: '0.875rem', color: '#2C1A0E' }}>Mahesh</p>
-              <p style={{ margin: '0.125rem 0 0', fontSize: '0.75rem', color: 'rgba(44,26,14,0.4)' }}>admin@inchcrm.com</p>
+            <div style={{ padding: '0.875rem 1rem', borderBottom: '1px solid var(--border-subtle)' }}>
+              <p style={{ margin: 0, fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-primary)' }}>Mahesh</p>
+              <p style={{ margin: '0.125rem 0 0', fontSize: '0.75rem', color: isFinancial ? 'rgba(42,22,40,0.4)' : 'rgba(44,26,14,0.4)' }}>admin@inchcrm.com</p>
             </div>
             {[
               { label: 'My Profile',  href: '/profile',  icon: UserIcon },
@@ -510,9 +513,9 @@ export default function TopNavbar({ sidebarCollapsed, onToggleSidebar }: TopNavb
                     display: 'flex', alignItems: 'center', gap: '0.625rem',
                     padding: '0.625rem 1rem',
                     textDecoration: 'none', fontSize: '0.8125rem',
-                    color: '#4A2E1A', transition: 'background 150ms',
+                    color: 'var(--color-secondary)', transition: 'background 150ms',
                   }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = '#F6F1E8'; }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = 'var(--bg-page)'; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent'; }}
                 >
                   <Icon style={{ width: 16, height: 16, color: '#64748b' }} />
@@ -520,7 +523,7 @@ export default function TopNavbar({ sidebarCollapsed, onToggleSidebar }: TopNavb
                 </Link>
               );
             })}
-            <div style={{ borderTop: '1px solid #DDD4BE', padding: '0.375rem 0' }}>
+            <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '0.375rem 0' }}>
               <button
                 id="logout-btn"
                 onClick={() => {

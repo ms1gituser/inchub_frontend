@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { get } from '@/lib/apiClient';
+import { usePermission } from '@/context/PermissionContext';
 
 /* ── Types & Interfaces ─────────────────────────────────────────────────── */
 interface StatCard {
@@ -181,7 +182,9 @@ const ACTIVITIES_DATA: Record<'group' | 'corporate' | 'financial', { actor: stri
 };
 
 export default function DashboardPage() {
-  const [viewMode, setViewMode] = useState<'group' | 'corporate' | 'financial'>('group');
+  const { currentBrand, setCurrentBrand, role } = usePermission();
+  const viewMode = currentBrand;
+  const setViewMode = setCurrentBrand;
   const [kycAlert, setKycAlert] = useState<boolean>(false);
 
   useEffect(() => {
@@ -272,52 +275,54 @@ export default function DashboardPage() {
           </h1>
         </div>
 
-        {/* Brand tabs selector */}
-        <div style={{ 
-          display: 'flex', 
-          background: '#ffffff', 
-          border: `1px solid ${cardBorderColor}`, 
-          borderRadius: '8px', 
-          padding: '0.25rem',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-        }}>
-          {[
-            { mode: 'group', label: 'Group Overview', dot: '#B8892A' },
-            { mode: 'corporate', label: 'Corporate Services', dot: '#B8892A' },
-            { mode: 'financial', label: 'Financial Services', dot: '#E8760A' }
-          ].map(tab => (
-            <button
-              key={tab.mode}
-              onClick={() => setViewMode(tab.mode as any)}
-              style={{
-                padding: '0.5rem 0.875rem',
-                borderRadius: '6px',
-                border: 'none',
-                background: viewMode === tab.mode ? (tab.mode === 'financial' ? '#2A1628' : '#2C1A0E') : 'transparent',
-                color: viewMode === tab.mode ? '#ffffff' : 'rgba(44,26,14,0.6)',
-                fontFamily: 'Inter, sans-serif',
-                fontSize: '0.6875rem',
-                fontWeight: 600,
-                textTransform: 'uppercase',
-                letterSpacing: '0.18em',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.375rem',
-                transition: 'all 200ms ease',
-              }}
-            >
-              <span style={{ 
-                width: 5, 
-                height: 5, 
-                borderRadius: '50%', 
-                background: viewMode === tab.mode ? '#ffffff' : tab.dot, 
-                display: 'inline-block' 
-              }} />
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {/* Brand tabs selector (Only visible to CEO / Admin) */}
+        {(role === 'admin' || role === 'ceo') && (
+          <div style={{ 
+            display: 'flex', 
+            background: '#ffffff', 
+            border: `1px solid ${cardBorderColor}`, 
+            borderRadius: '8px', 
+            padding: '0.25rem',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+          }}>
+            {[
+              { mode: 'group', label: 'Group Overview', dot: '#B8892A' },
+              { mode: 'corporate', label: 'Corporate Services', dot: '#B8892A' },
+              { mode: 'financial', label: 'Financial Services', dot: '#E8760A' }
+            ].map(tab => (
+              <button
+                key={tab.mode}
+                onClick={() => setViewMode(tab.mode as any)}
+                style={{
+                  padding: '0.5rem 0.875rem',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: viewMode === tab.mode ? (tab.mode === 'financial' ? '#2A1628' : '#2C1A0E') : 'transparent',
+                  color: viewMode === tab.mode ? '#ffffff' : 'rgba(44,26,14,0.6)',
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: '0.6875rem',
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.18em',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.375rem',
+                  transition: 'all 200ms ease',
+                }}
+              >
+                <span style={{ 
+                  width: 5, 
+                  height: 5, 
+                  borderRadius: '50%', 
+                  background: viewMode === tab.mode ? '#ffffff' : tab.dot, 
+                  display: 'inline-block' 
+                }} />
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── Quick Actions Ribbon ── */}

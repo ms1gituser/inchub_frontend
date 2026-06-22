@@ -280,14 +280,11 @@ apiClient.interceptors.response.use(
               return;
             }
             // Replay the original request with the new token
-            const retryConfig: InternalAxiosRequestConfig = {
-              ...(originalConfig as InternalAxiosRequestConfig),
-              headers: {
-                ...(originalConfig as InternalAxiosRequestConfig).headers,
-                Authorization: `Bearer ${newToken}`,
-              },
-            };
-            resolve(apiClient(retryConfig));
+            if (originalConfig) {
+              originalConfig.headers = originalConfig.headers ?? {};
+              originalConfig.headers['Authorization'] = `Bearer ${newToken}`;
+            }
+            resolve(apiClient(originalConfig as InternalAxiosRequestConfig));
           });
         });
       }
@@ -300,14 +297,11 @@ apiClient.interceptors.response.use(
       if (newToken) {
         flushRefreshSubscribers(newToken);
         // Replay the original request with new token
-        const retryConfig: InternalAxiosRequestConfig = {
-          ...(originalConfig as InternalAxiosRequestConfig),
-          headers: {
-            ...(originalConfig as InternalAxiosRequestConfig).headers,
-            Authorization: `Bearer ${newToken}`,
-          },
-        };
-        return apiClient(retryConfig);
+        if (originalConfig) {
+          originalConfig.headers = originalConfig.headers ?? {};
+          originalConfig.headers['Authorization'] = `Bearer ${newToken}`;
+        }
+        return apiClient(originalConfig as InternalAxiosRequestConfig);
       } else {
         // Refresh failed — clear session and go to login
         flushRefreshSubscribers(null);

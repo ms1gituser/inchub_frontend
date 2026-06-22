@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { NavSection } from '@/types/navigation';
+import { usePermission } from '@/context/PermissionContext';
 
 /* ── SVG Icons (inline, zero-dependency) ─────────────────────────────────── */
 type IconProps = React.SVGProps<SVGSVGElement>;
@@ -133,12 +134,14 @@ interface SidebarProps {
   collapsed: boolean;
   hidden: boolean;
   onToggle: () => void;
+  activeBrand?: 'group' | 'corporate' | 'financial';
 }
 
 /* ── Component ────────────────────────────────────────────────────────────── */
-export default function Sidebar({ collapsed, hidden, onToggle }: SidebarProps) {
+export default function Sidebar({ collapsed, hidden, onToggle, activeBrand }: SidebarProps) {
   const pathname = usePathname();
-  const isFinancial = pathname === '/accounting' || pathname.startsWith('/accounting/');
+  const { role } = usePermission();
+  const isFinancial = activeBrand === 'financial' || pathname === '/accounting' || pathname.startsWith('/accounting/');
 
   // Brand details
   const dotColor = isFinancial ? '#E8760A' : '#B8892A';
@@ -254,8 +257,20 @@ export default function Sidebar({ collapsed, hidden, onToggle }: SidebarProps) {
             )}
 
             {/* Items */}
-            {section.items.map((item) => {
-              const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+            {section.items
+              .filter((item) => {
+                // Settings is admin/ceo only
+                if (item.href === '/settings' && role !== 'admin' && role !== 'ceo') {
+                  return false;
+                }
+                // Accounting is gated for sales/ops
+                if (item.href === '/accounting' && (role === 'sales' || role === 'ops')) {
+                  return false;
+                }
+                return true;
+              })
+              .map((item) => {
+                const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
               const Icon = item.icon;
 
               return (

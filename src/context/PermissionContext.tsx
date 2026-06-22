@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { get, put, resolveToken } from '@/lib/apiClient';
 
-export type UserRole = 'admin' | 'accountant' | 'sales' | 'client';
+export type UserRole = 'admin' | 'ceo' | 'accountant' | 'sales' | 'ops' | 'client';
 
 export interface PermissionContextType {
   role: UserRole;
@@ -15,6 +15,8 @@ export interface PermissionContextType {
   setRole: (role: UserRole) => void;
   userId: string | null;
   loading: boolean;
+  currentBrand: 'group' | 'corporate' | 'financial';
+  setCurrentBrand: (brand: 'group' | 'corporate' | 'financial') => void;
 }
 
 const ALL_PERMISSIONS = [
@@ -34,6 +36,7 @@ const ALL_PERMISSIONS = [
 
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   admin: ALL_PERMISSIONS,
+  ceo: ALL_PERMISSIONS,
   accountant: [
     'contacts:read',
     'leads:read',
@@ -49,6 +52,13 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     'deals:read',
     'deals:create',
   ],
+  ops: [
+    'contacts:read',
+    'contacts:create',
+    'contacts:edit',
+    'leads:read',
+    'deals:read',
+  ],
   client: [],
 };
 
@@ -59,6 +69,24 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
   const [role, setRoleState] = useState<UserRole>('client');
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [currentBrand, setCurrentBrandState] = useState<'group' | 'corporate' | 'financial'>('group');
+
+  useEffect(() => {
+    if (role === 'accountant') {
+      setCurrentBrandState('financial');
+    } else if (role === 'sales' || role === 'ops') {
+      setCurrentBrandState('corporate');
+    } else {
+      setCurrentBrandState('group');
+    }
+  }, [role]);
+
+  const setCurrentBrand = (brand: 'group' | 'corporate' | 'financial') => {
+    // Only admins or CEOs are allowed to toggle brands. Standard team members are locked to their brand.
+    if (role === 'admin' || role === 'ceo') {
+      setCurrentBrandState(brand);
+    }
+  };
 
   const fetchProfile = async () => {
     const token = resolveToken();
@@ -154,6 +182,8 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
         setRole,
         userId,
         loading,
+        currentBrand,
+        setCurrentBrand,
       }}
     >
       {children}
