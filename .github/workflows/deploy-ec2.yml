@@ -99,26 +99,30 @@ jobs:
         source: "docker-compose.prod.yml"
         target: "/home/${{ secrets.EC2_USER || 'ubuntu' }}/Inchub2021/CRM_Frontend"
 
-    # 4. SSH into EC2, Pull from ECR, and deploy via Docker Compose
+    # 4. Get ECR login password on the runner (has AWS CLI) to pass to EC2
+    - name: Get ECR Login Token
+      id: ecr-token
+      run: echo "password=$(aws ecr get-login-password --region ${{ secrets.AWS_REGION || 'me-central-1' }})" >> $GITHUB_OUTPUT
+
+    # 5. SSH into EC2, login to ECR, pull and restart containers
     - name: Deploy to EC2 via SSH
       uses: appleboy/ssh-action@v1.0.3
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_PASSWORD: ${{ steps.ecr-token.outputs.password }}
       with:
         host: ${{ secrets.EC2_HOST }}
         username: ${{ secrets.EC2_USER || 'ubuntu' }}
         key: ${{ secrets.EC2_SSH_KEY }}
+        envs: ECR_REGISTRY,ECR_PASSWORD
         script: |
-          # Log in to ECR on the EC2 host
-          aws ecr get-login-password --region ${{ secrets.AWS_REGION || 'me-central-1' }} | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
+          # Login to ECR using token passed from GitHub Actions runner
+          echo "$ECR_PASSWORD" | docker login --username AWS --password-stdin "$ECR_REGISTRY"
 
           # Navigate to frontend application directory
-          mkdir -p /home/${{ secrets.EC2_USER || 'ubuntu' }}/Inchub2021/CRM_Frontend
           cd /home/${{ secrets.EC2_USER || 'ubuntu' }}/Inchub2021/CRM_Frontend
 
-          # Export ECR Registry for Docker Compose to read
-          export ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
-
-          # Pull latest image
+          # Pull latest image and restart
           docker compose -f docker-compose.prod.yml pull
-
-          # Re-create and start containers in detached mode
           docker compose -f docker-compose.prod.yml up -d --remove-orphans
+
