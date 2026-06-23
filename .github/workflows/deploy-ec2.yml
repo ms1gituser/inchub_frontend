@@ -87,13 +87,14 @@ jobs:
 
     # 3. Copy docker-compose.prod.yml to EC2 host via SCP
     - name: Copy docker-compose.prod.yml via SCP
-      uses: appleboy/scp-action@v0.1.7
+      uses: appleboy/scp-action@v0.1.9
       with:
         host: ${{ secrets.EC2_HOST }}
         username: ${{ secrets.EC2_USER || 'ubuntu' }}
         key: ${{ secrets.EC2_SSH_KEY }}
-        source: "docker-compose.prod.yml"
+        source: "./docker-compose.prod.yml"
         target: "/home/${{ secrets.EC2_USER || 'ubuntu' }}/Inchub2021/CRM_Frontend"
+        strip_components: 0
 
     # 4. SSH into EC2, Pull from ECR, and deploy via Docker Compose
     - name: Deploy to EC2 via SSH
