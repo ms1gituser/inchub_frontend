@@ -85,7 +85,17 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
 
-    # 3. SSH into EC2, Pull from ECR, and deploy via Docker Compose
+    # 3. Copy docker-compose.prod.yml to EC2 host via SCP
+    - name: Copy docker-compose.prod.yml via SCP
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USER || 'ubuntu' }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        source: "docker-compose.prod.yml"
+        target: "/home/${{ secrets.EC2_USER || 'ubuntu' }}/Inchub2021/CRM_Frontend"
+
+    # 4. SSH into EC2, Pull from ECR, and deploy via Docker Compose
     - name: Deploy to EC2 via SSH
       uses: appleboy/ssh-action@v1.0.3
       with:
@@ -97,8 +107,8 @@ jobs:
           aws ecr get-login-password --region ${{ secrets.AWS_REGION || 'me-central-1' }} | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
 
           # Navigate to frontend application directory
-          mkdir -p /home/${{ secrets.EC2_USER || 'ubuntu' }}/crm-frontend
-          cd /home/${{ secrets.EC2_USER || 'ubuntu' }}/crm-frontend
+          mkdir -p /home/${{ secrets.EC2_USER || 'ubuntu' }}/Inchub2021/CRM_Frontend
+          cd /home/${{ secrets.EC2_USER || 'ubuntu' }}/Inchub2021/CRM_Frontend
 
           # Export ECR Registry for Docker Compose to read
           export ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
