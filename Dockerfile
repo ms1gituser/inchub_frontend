@@ -13,7 +13,7 @@ RUN npm ci
 COPY src ./src
 COPY public ./public
 COPY scripts ./scripts
-COPY eslint.config.mjs postcss.config.mjs next.config.ts next-env.d.ts ./
+COPY eslint.config.mjs postcss.config.mjs next.config.ts ./
 
 # Build the Next.js application
 RUN npm run build
