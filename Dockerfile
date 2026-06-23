@@ -3,8 +3,9 @@ FROM node:22-alpine AS builder
 
 WORKDIR /usr/src/app
 
-# Copy package descriptors
+# Copy package descriptors and scripts needed for postinstall
 COPY package*.json tsconfig.json ./
+COPY scripts ./scripts
 
 # Install dependencies
 RUN npm ci
@@ -12,7 +13,6 @@ RUN npm ci
 # Copy source code and configuration files
 COPY src ./src
 COPY public ./public
-COPY scripts ./scripts
 COPY eslint.config.mjs postcss.config.mjs next.config.ts ./
 
 # Build the Next.js application
