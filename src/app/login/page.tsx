@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { persistTokens, resolveToken, post } from '@/lib/apiClient';
 
 /**
@@ -48,8 +49,9 @@ export default function LoginPage() {
         setErrorMsg('Invalid response from authentication server.');
         setLoading(false);
       }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Authentication failed. Please check credentials.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setErrorMsg(msg || 'Authentication failed. Please check credentials.');
       setLoading(false);
     }
   };
@@ -82,12 +84,12 @@ export default function LoginPage() {
           
           {/* Brand header */}
           <div style={{ textAlign: 'center', marginBottom: '2.25rem' }}>
-            <img
+            <Image
               src="/logo_page_3.svg"
               alt="IncHub Logo"
+              width={56}
+              height={56}
               style={{
-                width: 56,
-                height: 56,
                 objectFit: 'contain',
                 marginBottom: '1.25rem',
                 filter: 'drop-shadow(0 4px 8px rgba(184, 137, 42, 0.15))',

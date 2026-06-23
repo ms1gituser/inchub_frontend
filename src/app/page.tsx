@@ -285,14 +285,14 @@ export default function DashboardPage() {
             padding: '0.25rem',
             boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
           }}>
-            {[
+            {([
               { mode: 'group', label: 'Group Overview', dot: '#B8892A' },
               { mode: 'corporate', label: 'Corporate Services', dot: '#B8892A' },
               { mode: 'financial', label: 'Financial Services', dot: '#E8760A' }
-            ].map(tab => (
+            ] as const).map(tab => (
               <button
                 key={tab.mode}
-                onClick={() => setViewMode(tab.mode as any)}
+                onClick={() => setViewMode(tab.mode)}
                 style={{
                   padding: '0.5rem 0.875rem',
                   borderRadius: '6px',
@@ -721,7 +721,7 @@ export default function DashboardPage() {
         {/* Meetings Calendar */}
         <div style={{ background: '#ffffff', border: `1px solid ${cardBorderColor}`, borderRadius: 12, padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.02)', transition: 'all 300ms ease' }}>
           <h2 style={{ margin: '0 0 1.25rem 0', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: 'Inter, sans-serif' }}>
-            Today's Meetings
+            Today&apos;s Meetings
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
             {MEETINGS_DATA[viewMode].map((m, idx) => (

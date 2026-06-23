@@ -55,7 +55,7 @@ export default function AiChatbot() {
         console.log('[Socket] Connected to IncHub chat server');
       });
 
-      socket.on('message', (msg: any) => {
+      socket.on('message', (msg: { id?: string; sender?: string; text: string; timestamp?: string | number | Date }) => {
         if (msg.id && msg.id.startsWith('bot-typing')) {
           setIsTyping(true);
           return;

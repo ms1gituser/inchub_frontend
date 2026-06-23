@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { get, post } from '@/lib/apiClient';
+import { get, post, ApiError } from '@/lib/apiClient';
 
 // Types
 interface KycItem {
@@ -34,19 +34,105 @@ interface MeetingSummary {
   };
 }
 
+interface TenantProfile {
+  tenant_id: string;
+  contract_baseline_transactions: number;
+  current_monthly_transactions: number;
+  current_turnover_aed: string;
+  vat_status: string;
+  drive_root_folder_id: string | null;
+  qb_access_token: string | null;
+  qb_refresh_token: string | null;
+  qb_realm_id: string | null;
+  qb_token_expires_at: string | null;
+  ct_filing_deadline: string | null;
+}
+
+interface CtFiling {
+  tenant_id: string;
+  filing_year: number;
+  status: string;
+  intake_form_data: {
+    turnover_aed: number;
+    taxable_income_aed: number;
+  };
+  ct_return_doc_id: string;
+  payment_receipt_doc_id: string;
+  financial_statements_doc_id: string;
+  filed_at: string;
+}
+
+interface ParseAlerts {
+  transaction_alert_level?: string;
+  transaction_alert_message?: string;
+  vat_status?: string;
+  vat_alert_message?: string;
+  ct_deadline?: string;
+  three_month_consequences?: string;
+  three_month_triggered?: boolean;
+}
+
+interface KycResponse {
+  success: boolean;
+  data: KycItem[];
+  last_refreshed_at: string;
+}
+
+interface ProfileResponse {
+  success: boolean;
+  data: TenantProfile;
+}
+
+interface CtArchiveResponse {
+  success: boolean;
+  data: {
+    corporate_tax_filings: CtFiling[];
+    monthly_archives: Array<{
+      period: string;
+      report_doc_id: string;
+      invoice_doc_id: string;
+    }>;
+  };
+}
+
+interface GeneralResponse {
+  success: boolean;
+  message: string;
+  data?: unknown;
+}
+
+interface ParseResponse {
+  success: boolean;
+  data: {
+    ocr_text_length: number;
+    ledger: LedgerEntry[];
+    excel_base64: string;
+    akaunting_result: unknown;
+    metrics: {
+      previous_transactions: number;
+      new_transactions: number;
+      previous_turnover: number;
+      new_turnover: number;
+      drive_folder_id: string | null;
+      drive_folder_path: string;
+    };
+    alerts: ParseAlerts;
+  };
+}
+
 export default function AccountingPage() {
   // State variables
   const [kycChecklist, setKycChecklist] = useState<KycItem[]>([]);
   const [loadingKyc, setLoadingKyc] = useState(true);
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<TenantProfile | null>(null);
   const [lockedMonths, setLockedMonths] = useState<string[]>([]);
-  const [ctFilings, setCtFilings] = useState<any[]>([]);
+  const [ctFilings, setCtFilings] = useState<CtFiling[]>([]);
   const [lockError, setLockError] = useState<string | null>(null);
 
   // AI Bookkeeping states
   const [parsing, setParsing] = useState(false);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
-  const [parseAlerts, setParseAlerts] = useState<any>(null);
+  const [parseAlerts, setParseAlerts] = useState<ParseAlerts | null>(null);
   const [newVendorName, setNewVendorName] = useState('');
   const [creatingVendor, setCreatingVendor] = useState(false);
   const [pushingQb, setPushingQb] = useState(false);
@@ -66,41 +152,14 @@ export default function AccountingPage() {
   const durationTimerRef = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch all initial dashboard data
-  useEffect(() => {
-    fetchKyc();
-    fetchProfile();
-    fetchCtArchive();
-  }, []);
-
-  // Timer for meeting recorder duration
-  useEffect(() => {
-    if (recording) {
-      durationTimerRef.current = setInterval(() => {
-        setRecordingDuration((prev) => prev + 1);
-      }, 1000);
-    } else {
-      if (durationTimerRef.current) {
-        clearInterval(durationTimerRef.current);
-      }
-      setRecordingDuration(0);
-    }
-
-    return () => {
-      if (durationTimerRef.current) {
-        clearInterval(durationTimerRef.current);
-      }
-    };
-  }, [recording]);
-
   const fetchKyc = async () => {
     try {
       setLoadingKyc(true);
-      const res = await get<any>('/bookkeeping/kyc');
+      const res = await get<KycResponse>('/bookkeeping/kyc');
       if (res?.success) {
         setKycChecklist(res.data);
       }
-    } catch (e) {
+    } catch (e: unknown) {
       console.error('[KYC Fetch Error]', e);
     } finally {
       setLoadingKyc(false);
@@ -109,23 +168,23 @@ export default function AccountingPage() {
 
   const fetchProfile = async () => {
     try {
-      const res = await get<any>('/bookkeeping/profile');
+      const res = await get<ProfileResponse>('/bookkeeping/profile');
       if (res?.success) {
         setProfile(res.data);
       }
-    } catch (e) {
+    } catch (e: unknown) {
       console.error('[Profile Fetch Error]', e);
     }
   };
 
   const fetchCtArchive = async () => {
     try {
-      const res = await get<any>('/bookkeeping/ct/archive');
+      const res = await get<CtArchiveResponse>('/bookkeeping/ct/archive');
       if (res?.success) {
-        setLockedMonths(res.data.monthly_archives?.map((a: any) => a.period) || []);
+        setLockedMonths(res.data.monthly_archives?.map((a: { period: string }) => a.period) || []);
         setCtFilings(res.data.corporate_tax_filings || []);
       }
-    } catch (e) {
+    } catch (e: unknown) {
       console.error('[Archive Fetch Error]', e);
     }
   };
@@ -133,14 +192,14 @@ export default function AccountingPage() {
   // Triggers immediate expire for testing indicators
   const handleForceExpirePassport = async () => {
     try {
-      const res = await post<any>('/bookkeeping/kyc/expire', { name: 'Passport of Beneficial Owners' });
+      const res = await post<GeneralResponse>('/bookkeeping/kyc/expire', { name: 'Passport of Beneficial Owners' });
       if (res?.success) {
         await fetchKyc();
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new Event('kyc-changed'));
         }
       }
-    } catch (e) {
+    } catch (e: unknown) {
       console.error('[Force Expire Error]', e);
     }
   };
@@ -149,14 +208,19 @@ export default function AccountingPage() {
   const handleLockMonth = async (monthNum: number) => {
     try {
       setLockError(null);
-      const res = await post<any>('/bookkeeping/periods/lock', { year: 2026, month: monthNum });
+      const res = await post<GeneralResponse>('/bookkeeping/periods/lock', { year: 2026, month: monthNum });
       if (res?.success) {
         await fetchCtArchive();
         await fetchProfile();
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('[Period Lock Error]', e);
-      setLockError(e.message || 'Month-Lock Gate Error: Sequential month close constraints violated.');
+      if (e instanceof ApiError) {
+        setLockError(e.message || 'Month-Lock Gate Error: Sequential month close constraints violated.');
+      } else {
+        const err = e instanceof Error ? e : new Error(String(e));
+        setLockError(err.message || 'Month-Lock Gate Error: Sequential month close constraints violated.');
+      }
     }
   };
 
@@ -171,7 +235,7 @@ export default function AccountingPage() {
       const reader = new FileReader();
       reader.onload = async () => {
         const base64 = (reader.result as string).split(',')[1];
-        const res = await post<any>('/bookkeeping/parse', {
+        const res = await post<ParseResponse>('/bookkeeping/parse', {
           file: base64,
           mime_type: file.type || 'application/pdf',
           push_to_akaunting: false,
@@ -185,9 +249,10 @@ export default function AccountingPage() {
         }
       };
       reader.readAsDataURL(file);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[Upload Parse Error]', err);
-      alert(err.message || 'OCR parsing failed. Check network or server.');
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      alert(errorMsg || 'OCR parsing failed. Check network or server.');
     } finally {
       setParsing(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -199,14 +264,15 @@ export default function AccountingPage() {
     if (!newVendorName.trim()) return;
     setCreatingVendor(true);
     try {
-      const res = await post<any>('/bookkeeping/reconciliation/vendors', { name: newVendorName });
+      const res = await post<GeneralResponse>('/bookkeeping/reconciliation/vendors', { name: newVendorName });
       if (res?.success) {
         alert(`Vendor "${newVendorName}" created successfully inside reconciliation workspace.`);
         setNewVendorName('');
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      alert(e.message || 'Failed to create vendor.');
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      alert(errorMsg || 'Failed to create vendor.');
     } finally {
       setCreatingVendor(false);
     }
@@ -220,26 +286,31 @@ export default function AccountingPage() {
     }
     setPushingQb(true);
     try {
-      const res = await post<any>('/bookkeeping/integrations/quickbooks/push', { ledger });
+      const res = await post<GeneralResponse>('/bookkeeping/integrations/quickbooks/push', { ledger });
       if (res?.success) {
-        alert(`QuickBooks sync completed successfully! Reconciled ${res.data.pushed_count} transactions.`);
+        alert('QuickBooks sync completed successfully!');
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      if (e.status === 412) {
-        // Redirection for OAuth setup
-        try {
-          const authRes = await get<any>('/bookkeeping/integrations/quickbooks/auth');
-          if (authRes?.success && authRes.authorizationUrl) {
-            if (confirm('QuickBooks Online is not connected. Redirect to secure QuickBooks OAuth link?')) {
-              window.location.href = authRes.authorizationUrl;
+      if (e instanceof ApiError) {
+        if (e.status === 412) {
+          // Redirection for OAuth setup
+          try {
+            const authRes = await get<{ success: boolean; authorizationUrl?: string }>('/bookkeeping/integrations/quickbooks/auth');
+            if (authRes?.success && authRes.authorizationUrl) {
+              if (confirm('QuickBooks Online is not connected. Redirect to secure QuickBooks OAuth link?')) {
+                window.location.href = authRes.authorizationUrl;
+              }
             }
+          } catch (authErr) {
+            console.error(authErr);
           }
-        } catch (authErr) {
-          console.error(authErr);
+        } else {
+          alert(e.message || 'Sync failed. Verify credential parameters.');
         }
       } else {
-        alert(e.message || 'Sync failed. Verify credential parameters.');
+        const errorMsg = e instanceof Error ? e.message : String(e);
+        alert(errorMsg || 'Sync failed. Verify credential parameters.');
       }
     } finally {
       setPushingQb(false);
@@ -251,7 +322,7 @@ export default function AccountingPage() {
     e.preventDefault();
     setFilingCt(true);
     try {
-      const res = await post<any>('/bookkeeping/ct/file', {
+      const res = await post<GeneralResponse>('/bookkeeping/ct/file', {
         year: parseInt(ctYear),
         intake_form_data: {
           turnover_aed: parseFloat(ctTurnover),
@@ -263,9 +334,10 @@ export default function AccountingPage() {
         alert(`Year-end Corporate Tax return submitted for FY ${ctYear}!`);
         await fetchCtArchive();
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      alert(err.message || 'Failed to submit Corporate Tax returns.');
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      alert(errorMsg || 'Failed to submit Corporate Tax returns.');
     } finally {
       setFilingCt(false);
     }
@@ -273,27 +345,29 @@ export default function AccountingPage() {
 
   const handleFileDownload = async (key: string) => {
     try {
-      const res = await get<any>(`/files/download?key=${encodeURIComponent(key)}`);
+      const res = await get<{ success: boolean; downloadUrl?: string }>(`/files/download?key=${encodeURIComponent(key)}`);
       if (res?.success && res.downloadUrl) {
         window.open(res.downloadUrl, '_blank');
       } else {
         alert('Failed to obtain download URL from server.');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[Download Error]', err);
-      alert(err.message || 'Error fetching secure link.');
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      alert(errorMsg || 'Error fetching secure link.');
     }
   };
 
   // Whisper simulation trigger
   const handleRecordMeeting = async () => {
     if (!recording) {
+      setRecordingDuration(0); // Reset duration here to avoid setState inside effect body
       setRecording(true);
     } else {
       setRecording(false);
       setTranscribing(true);
       try {
-        const res = await post<any>('/chat/transcribe', { simulate: true });
+        const res = await post<{ success: boolean; data: MeetingSummary }>('/chat/transcribe', { simulate: true });
         if (res?.success) {
           setMeetingSummary(res.data);
         }
@@ -317,8 +391,37 @@ export default function AccountingPage() {
     return `${min}:${sec.toString().padStart(2, '0')}`;
   };
 
-  const currentYear = 2026;
-  const currentMonthNum = 5; // May
+  // Fetch all initial dashboard data
+  useEffect(() => {
+    const init = async () => {
+      await Promise.resolve();
+      fetchKyc();
+      fetchProfile();
+      fetchCtArchive();
+    };
+    init();
+  }, []);
+
+  // Timer for meeting recorder duration
+  useEffect(() => {
+    if (recording) {
+      durationTimerRef.current = setInterval(() => {
+        setRecordingDuration((prev) => prev + 1);
+      }, 1000);
+    } else {
+      if (durationTimerRef.current) {
+        clearInterval(durationTimerRef.current);
+      }
+    }
+
+    return () => {
+      if (durationTimerRef.current) {
+        clearInterval(durationTimerRef.current);
+      }
+    };
+  }, [recording]);
+
+
 
   // Progress calculations
   const baselineTransactions = profile?.contract_baseline_transactions || 250;
@@ -717,9 +820,9 @@ export default function AccountingPage() {
               Data Integrity warnings
             </h4>
             <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.75rem', color: '#b45309', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-              {parseAlerts.transaction_alert_message && <li>{parseAlerts.transaction_alert_message}</li>}
-              {parseAlerts.vat_alert_message && <li>{parseAlerts.vat_alert_message}</li>}
-              {parseAlerts.three_month_consequences && <li>{parseAlerts.three_month_consequences}</li>}
+              {parseAlerts?.transaction_alert_message && <li>{parseAlerts?.transaction_alert_message}</li>}
+              {parseAlerts?.vat_alert_message && <li>{parseAlerts?.vat_alert_message}</li>}
+              {parseAlerts?.three_month_consequences && <li>{parseAlerts?.three_month_consequences}</li>}
             </ul>
           </div>
         )}

@@ -72,13 +72,17 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
   const [currentBrand, setCurrentBrandState] = useState<'group' | 'corporate' | 'financial'>('group');
 
   useEffect(() => {
-    if (role === 'accountant') {
-      setCurrentBrandState('financial');
-    } else if (role === 'sales' || role === 'ops') {
-      setCurrentBrandState('corporate');
-    } else {
-      setCurrentBrandState('group');
-    }
+    const updateBrand = async () => {
+      await Promise.resolve();
+      if (role === 'accountant') {
+        setCurrentBrandState('financial');
+      } else if (role === 'sales' || role === 'ops') {
+        setCurrentBrandState('corporate');
+      } else {
+        setCurrentBrandState('group');
+      }
+    };
+    updateBrand();
   }, [role]);
 
   const setCurrentBrand = (brand: 'group' | 'corporate' | 'financial') => {
@@ -118,7 +122,11 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
   };
 
   useEffect(() => {
-    fetchProfile();
+    const init = async () => {
+      await Promise.resolve();
+      fetchProfile();
+    };
+    init();
   }, []);
 
   const hasPermission = (permission: string): boolean => {
