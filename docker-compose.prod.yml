@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  frontend:
+    image: ${ECR_REGISTRY}/crm-frontend:latest
+    container_name: crm-frontend-prod
+    restart: always
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env

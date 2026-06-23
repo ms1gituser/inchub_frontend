@@ -120,10 +120,20 @@ export default function TopNavbar({ sidebarCollapsed, onToggleSidebar }: TopNavb
 
     checkKyc();
 
+    const handleKycEvent = () => {
+      checkKyc();
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('kyc-changed', handleKycEvent);
+    }
+
     return () => {
       active = false;
       if (timerId) {
         clearTimeout(timerId);
+      }
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('kyc-changed', handleKycEvent);
       }
     };
   }, []);

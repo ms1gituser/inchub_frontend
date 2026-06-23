@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { io, Socket } from 'socket.io-client';
+import { resolveToken } from '@/lib/apiClient';
 
 interface Message {
   id: string;
@@ -32,6 +34,84 @@ export default function AiChatbot() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const socketRef = useRef<Socket | null>(null);
+
+  // Setup Socket connection when open
+  useEffect(() => {
+    if (isOpen && !socketRef.current) {
+      const token = resolveToken();
+      const originUrl = process.env.NEXT_PUBLIC_API_URL 
+        ? new URL(process.env.NEXT_PUBLIC_API_URL).origin 
+        : 'http://localhost:5000';
+      
+      const socket = io(originUrl, {
+        auth: { token },
+        transports: ['websocket'],
+      });
+
+      socketRef.current = socket;
+
+      socket.on('connect', () => {
+        console.log('[Socket] Connected to IncHub chat server');
+      });
+
+      socket.on('message', (msg: any) => {
+        if (msg.id && msg.id.startsWith('bot-typing')) {
+          setIsTyping(true);
+          return;
+        }
+
+        setIsTyping(false);
+
+        const isAi = (msg.sender === 'System' || msg.sender === 'CalBot' || msg.sender === 'IncHub AI' || msg.sender === 'bot');
+        
+        let actions: Array<{ label: string; action: string }> | undefined;
+        const textLower = msg.text.toLowerCase();
+        if (textLower.includes('vat') || textLower.includes('tax') || textLower.includes('threshold')) {
+          actions = [
+            { label: 'Go to Accounting Dashboard', action: 'navigate_accounting' },
+          ];
+        } else if (textLower.includes('kyc') || textLower.includes('checklist')) {
+          actions = [
+            { label: 'Go to Accounting Dashboard', action: 'navigate_accounting' },
+          ];
+        }
+
+        setMessages(prev => {
+          if (prev.some(p => p.id === msg.id)) return prev;
+          
+          return [
+            ...prev,
+            {
+              id: msg.id || `${Date.now()}`,
+              sender: isAi ? 'ai' : 'user',
+              text: msg.text,
+              timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
+              actions
+            }
+          ];
+        });
+      });
+
+      socket.on('disconnect', () => {
+        console.log('[Socket] Disconnected');
+        socketRef.current = null;
+      });
+
+      socket.on('connect_error', (err) => {
+        console.error('[Socket] Connection error:', err);
+      });
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+    };
+  }, []);
 
   // Auto-scroll to bottom of messages
   useEffect(() => {
@@ -145,7 +225,11 @@ export default function AiChatbot() {
       setInputValue('');
     }
 
-    simulateAiResponse(text);
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit('message', text);
+    } else {
+      simulateAiResponse(text);
+    }
   };
 
   const handleActionClick = (action: string, label: string) => {
@@ -166,7 +250,11 @@ export default function AiChatbot() {
       return;
     }
 
-    simulateAiResponse(label, action);
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit('message', label);
+    } else {
+      simulateAiResponse(label, action);
+    }
   };
 
   return (
