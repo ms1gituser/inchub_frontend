@@ -203,6 +203,10 @@ function scanLines(content, patterns, filePath, opts = {}) {
 function scanSourceFiles() {
   const findings = [];
   let count = 0;
+  // src/ may not exist during Docker postinstall (src is copied after npm ci)
+  if (!fs.existsSync(SRC)) {
+    return { findings, count, skipped: true };
+  }
   for (const fp of walkSrc(SRC)) {
     count++;
     const src = readFileSafe(fp);
@@ -338,8 +342,10 @@ function main() {
 
   // ── 1. Source files ──────────────────────────────────────────────────────────
   section(`${emoji.scan} Source files  (src/**)`);
-  const { findings: srcFindings, count: srcCount } = scanSourceFiles();
-  if (srcFindings.length === 0) {
+  const { findings: srcFindings, count: srcCount, skipped: srcSkipped } = scanSourceFiles();
+  if (srcSkipped) {
+    console.log(`  ${emoji.info} src/ directory not present — skipping (expected during postinstall).`);
+  } else if (srcFindings.length === 0) {
     console.log(`  ${emoji.pass} ${C.green}${srcCount} files scanned — clean.${C.reset}`);
   } else {
     console.log(`  ${srcCount} files scanned — ${srcFindings.length} finding(s):\n`);
