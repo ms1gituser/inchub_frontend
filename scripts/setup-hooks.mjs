@@ -15,8 +15,9 @@ const gitDir = path.join(repoRoot, '.git');
 const hooksDir = path.join(gitDir, 'hooks');
 
 if (!fs.existsSync(gitDir)) {
-  console.error('Error: .git directory not found. Please initialize git repository first.');
-  process.exit(1);
+  // No .git directory — running inside Docker or CI; skip hook installation silently.
+  console.log('ℹ️  No .git directory found — skipping Git hook installation (Docker/CI environment).');
+  process.exit(0);
 }
 
 if (!fs.existsSync(hooksDir)) {
