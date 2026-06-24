@@ -168,9 +168,12 @@ async function attemptTokenRefresh(): Promise<string | null> {
   const refreshToken = getRefreshToken();
   if (!refreshToken) return null;
 
+  const isBrowser = typeof window !== 'undefined';
+  const defaultApiUrl = isBrowser ? '/api' : 'http://127.0.0.1:5000/api';
+
   try {
     const res = await axios.post<{ token: string; refreshToken?: string }>(
-      `${process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:5000/api'}/auth/refresh`,
+      `${process.env.NEXT_PUBLIC_API_URL ?? defaultApiUrl}/auth/refresh`,
       { refreshToken },
       { headers: { 'Content-Type': 'application/json' }, timeout: 10_000 },
     );
@@ -184,8 +187,11 @@ async function attemptTokenRefresh(): Promise<string | null> {
 
 // ─── Axios instance ───────────────────────────────────────────────────────────
 
+const isBrowser = typeof window !== 'undefined';
+const defaultBaseURL = isBrowser ? '/api' : 'http://127.0.0.1:5000/api';
+
 const apiClient: AxiosInstance = axios.create({
-  baseURL:         process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:5000/api',
+  baseURL:         process.env.NEXT_PUBLIC_API_URL ?? defaultBaseURL,
   timeout:         15_000,
   headers: {
     'Content-Type': 'application/json',
