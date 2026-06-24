@@ -13,8 +13,8 @@ import { persistTokens, resolveToken, post } from '@/lib/apiClient';
  */
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('admin@inchcrm.com');
+  const [password, setPassword] = useState('admin123');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -93,21 +93,33 @@ export default function LoginPage() {
                 objectFit: 'contain',
                 marginBottom: '1.25rem',
                 filter: 'drop-shadow(0 4px 8px rgba(184, 137, 42, 0.15))',
+                display: 'block',
+                marginLeft: 'auto',
+                marginRight: 'auto',
               }}
             />
             <h1
               style={{
                 fontSize: '1.625rem',
-                fontWeight: 600,
+                fontWeight: 500,
                 color: '#2C1A0E',
                 margin: 0,
                 letterSpacing: '-0.02em',
-                fontFamily: 'var(--font-serif), Georgia, serif',
+                fontFamily: "'Cormorant', var(--font-serif), Georgia, serif",
               }}
             >
               IncHub CRM Console
             </h1>
-            <p style={{ fontSize: '0.8125rem', color: '#57534e', marginTop: '0.5rem', fontWeight: 500 }}>
+            <p
+              style={{
+                fontSize: '0.8125rem',
+                color: '#57534e',
+                marginTop: '0.5rem',
+                fontWeight: 300,
+                fontFamily: "'Inter', var(--font-sans), sans-serif",
+                lineHeight: 1.85,
+              }}
+            >
               Sign in to access your business workspace
             </p>
           </div>
@@ -124,10 +136,11 @@ export default function LoginPage() {
                   padding: '0.75rem 1rem',
                   fontSize: '0.75rem',
                   color: '#ef4444',
-                  fontWeight: 600,
+                  fontWeight: 400,
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
+                  fontFamily: "'Inter', var(--font-sans), sans-serif",
                 }}
               >
                 <span>⚠️</span>
@@ -138,9 +151,18 @@ export default function LoginPage() {
             <div>
               <label
                 htmlFor="email"
-                style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#44403c', marginBottom: '0.5rem' }}
+                style={{
+                  display: 'block',
+                  fontSize: '0.75rem',
+                  fontWeight: 500,
+                  color: '#44403c',
+                  marginBottom: '0.5rem',
+                  fontFamily: "'Inter', var(--font-sans), sans-serif",
+                  letterSpacing: '0.2em',
+                  textTransform: 'uppercase',
+                }}
               >
-                Email Address
+                EMAIL ADDRESS
               </label>
               <input
                 id="email"
@@ -159,6 +181,8 @@ export default function LoginPage() {
                   color: '#2C1A0E',
                   outline: 'none',
                   background: '#fafaf9',
+                  fontFamily: "'Inter', var(--font-sans), sans-serif",
+                  fontWeight: 300,
                   transition: 'all 150ms',
                 }}
                 onFocus={(e) => {
@@ -175,18 +199,33 @@ export default function LoginPage() {
             </div>
  
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', alignItems: 'center' }}>
                 <label
                   htmlFor="password"
-                  style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#44403c' }}
+                  style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 500,
+                    color: '#44403c',
+                    fontFamily: "'Inter', var(--font-sans), sans-serif",
+                    letterSpacing: '0.2em',
+                    textTransform: 'uppercase',
+                  }}
                 >
-                  Password
+                  PASSWORD
                 </label>
                 <Link
                   href="/forgot-password"
-                  style={{ fontSize: '0.8125rem', color: '#B8892A', fontWeight: 600, textDecoration: 'none' }}
+                  style={{
+                    fontSize: '0.75rem',
+                    color: '#B8892A',
+                    fontWeight: 500,
+                    textDecoration: 'none',
+                    fontFamily: "'Inter', var(--font-sans), sans-serif",
+                    letterSpacing: '0.2em',
+                    textTransform: 'uppercase',
+                  }}
                 >
-                  Forgot password?
+                  FORGOT PASSWORD?
                 </Link>
               </div>
               <input
@@ -206,6 +245,8 @@ export default function LoginPage() {
                   color: '#2C1A0E',
                   outline: 'none',
                   background: '#fafaf9',
+                  fontFamily: "'Inter', var(--font-sans), sans-serif",
+                  fontWeight: 300,
                   transition: 'all 150ms',
                 }}
                 onFocus={(e) => {
@@ -231,8 +272,8 @@ export default function LoginPage() {
                 color: '#ffffff',
                 border: 'none',
                 borderRadius: 8,
-                fontSize: '0.875rem',
-                fontWeight: 600,
+                fontSize: '0.8125rem',
+                fontWeight: 500,
                 cursor: loading ? 'not-allowed' : 'pointer',
                 boxShadow: '0 4px 12px rgba(184, 137, 42, 0.2)',
                 transition: 'all 150ms',
@@ -240,6 +281,9 @@ export default function LoginPage() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '8px',
+                fontFamily: "'Inter', var(--font-sans), sans-serif",
+                letterSpacing: '0.2em',
+                textTransform: 'uppercase',
               }}
               onMouseEnter={(e) => {
                 if (!loading) e.currentTarget.style.opacity = '0.9';
@@ -264,10 +308,35 @@ export default function LoginPage() {
                   <span>Securing compliance session...</span>
                 </>
               ) : (
-                'Sign in'
+                'SIGN IN'
               )}
             </button>
           </form>
+
+          {/* Demo Credentials Helper */}
+          <div
+            style={{
+              marginTop: '1.5rem',
+              padding: '1rem',
+              background: 'rgba(44, 26, 14, 0.04)',
+              border: '1px dashed rgba(44, 26, 14, 0.15)',
+              borderRadius: 10,
+              fontSize: '0.75rem',
+              color: '#57534e',
+              fontFamily: "'Inter', var(--font-sans), sans-serif",
+              lineHeight: 1.6,
+            }}
+          >
+            <div style={{ fontWeight: 600, color: '#2C1A0E', marginBottom: '0.25rem', letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: '0.7rem' }}>
+              Demo Access Credentials
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span><strong>Email:</strong> admin@inchcrm.com</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span><strong>Password:</strong> admin123</span>
+            </div>
+          </div>
 
         </div>
       </div>
