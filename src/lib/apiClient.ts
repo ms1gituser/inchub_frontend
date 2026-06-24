@@ -160,6 +160,17 @@ function flushRefreshSubscribers(token: string | null): void {
   _refreshSubscribers = [];
 }
 
+function getDynamicBaseURL(): string {
+  if (typeof window === 'undefined') {
+    return 'http://127.0.0.1:5000/api';
+  }
+  const hostname = window.location.hostname;
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return 'http://127.0.0.1:5000/api';
+  }
+  return `http://${hostname}:5000/api`;
+}
+
 /**
  * Attempt to refresh the access token using the stored refresh token.
  * Returns the new access token string, or null if it fails.
@@ -168,12 +179,9 @@ async function attemptTokenRefresh(): Promise<string | null> {
   const refreshToken = getRefreshToken();
   if (!refreshToken) return null;
 
-  const isBrowser = typeof window !== 'undefined';
-  const defaultApiUrl = isBrowser ? '/api' : 'http://127.0.0.1:5000/api';
-
   try {
     const res = await axios.post<{ token: string; refreshToken?: string }>(
-      `${process.env.NEXT_PUBLIC_API_URL ?? defaultApiUrl}/auth/refresh`,
+      `${process.env.NEXT_PUBLIC_API_URL ?? getDynamicBaseURL()}/auth/refresh`,
       { refreshToken },
       { headers: { 'Content-Type': 'application/json' }, timeout: 10_000 },
     );
@@ -187,11 +195,8 @@ async function attemptTokenRefresh(): Promise<string | null> {
 
 // ─── Axios instance ───────────────────────────────────────────────────────────
 
-const isBrowser = typeof window !== 'undefined';
-const defaultBaseURL = isBrowser ? '/api' : 'http://127.0.0.1:5000/api';
-
 const apiClient: AxiosInstance = axios.create({
-  baseURL:         process.env.NEXT_PUBLIC_API_URL ?? defaultBaseURL,
+  baseURL:         process.env.NEXT_PUBLIC_API_URL ?? getDynamicBaseURL(),
   timeout:         15_000,
   headers: {
     'Content-Type': 'application/json',
