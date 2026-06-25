@@ -122,7 +122,7 @@ interface ParseResponse {
 }
 
 export default function AccountingPage() {
-  const { showToast, showConfirm, showAlert } = useNotification();
+  const { showToast, showConfirm } = useNotification();
   // State variables
   const [kycChecklist, setKycChecklist] = useState<KycItem[]>([]);
   const [loadingKyc, setLoadingKyc] = useState(true);

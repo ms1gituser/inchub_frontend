@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import type { NavSection } from '@/types/navigation';
 import { usePermission, UserRole } from '@/context/PermissionContext';
@@ -203,9 +204,11 @@ export default function Sidebar({ collapsed, hidden, onToggle, activeBrand }: Si
             transition: 'all 300ms ease',
           }}
         >
-          <img
+          <Image
             src="/logo_page_6.svg"
             alt="IncHub Logo"
+            width={48}
+            height={48}
             style={{ width: '65%', height: '65%', objectFit: 'contain' }}
           />
         </div>

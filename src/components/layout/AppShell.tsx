@@ -183,7 +183,6 @@ function AppLayout({
 export default function AppShell({ children }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [hidden, setHidden] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const [hasToken, setHasToken] = useState<boolean | null>(null);
   const pathname = usePathname();
   const router = useRouter();
@@ -191,31 +190,22 @@ export default function AppShell({ children }: AppShellProps) {
   const isAuthRoute = pathname === '/login' || pathname === '/forgot-password';
 
   useEffect(() => {
-    setMounted(true);
-
-    if (!isAuthRoute) {
-      const token = resolveToken();
-      if (!token) {
-        setHasToken(false);
-        router.replace('/login');
-      } else {
-        setHasToken(true);
-      }
+    if (isAuthRoute) return; // Auth routes never need a token check
+    const token = resolveToken();
+    if (!token) {
+      setHasToken(false);
+      router.replace('/login');
     } else {
-      setHasToken(null);
+      setHasToken(true);
     }
   }, [pathname, router, isAuthRoute]);
 
-  if (!mounted) {
-    return null; // Avoid hydration flash
-  }
-
-  // Auth pages render outside of App shell chrome
+  // Auth pages render outside of App shell chrome (no token required)
   if (isAuthRoute) {
     return <>{children}</>;
   }
 
-  // Prevent flash of protected UI if user is unauthenticated or token is not yet resolved
+  // Prevent flash of protected UI while token is being resolved
   if (hasToken !== true) {
     return null;
   }

@@ -127,6 +127,7 @@ const EMAILS: EmailItem[] = [
   { id: 'em-4', sender: 'Ravi Mehta (IncHub)', subject: 'Weekly Pipeline Report (Corporate)', preview: 'Summary of offshore and freezone applications registered this week for the...', time: '5h ago', read: true, initials: 'RM', type: 'corporate' },
 ];
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const LEAD_CHANNELS: Record<'group' | 'corporate' | 'financial', LeadChannel[]> = {
   group: [
     { name: 'Website Organic Forms', count: 68, pct: 45, color: '#B8892A' },
@@ -185,14 +186,9 @@ const ACTIVITIES_DATA: Record<'group' | 'corporate' | 'financial', { actor: stri
 
 export default function DashboardPage() {
   const { currentBrand, setCurrentBrand, role } = usePermission();
-  const { showToast, showConfirm, showAlert } = useNotification();
+  const { showToast } = useNotification();
 
-  if (role === UserRole.CLIENT) {
-    return <ClientPortal />;
-  }
-
-  const viewMode = currentBrand;
-  const setViewMode = setCurrentBrand;
+  // ── All hooks must be unconditional — placed before any early returns ──
   const [kycAlert, setKycAlert] = useState<boolean>(false);
 
   useEffect(() => {
@@ -222,6 +218,13 @@ export default function DashboardPage() {
       active = false;
     };
   }, []);
+
+  if (role === UserRole.CLIENT) {
+    return <ClientPortal />;
+  }
+
+  const viewMode = currentBrand;
+  const setViewMode = setCurrentBrand;
 
   // Theme settings based on current viewMode
   const activeDotColor = viewMode === 'financial' ? 'var(--color-fs-accent)' : 'var(--color-cs-accent)';
@@ -477,8 +480,8 @@ export default function DashboardPage() {
                   fontWeight: 700,
                   padding: '0.2rem 0.5rem',
                   borderRadius: '4px',
-                  background: s.up ? `color-mix(in srgb, ${accentColor} 10%, transparent)` : 'color-mix(in srgb, var(--color-error, #ef4444) 8%, transparent)',
-                  color: s.up ? accentColor : 'var(--color-error, #ef4444)',
+                  background: s.up ? 'color-mix(in srgb, #276749 12%, transparent)' : 'color-mix(in srgb, #9B2C2C 12%, transparent)',
+                  color: s.up ? '#276749' : '#9B2C2C',
                 }}
               >
                 {s.change}
@@ -741,7 +744,7 @@ export default function DashboardPage() {
             {/* Sub-Header: Today's Meetings */}
             <div style={{ borderBottom: `1px solid ${cardBorderColor}`, paddingBottom: '0.5rem', marginBottom: '0.75rem' }}>
               <span style={{ fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.12em', color: accentColor, textTransform: 'uppercase' }}>
-                Today's Briefing Calendar
+                Today&apos;s Briefing Calendar
               </span>
             </div>
 
