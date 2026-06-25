@@ -72,11 +72,11 @@ const NOTIFICATIONS = [
 ];
 
 interface TopNavbarProps {
-  sidebarCollapsed: boolean;
-  onToggleSidebar: () => void;
+  sidebarCollapsed?: boolean;
+  onToggleSidebar?: () => void;
 }
 
-export default function TopNavbar({ sidebarCollapsed, onToggleSidebar }: TopNavbarProps) {
+export default function TopNavbar(_props: TopNavbarProps) {
   const { permissions, allAvailablePermissions, togglePermission, currentBrand, email, role } = usePermission();
   const [notifOpen, setNotifOpen]   = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -171,39 +171,7 @@ export default function TopNavbar({ sidebarCollapsed, onToggleSidebar }: TopNavb
         transition: 'background-color 300ms ease, border-color 300ms ease',
       }}
     >
-      {/* Sidebar Toggle Switch */}
-      <button
-        onClick={onToggleSidebar}
-        aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: 36,
-          height: 36,
-          border: '1px solid var(--border-subtle)',
-          borderRadius: 8,
-          background: 'var(--bg-page)',
-          color: isFinancial ? 'rgba(42,22,40,0.6)' : 'rgba(44,26,14,0.6)',
-          cursor: 'pointer',
-          transition: 'all 150ms',
-          flexShrink: 0,
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = isFinancial ? '#EDE6DE' : '#EDE7D8';
-          e.currentTarget.style.color = 'var(--color-primary)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = 'var(--bg-page)';
-          e.currentTarget.style.color = isFinancial ? 'rgba(42,22,40,0.6)' : 'rgba(44,26,14,0.6)';
-        }}
-      >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="3" y1="12" x2="21" y2="12" />
-          <line x1="3" y1="6" x2="21" y2="6" />
-          <line x1="3" y1="18" x2="21" y2="18" />
-        </svg>
-      </button>
+
 
       {/* ── Search bar ── */}
       <div style={{ flex: 1, maxWidth: 480, position: 'relative' }}>
