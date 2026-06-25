@@ -25,7 +25,7 @@ function AppLayout({
   hidden: boolean;
   setHidden: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
-  const { currentBrand, setCurrentBrand, role } = usePermission();
+  const { currentBrand, setCurrentBrand, role, loading } = usePermission();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -40,17 +40,17 @@ function AppLayout({
 
   // Route protection by user roles
   useEffect(() => {
-    if (!role) return;
+    if (loading || !role) return;
     
     // settings is restricted to admin/ceo
     if (pathname.startsWith('/settings') && role !== 'admin' && role !== 'ceo') {
       router.replace('/');
     }
-    // accounting is restricted for sales/ops roles
-    if (pathname.startsWith('/accounting') && (role === 'sales' || role === 'ops')) {
+    // accounting is restricted to admin, ceo, accountant
+    if (pathname.startsWith('/accounting') && role !== 'admin' && role !== 'ceo' && role !== 'accountant') {
       router.replace('/');
     }
-  }, [pathname, role, router]);
+  }, [pathname, role, loading, router]);
 
   const activeBrand = isFinancialPath ? 'financial' : currentBrand;
 
@@ -74,6 +74,21 @@ function AppLayout({
       root.style.setProperty('--color-border', '#DDD4BE'); // CS Border
     }
   }, [activeBrand]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#F6F1E8] flex flex-col items-center justify-center font-sans">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#B8892A]/10 text-[#B8892A] flex items-center justify-center shadow-xs animate-pulse">
+            <svg className="w-6 h-6 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <circle cx="12" cy="12" r="10" strokeDasharray="30 30" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </div>
+          <span className="text-xs font-semibold text-[#2C1A0E]/60 uppercase tracking-widest">Loading Workspace...</span>
+        </div>
+      </div>
+    );
+  }
 
   const isFinancial = activeBrand === 'financial';
 
@@ -168,25 +183,26 @@ export default function AppShell({ children }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [hasToken, setHasToken] = useState<boolean | null>(null);
   const pathname = usePathname();
   const router = useRouter();
 
   const isAuthRoute = pathname === '/login' || pathname === '/forgot-password';
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setMounted(true);
-    }, 0);
+    setMounted(true);
 
-    // Guard CRM workspace routes (Milestone 1 Session Lock)
     if (!isAuthRoute) {
       const token = resolveToken();
       if (!token) {
+        setHasToken(false);
         router.replace('/login');
+      } else {
+        setHasToken(true);
       }
+    } else {
+      setHasToken(null);
     }
-
-    return () => clearTimeout(timer);
   }, [pathname, router, isAuthRoute]);
 
   if (!mounted) {
@@ -196,6 +212,11 @@ export default function AppShell({ children }: AppShellProps) {
   // Auth pages render outside of App shell chrome
   if (isAuthRoute) {
     return <>{children}</>;
+  }
+
+  // Prevent flash of protected UI if user is unauthenticated or token is not yet resolved
+  if (hasToken !== true) {
+    return null;
   }
 
   return (

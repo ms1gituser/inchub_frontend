@@ -459,25 +459,7 @@ export default function AccountingPage() {
         </h1>
       </div>
 
-      {/* Empty State Card */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', color: 'rgba(42,22,40,0.5)', background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: 12, padding: '2rem' }}>
-        <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#F6F2EE', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#E8760A', marginBottom: '0.5rem' }}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="1" x2="12" y2="23"></line>
-            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-          </svg>
-        </div>
-        <h2 style={{ fontSize: '1rem', fontWeight: 600, color: '#2A1628', margin: 0, fontFamily: 'Inter, sans-serif', letterSpacing: '0.18em', textTransform: 'uppercase' }}>
-          Accounting & Bookkeeping Workspace
-        </h2>
-        <p style={{ margin: 0, fontSize: '0.875rem', textAlign: 'center', maxWidth: '380px', lineHeight: 1.8, fontFamily: 'Inter, sans-serif', fontWeight: 300 }}>
-          This workspace is undergoing compliance configuration. Access is currently restricted.
-        </p>
-      </div>
-
-      {false && (
-        <>
-          {/* Row 1: KYC Compliance Checklist & Month-Lock Sequential Gate */}
+      {/* Row 1: KYC Compliance Checklist & Month-Lock Sequential Gate */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
         {/* KYC Compliance Checklist */}
         <div style={{ background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: '12px', padding: '1.5rem', boxShadow: '0 4px 12px rgba(42,22,40,0.03)' }}>
@@ -1015,8 +997,6 @@ export default function AccountingPage() {
           )}
         </div>
       </div>
-        </>
-      )}
     </div>
   );
 }
