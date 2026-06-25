@@ -53,7 +53,6 @@ export default function AiChatbot() {
       socketRef.current = socket;
 
       socket.on('connect', () => {
-        console.log('[Socket] Connected to IncHub chat server');
       });
 
       socket.on('message', (msg: { id?: string; sender?: string; text: string; timestamp?: string | number | Date }) => {
@@ -95,12 +94,10 @@ export default function AiChatbot() {
       });
 
       socket.on('disconnect', () => {
-        console.log('[Socket] Disconnected');
         socketRef.current = null;
       });
 
-      socket.on('connect_error', (err) => {
-        console.error('[Socket] Connection error:', err);
+      socket.on('connect_error', (_err) => {
       });
     }
   }, [isOpen]);

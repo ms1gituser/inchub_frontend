@@ -192,12 +192,14 @@ export default function AppShell({ children }: AppShellProps) {
   useEffect(() => {
     if (isAuthRoute) return; // Auth routes never need a token check
     const token = resolveToken();
-    if (!token) {
-      setHasToken(false);
-      router.replace('/login');
-    } else {
-      setHasToken(true);
-    }
+    Promise.resolve().then(() => {
+      if (!token) {
+        setHasToken(false);
+        router.replace('/login');
+      } else {
+        setHasToken(true);
+      }
+    });
   }, [pathname, router, isAuthRoute]);
 
   // Auth pages render outside of App shell chrome (no token required)
