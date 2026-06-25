@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import Sidebar from './Sidebar';
 import TopNavbar from './TopNavbar';
 import AiChatbot from '../chat/AiChatbot';
-import { PermissionProvider, usePermission } from '@/context/PermissionContext';
+import { PermissionProvider, usePermission, UserRole } from '@/context/PermissionContext';
 import { NotificationProvider } from '@/context/NotificationContext';
 import { resolveToken } from '@/lib/apiClient';
 
@@ -44,11 +44,11 @@ function AppLayout({
     if (loading || !role) return;
     
     // settings is restricted to admin/ceo
-    if (pathname.startsWith('/settings') && role !== 'admin' && role !== 'ceo') {
+    if (pathname.startsWith('/settings') && role !== UserRole.ADMIN && role !== UserRole.CEO) {
       router.replace('/');
     }
     // accounting is restricted to admin, ceo, accountant
-    if (pathname.startsWith('/accounting') && role !== 'admin' && role !== 'ceo' && role !== 'accountant') {
+    if (pathname.startsWith('/accounting') && role !== UserRole.ADMIN && role !== UserRole.CEO && role !== UserRole.ACCOUNTANT) {
       router.replace('/');
     }
   }, [pathname, role, loading, router]);

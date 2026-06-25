@@ -472,7 +472,18 @@ export default function AccountingPage() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', color: '#2A1628', fontFamily: 'Inter, sans-serif', fontWeight: 300, lineHeight: 1.85 }}>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '2rem',
+      color: '#2A1628',
+      fontFamily: 'Inter, sans-serif',
+      fontWeight: 300,
+      lineHeight: 1.85,
+      maxWidth: '1536px',
+      margin: '0 auto',
+      width: '100%',
+    }}>
       {/* Brand Workspace Header */}
       <div style={{ borderBottom: '1px solid #DDD0C4', paddingBottom: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>

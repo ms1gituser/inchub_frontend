@@ -3,7 +3,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { get, put, resolveToken } from '@/lib/apiClient';
 
-export type UserRole = 'admin' | 'ceo' | 'accountant' | 'sales' | 'ops' | 'client';
+export enum UserRole {
+  ADMIN = 'admin',
+  CEO = 'ceo',
+  ACCOUNTANT = 'accountant',
+  SALES = 'sales',
+  OPS = 'ops',
+  CLIENT = 'client',
+}
 
 export interface PermissionContextType {
   role: UserRole;
@@ -36,14 +43,14 @@ const ALL_PERMISSIONS = [
 ];
 
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
-  admin: ALL_PERMISSIONS,
-  ceo: ALL_PERMISSIONS,
-  accountant: [
+  [UserRole.ADMIN]: ALL_PERMISSIONS,
+  [UserRole.CEO]: ALL_PERMISSIONS,
+  [UserRole.ACCOUNTANT]: [
     'contacts:read',
     'leads:read',
     'deals:read',
   ],
-  sales: [
+  [UserRole.SALES]: [
     'contacts:read',
     'contacts:create',
     'contacts:edit',
@@ -53,21 +60,21 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     'deals:read',
     'deals:create',
   ],
-  ops: [
+  [UserRole.OPS]: [
     'contacts:read',
     'contacts:create',
     'contacts:edit',
     'leads:read',
     'deals:read',
   ],
-  client: [],
+  [UserRole.CLIENT]: [],
 };
 
 const PermissionContext = createContext<PermissionContextType | undefined>(undefined);
 
 export function PermissionProvider({ children }: { children: React.ReactNode }) {
   const [permissions, setPermissions] = useState<string[]>([]);
-  const [role, setRoleState] = useState<UserRole>('client');
+  const [role, setRoleState] = useState<UserRole>(UserRole.CLIENT);
   const [userId, setUserId] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -76,9 +83,9 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     const updateBrand = async () => {
       await Promise.resolve();
-      if (role === 'accountant') {
+      if (role === UserRole.ACCOUNTANT) {
         setCurrentBrandState('financial');
-      } else if (role === 'sales' || role === 'ops') {
+      } else if (role === UserRole.SALES || role === UserRole.OPS) {
         setCurrentBrandState('corporate');
       } else {
         setCurrentBrandState('group');
@@ -89,7 +96,7 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
 
   const setCurrentBrand = (brand: 'group' | 'corporate' | 'financial') => {
     // Only admins or CEOs are allowed to toggle brands. Standard team members are locked to their brand.
-    if (role === 'admin' || role === 'ceo') {
+    if (role === UserRole.ADMIN || role === UserRole.CEO) {
       setCurrentBrandState(brand);
     }
   };
@@ -145,7 +152,7 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
 
     // Only persist to database if the current user is admin — the
     // RBAC sandbox panel is demo-mode for non-admins (local state only).
-    if (userId && role === 'admin') {
+    if (userId && role === UserRole.ADMIN) {
       try {
         await put(`/auth/users/${userId}/permissions`, { permissions: updated });
       } catch (e) {
@@ -158,7 +165,7 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
     const nextPerms = granted ? ALL_PERMISSIONS : [];
     setPermissions(nextPerms);
 
-    if (userId && role === 'admin') {
+    if (userId && role === UserRole.ADMIN) {
       try {
         await put(`/auth/users/${userId}/permissions`, { permissions: nextPerms });
       } catch (e) {
@@ -172,7 +179,7 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
     const nextPerms = ROLE_PERMISSIONS[newRole];
     setPermissions(nextPerms);
 
-    if (userId && role === 'admin') {
+    if (userId && role === UserRole.ADMIN) {
       try {
         await put(`/auth/users/${userId}/permissions`, { permissions: nextPerms });
       } catch (e) {
