@@ -6,6 +6,7 @@ import Sidebar from './Sidebar';
 import TopNavbar from './TopNavbar';
 import AiChatbot from '../chat/AiChatbot';
 import { PermissionProvider, usePermission } from '@/context/PermissionContext';
+import { NotificationProvider } from '@/context/NotificationContext';
 import { resolveToken } from '@/lib/apiClient';
 
 interface AppShellProps {
@@ -221,15 +222,17 @@ export default function AppShell({ children }: AppShellProps) {
 
   return (
     <PermissionProvider>
-      <AppLayout
-        collapsed={collapsed}
-        setCollapsed={setCollapsed}
-        hidden={hidden}
-        setHidden={setHidden}
-      >
-        {children}
-      </AppLayout>
-      <AiChatbot />
+      <NotificationProvider>
+        <AppLayout
+          collapsed={collapsed}
+          setCollapsed={setCollapsed}
+          hidden={hidden}
+          setHidden={setHidden}
+        >
+          {children}
+        </AppLayout>
+        <AiChatbot />
+      </NotificationProvider>
     </PermissionProvider>
   );
 }

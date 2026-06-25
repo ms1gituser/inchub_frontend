@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Inter, Cormorant_Garamond } from 'next/font/google';
+import { Inter, Cormorant } from 'next/font/google';
 import './globals.css';
 import AppShell from '@/components/layout/AppShell';
 
@@ -9,7 +9,7 @@ const inter = Inter({
   weight: ['300', '400', '500', '600', '700'],
 });
 
-const cormorantGaramond = Cormorant_Garamond({
+const cormorant = Cormorant({
   variable: '--font-serif',
   weight: ['300', '400', '500', '600', '700'],
   style: ['normal', 'italic'],
@@ -28,7 +28,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${cormorantGaramond.variable}`}>
+    <html lang="en" className={`${inter.variable} ${cormorant.variable}`}>
       <body>
         <AppShell>{children}</AppShell>
       </body>
