@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { get, post, ApiError } from '@/lib/apiClient';
+import { useNotification } from '@/context/NotificationContext';
 
 // Types
 interface KycItem {
@@ -121,6 +122,7 @@ interface ParseResponse {
 }
 
 export default function AccountingPage() {
+  const { showToast, showConfirm, showAlert } = useNotification();
   // State variables
   const [kycChecklist, setKycChecklist] = useState<KycItem[]>([]);
   const [loadingKyc, setLoadingKyc] = useState(true);
@@ -190,38 +192,53 @@ export default function AccountingPage() {
   };
 
   // Triggers immediate expire for testing indicators
-  const handleForceExpirePassport = async () => {
-    try {
-      const res = await post<GeneralResponse>('/bookkeeping/kyc/expire', { name: 'Passport of Beneficial Owners' });
-      if (res?.success) {
-        await fetchKyc();
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new Event('kyc-changed'));
+  const handleForceExpirePassport = () => {
+    showConfirm(
+      'Are you sure you want to force expire the Passport of Beneficial Owners? This test action will mark the document as EXPIRED and trigger a persistent red alert indicator across all screens showing this client record.',
+      async () => {
+        try {
+          const res = await post<GeneralResponse>('/bookkeeping/kyc/expire', { name: 'Passport of Beneficial Owners' });
+          if (res?.success) {
+            await fetchKyc();
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new Event('kyc-changed'));
+            }
+            showToast('Passport status forced to EXPIRED.', 'success');
+          }
+        } catch (e: unknown) {
+          console.error('[Force Expire Error]', e);
+          showToast('Failed to force expire passport.', 'error');
         }
-      }
-    } catch (e: unknown) {
-      console.error('[Force Expire Error]', e);
-    }
+      },
+      'Force Expire Passport'
+    );
   };
 
   // Sequential period lock logic
-  const handleLockMonth = async (monthNum: number) => {
-    try {
-      setLockError(null);
-      const res = await post<GeneralResponse>('/bookkeeping/periods/lock', { year: 2026, month: monthNum });
-      if (res?.success) {
-        await fetchCtArchive();
-        await fetchProfile();
-      }
-    } catch (e: unknown) {
-      console.error('[Period Lock Error]', e);
-      if (e instanceof ApiError) {
-        setLockError(e.message || 'Month-Lock Gate Error: Sequential month close constraints violated.');
-      } else {
-        const err = e instanceof Error ? e : new Error(String(e));
-        setLockError(err.message || 'Month-Lock Gate Error: Sequential month close constraints violated.');
-      }
-    }
+  const handleLockMonth = (monthNum: number) => {
+    showConfirm(
+      `CRITICAL ACTION: Are you sure you want to lock the bookkeeping period for 2026-${String(monthNum).padStart(2, '0')}? This action is IRREVERSIBLE and will close all editing/modifications for this period.`,
+      async () => {
+        try {
+          setLockError(null);
+          const res = await post<GeneralResponse>('/bookkeeping/periods/lock', { year: 2026, month: monthNum });
+          if (res?.success) {
+            await fetchCtArchive();
+            await fetchProfile();
+            showToast(`Bookkeeping period for 2026-${String(monthNum).padStart(2, '0')} has been locked.`, 'success');
+          }
+        } catch (e: unknown) {
+          console.error('[Period Lock Error]', e);
+          if (e instanceof ApiError) {
+            setLockError(e.message || 'Month-Lock Gate Error: Sequential month close constraints violated.');
+          } else {
+            const err = e instanceof Error ? e : new Error(String(e));
+            setLockError(err.message || 'Month-Lock Gate Error: Sequential month close constraints violated.');
+          }
+        }
+      },
+      'Lock Bookkeeping Period'
+    );
   };
 
   // Statement processing trigger
@@ -252,7 +269,7 @@ export default function AccountingPage() {
     } catch (err: unknown) {
       console.error('[Upload Parse Error]', err);
       const errorMsg = err instanceof Error ? err.message : String(err);
-      alert(errorMsg || 'OCR parsing failed. Check network or server.');
+      showToast(errorMsg || 'OCR parsing failed. Check network or server.', 'error');
     } finally {
       setParsing(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -266,13 +283,13 @@ export default function AccountingPage() {
     try {
       const res = await post<GeneralResponse>('/bookkeeping/reconciliation/vendors', { name: newVendorName });
       if (res?.success) {
-        alert(`Vendor "${newVendorName}" created successfully inside reconciliation workspace.`);
+        showToast(`Vendor "${newVendorName}" created successfully inside reconciliation workspace.`, 'success');
         setNewVendorName('');
       }
     } catch (e: unknown) {
       console.error(e);
       const errorMsg = e instanceof Error ? e.message : String(e);
-      alert(errorMsg || 'Failed to create vendor.');
+      showToast(errorMsg || 'Failed to create vendor.', 'error');
     } finally {
       setCreatingVendor(false);
     }
@@ -281,14 +298,14 @@ export default function AccountingPage() {
   // QuickBooks sync and auth redirection
   const handleQuickBooksPush = async () => {
     if (ledger.length === 0) {
-      alert('Please upload and parse a statement first to construct a ledger.');
+      showToast('Please upload and parse a statement first to construct a ledger.', 'warning');
       return;
     }
     setPushingQb(true);
     try {
       const res = await post<GeneralResponse>('/bookkeeping/integrations/quickbooks/push', { ledger });
       if (res?.success) {
-        alert('QuickBooks sync completed successfully!');
+        showToast('QuickBooks sync completed successfully!', 'success');
       }
     } catch (e: unknown) {
       console.error(e);
@@ -298,19 +315,23 @@ export default function AccountingPage() {
           try {
             const authRes = await get<{ success: boolean; authorizationUrl?: string }>('/bookkeeping/integrations/quickbooks/auth');
             if (authRes?.success && authRes.authorizationUrl) {
-              if (confirm('QuickBooks Online is not connected. Redirect to secure QuickBooks OAuth link?')) {
-                window.location.href = authRes.authorizationUrl;
-              }
+              showConfirm(
+                'QuickBooks Online is not connected. Redirect to secure QuickBooks OAuth link?',
+                () => {
+                  window.location.href = authRes.authorizationUrl!;
+                },
+                'Connect to QuickBooks'
+              );
             }
           } catch (authErr) {
             console.error(authErr);
           }
         } else {
-          alert(e.message || 'Sync failed. Verify credential parameters.');
+          showToast(e.message || 'Sync failed. Verify credential parameters.', 'error');
         }
       } else {
         const errorMsg = e instanceof Error ? e.message : String(e);
-        alert(errorMsg || 'Sync failed. Verify credential parameters.');
+        showToast(errorMsg || 'Sync failed. Verify credential parameters.', 'error');
       }
     } finally {
       setPushingQb(false);
@@ -318,29 +339,35 @@ export default function AccountingPage() {
   };
 
   // Year-End Corporate Tax submit
-  const handleFileCorporateTax = async (e: React.FormEvent) => {
+  const handleFileCorporateTax = (e: React.FormEvent) => {
     e.preventDefault();
-    setFilingCt(true);
-    try {
-      const res = await post<GeneralResponse>('/bookkeeping/ct/file', {
-        year: parseInt(ctYear),
-        intake_form_data: {
-          turnover_aed: parseFloat(ctTurnover),
-          taxable_income_aed: parseFloat(ctTaxableIncome),
-        },
-      });
+    showConfirm(
+      `CRITICAL ACTION: Are you sure you want to submit the Corporate Tax returns and archive files for year ${ctYear}? This submission is official and cannot be undone.`,
+      async () => {
+        setFilingCt(true);
+        try {
+          const res = await post<GeneralResponse>('/bookkeeping/ct/file', {
+            year: parseInt(ctYear),
+            intake_form_data: {
+              turnover_aed: parseFloat(ctTurnover),
+              taxable_income_aed: parseFloat(ctTaxableIncome),
+            },
+          });
 
-      if (res?.success) {
-        alert(`Year-end Corporate Tax return submitted for FY ${ctYear}!`);
-        await fetchCtArchive();
-      }
-    } catch (err: unknown) {
-      console.error(err);
-      const errorMsg = err instanceof Error ? err.message : String(err);
-      alert(errorMsg || 'Failed to submit Corporate Tax returns.');
-    } finally {
-      setFilingCt(false);
-    }
+          if (res?.success) {
+            showToast(`Year-end Corporate Tax return submitted for FY ${ctYear}!`, 'success');
+            await fetchCtArchive();
+          }
+        } catch (err: unknown) {
+          console.error(err);
+          const errorMsg = err instanceof Error ? err.message : String(err);
+          showToast(errorMsg || 'Failed to submit Corporate Tax returns.', 'error');
+        } finally {
+          setFilingCt(false);
+        }
+      },
+      'Submit Corporate Tax Filing'
+    );
   };
 
   const handleFileDownload = async (key: string) => {
@@ -349,12 +376,12 @@ export default function AccountingPage() {
       if (res?.success && res.downloadUrl) {
         window.open(res.downloadUrl, '_blank');
       } else {
-        alert('Failed to obtain download URL from server.');
+        showToast('Failed to obtain download URL from server.', 'error');
       }
     } catch (err: unknown) {
       console.error('[Download Error]', err);
       const errorMsg = err instanceof Error ? err.message : String(err);
-      alert(errorMsg || 'Error fetching secure link.');
+      showToast(errorMsg || 'Error fetching secure link.', 'error');
     }
   };
 
@@ -459,25 +486,7 @@ export default function AccountingPage() {
         </h1>
       </div>
 
-      {/* Empty State Card */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', color: 'rgba(42,22,40,0.5)', background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: 12, padding: '2rem' }}>
-        <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#F6F2EE', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#E8760A', marginBottom: '0.5rem' }}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="1" x2="12" y2="23"></line>
-            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-          </svg>
-        </div>
-        <h2 style={{ fontSize: '1rem', fontWeight: 600, color: '#2A1628', margin: 0, fontFamily: 'Inter, sans-serif', letterSpacing: '0.18em', textTransform: 'uppercase' }}>
-          Accounting & Bookkeeping Workspace
-        </h2>
-        <p style={{ margin: 0, fontSize: '0.875rem', textAlign: 'center', maxWidth: '380px', lineHeight: 1.8, fontFamily: 'Inter, sans-serif', fontWeight: 300 }}>
-          This workspace is undergoing compliance configuration. Access is currently restricted.
-        </p>
-      </div>
-
-      {false && (
-        <>
-          {/* Row 1: KYC Compliance Checklist & Month-Lock Sequential Gate */}
+      {/* Row 1: KYC Compliance Checklist & Month-Lock Sequential Gate */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
         {/* KYC Compliance Checklist */}
         <div style={{ background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: '12px', padding: '1.5rem', boxShadow: '0 4px 12px rgba(42,22,40,0.03)' }}>
@@ -1015,8 +1024,6 @@ export default function AccountingPage() {
           )}
         </div>
       </div>
-        </>
-      )}
     </div>
   );
 }

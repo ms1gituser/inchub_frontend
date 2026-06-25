@@ -14,6 +14,7 @@ export interface PermissionContextType {
   setAllPermissions: (granted: boolean) => void;
   setRole: (role: UserRole) => void;
   userId: string | null;
+  email: string | null;
   loading: boolean;
   currentBrand: 'group' | 'corporate' | 'financial';
   setCurrentBrand: (brand: 'group' | 'corporate' | 'financial') => void;
@@ -68,6 +69,7 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
   const [permissions, setPermissions] = useState<string[]>([]);
   const [role, setRoleState] = useState<UserRole>('client');
   const [userId, setUserId] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentBrand, setCurrentBrandState] = useState<'group' | 'corporate' | 'financial'>('group');
 
@@ -113,6 +115,7 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
         setRoleState(response.user.role);
         setPermissions(response.user.permissions);
         setUserId(response.user.id);
+        setEmail(response.user.email);
       }
     } catch (e) {
       console.error('Failed to load real database permissions:', e);
@@ -189,6 +192,7 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
         setAllPermissions,
         setRole,
         userId,
+        email,
         loading,
         currentBrand,
         setCurrentBrand,

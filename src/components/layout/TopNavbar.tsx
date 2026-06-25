@@ -77,11 +77,15 @@ interface TopNavbarProps {
 }
 
 export default function TopNavbar({ sidebarCollapsed, onToggleSidebar }: TopNavbarProps) {
-  const { permissions, allAvailablePermissions, togglePermission, currentBrand } = usePermission();
+  const { permissions, allAvailablePermissions, togglePermission, currentBrand, email, role } = usePermission();
   const [notifOpen, setNotifOpen]   = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [shieldOpen, setShieldOpen]   = useState(false);
   const [kycExpired, setKycExpired]   = useState(false);
+
+  const userEmail = email || 'admin@inchcrm.com';
+  const userDisplayName = role ? role.toUpperCase() : 'USER';
+  const userInitials = role ? role.substring(0, 2).toUpperCase() : 'US';
   
   const notifRef   = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -482,9 +486,9 @@ export default function TopNavbar({ sidebarCollapsed, onToggleSidebar }: TopNavb
               flexShrink: 0,
             }}
           >
-            MA
+            {userInitials}
           </div>
-          <span style={{ fontSize: '0.8125rem', fontWeight: 500, whiteSpace: 'nowrap' }}>Mahesh</span>
+          <span style={{ fontSize: '0.8125rem', fontWeight: 500, whiteSpace: 'nowrap' }}>{userDisplayName}</span>
           <ChevronDownIcon
             style={{
               width: 14, height: 14, color: isFinancial ? 'rgba(42,22,40,0.4)' : 'rgba(44,26,14,0.4)',
@@ -506,8 +510,8 @@ export default function TopNavbar({ sidebarCollapsed, onToggleSidebar }: TopNavb
             }}
           >
             <div style={{ padding: '0.875rem 1rem', borderBottom: '1px solid var(--border-subtle)' }}>
-              <p style={{ margin: 0, fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-primary)' }}>Mahesh</p>
-              <p style={{ margin: '0.125rem 0 0', fontSize: '0.75rem', color: isFinancial ? 'rgba(42,22,40,0.4)' : 'rgba(44,26,14,0.4)' }}>admin@inchcrm.com</p>
+              <p style={{ margin: 0, fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-primary)' }}>{userDisplayName}</p>
+              <p style={{ margin: '0.125rem 0 0', fontSize: '0.75rem', color: isFinancial ? 'rgba(42,22,40,0.4)' : 'rgba(44,26,14,0.4)' }}>{userEmail}</p>
             </div>
             {[
               { label: 'My Profile',  href: '/profile',  icon: UserIcon },

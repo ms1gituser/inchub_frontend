@@ -263,8 +263,8 @@ export default function Sidebar({ collapsed, hidden, onToggle, activeBrand }: Si
                 if (item.href === '/settings' && role !== 'admin' && role !== 'ceo') {
                   return false;
                 }
-                // Accounting is gated for sales/ops
-                if (item.href === '/accounting' && (role === 'sales' || role === 'ops')) {
+                // Accounting is gated to admin, ceo, accountant
+                if (item.href === '/accounting' && role !== 'admin' && role !== 'ceo' && role !== 'accountant') {
                   return false;
                 }
                 return true;

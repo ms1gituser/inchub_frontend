@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { get } from '@/lib/apiClient';
 import { usePermission } from '@/context/PermissionContext';
+import { useNotification } from '@/context/NotificationContext';
+import ClientPortal from '@/components/portal/ClientPortal';
 
 /* ── Types & Interfaces ─────────────────────────────────────────────────── */
 interface StatCard {
@@ -183,6 +185,12 @@ const ACTIVITIES_DATA: Record<'group' | 'corporate' | 'financial', { actor: stri
 
 export default function DashboardPage() {
   const { currentBrand, setCurrentBrand, role } = usePermission();
+  const { showToast, showConfirm, showAlert } = useNotification();
+
+  if (role === 'client') {
+    return <ClientPortal />;
+  }
+
   const viewMode = currentBrand;
   const setViewMode = setCurrentBrand;
   const [kycAlert, setKycAlert] = useState<boolean>(false);
@@ -224,521 +232,569 @@ export default function DashboardPage() {
   // Filter components by viewMode
   const filteredDeals = RECENT_DEALS.filter(d => viewMode === 'group' || d.type === viewMode);
   const filteredInvoices = INVOICES.filter(inv => viewMode === 'group' || inv.type === viewMode);
-  const filteredEmails = EMAILS.filter(em => {
-    if (viewMode === 'group') return true;
-    if (viewMode === 'corporate' && em.type === 'corporate') return true;
-    if (viewMode === 'financial' && em.type === 'financial') return true;
-    return false;
-  });
+  const filteredEmails = EMAILS.filter(em => viewMode === 'group' || em.type === viewMode);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', color: primaryBg, transition: 'all 300ms ease' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', color: primaryBg, transition: 'all 300ms ease' }}>
       
-      {/* ── Header Area with View Mode Selectors ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1.25rem' }}>
-        <div>
-          <p style={{ margin: 0, fontSize: '0.75rem', color: 'rgba(44,26,14,0.5)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.18em', fontFamily: 'Inter, sans-serif' }}>
-            Monday, 16 June 2026
-          </p>
-          <h1 style={{ 
-            margin: '0.25rem 0 0', 
-            fontSize: '2rem', 
-            fontWeight: 300, 
-            letterSpacing: '-0.02em', 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '0.75rem',
-            fontFamily: "'Cormorant', var(--font-serif), Georgia, serif",
-            fontStyle: 'normal'
-          }}>
-            Welcome, <span style={{ fontStyle: 'italic', color: accentColor }}>Mahesh</span>
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.375rem',
-                padding: '0.25rem 0.625rem',
-                borderRadius: '6px',
-                fontSize: '0.625rem',
-                fontWeight: 600,
-                textTransform: 'uppercase',
-                letterSpacing: '0.18em',
-                background: kycAlert ? '#fee2e2' : 'rgba(44, 26, 14, 0.08)',
-                border: `1px solid ${kycAlert ? '#fca5a5' : 'transparent'}`,
-                color: kycAlert ? '#ef4444' : '#2C1A0E',
-                fontFamily: 'Inter, sans-serif',
-              }}
-            >
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: kycAlert ? '#ef4444' : activeDotColor }} />
-              {kycAlert ? 'KYC Action Required' : 'KYC Compliant'}
-            </span>
-          </h1>
-        </div>
+      {/* ── Executive Brand Welcome Hero Banner ── */}
+      <div style={{
+        background: `linear-gradient(135deg, ${primaryBg} 0%, #110510 100%)`,
+        borderRadius: '16px',
+        padding: '2rem 2.5rem',
+        color: '#ffffff',
+        border: `1px solid ${cardBorderColor}`,
+        boxShadow: '0 12px 35px -10px rgba(42, 22, 40, 0.15)',
+        position: 'relative',
+        overflow: 'hidden',
+      }}>
+        {/* Subtle division accent glow backdrop */}
+        <div style={{
+          position: 'absolute',
+          top: '-50%',
+          right: '-10%',
+          width: '50%',
+          height: '200%',
+          background: `radial-gradient(circle, ${accentColor}12 0%, transparent 60%)`,
+          pointerEvents: 'none',
+        }} />
 
-        {/* Brand tabs selector (Only visible to CEO / Admin) */}
-        {(role === 'admin' || role === 'ceo') && (
-          <div style={{ 
-            display: 'flex', 
-            background: '#ffffff', 
-            border: `1px solid ${cardBorderColor}`, 
-            borderRadius: '8px', 
-            padding: '0.25rem',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-          }}>
-            {([
-              { mode: 'group', label: 'Group Overview', dot: '#B8892A' },
-              { mode: 'corporate', label: 'Corporate Services', dot: '#B8892A' },
-              { mode: 'financial', label: 'Financial Services', dot: '#E8760A' }
-            ] as const).map(tab => (
-              <button
-                key={tab.mode}
-                onClick={() => setViewMode(tab.mode)}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1.5rem', position: 'relative', zIndex: 1 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginBottom: '0.5rem' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: activeDotColor }} />
+              <p style={{ margin: 0, fontSize: '0.6875rem', color: 'rgba(255, 255, 255, 0.5)', fontWeight: 600, letterSpacing: '0.24em', textTransform: 'uppercase', fontFamily: 'Inter, sans-serif' }}>
+                {viewMode === 'financial' ? 'Division II — Financial Operations' : viewMode === 'corporate' ? 'Division I — Corporate Advisory' : 'IncHub Group Portfolio'}
+              </p>
+              <span
                 style={{
-                  padding: '0.5rem 0.875rem',
-                  borderRadius: '6px',
-                  border: 'none',
-                  background: viewMode === tab.mode ? (tab.mode === 'financial' ? '#2A1628' : '#2C1A0E') : 'transparent',
-                  color: viewMode === tab.mode ? '#ffffff' : 'rgba(44,26,14,0.6)',
-                  fontFamily: 'Inter, sans-serif',
-                  fontSize: '0.6875rem',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.18em',
-                  cursor: 'pointer',
-                  display: 'flex',
+                  display: 'inline-flex',
                   alignItems: 'center',
                   gap: '0.375rem',
-                  transition: 'all 200ms ease',
+                  padding: '0.2rem 0.5rem',
+                  borderRadius: '4px',
+                  fontSize: '0.625rem',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.12em',
+                  background: kycAlert ? '#fee2e2' : 'rgba(255, 255, 255, 0.08)',
+                  border: `1px solid ${kycAlert ? '#fca5a5' : 'rgba(255, 255, 255, 0.1)'}`,
+                  color: kycAlert ? '#ef4444' : '#ffffff',
+                  fontFamily: 'Inter, sans-serif',
+                  marginLeft: '0.5rem',
                 }}
               >
-                <span style={{ 
-                  width: 5, 
-                  height: 5, 
-                  borderRadius: '50%', 
-                  background: viewMode === tab.mode ? '#ffffff' : tab.dot, 
-                  display: 'inline-block' 
-                }} />
-                {tab.label}
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: kycAlert ? '#ef4444' : activeDotColor }} />
+                {kycAlert ? 'KYC Action Required' : 'KYC Compliant'}
+              </span>
+            </div>
+            <h1 style={{
+              margin: 0,
+              fontSize: '2.5rem',
+              fontWeight: 300,
+              letterSpacing: '-0.02em',
+              fontFamily: 'Cormorant, serif',
+            }}>
+              Welcome to the Hub, <span style={{ fontStyle: 'italic', color: accentColor }}>Mahesh</span>
+            </h1>
+            <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', fontWeight: 300, fontFamily: 'Inter, sans-serif' }}>
+              IncHub Workspace Suite • Connected to database node active
+            </p>
+          </div>
+
+          {/* Brand tabs switcher (CEO / Admin privileges) */}
+          {(role === 'admin' || role === 'ceo') && (
+            <div style={{ 
+              display: 'flex', 
+              background: 'rgba(255, 255, 255, 0.05)', 
+              border: '1px solid rgba(255, 255, 255, 0.1)', 
+              borderRadius: '10px', 
+              padding: '0.25rem',
+              backdropFilter: 'blur(10px)',
+            }}>
+              {([
+                { mode: 'group', label: 'Group Overview', dot: '#B8892A' },
+                { mode: 'corporate', label: 'Corporate Services', dot: '#B8892A' },
+                { mode: 'financial', label: 'Financial Services', dot: '#E8760A' }
+              ] as const).map(tab => (
+                <button
+                  key={tab.mode}
+                  onClick={() => setViewMode(tab.mode)}
+                  style={{
+                    padding: '0.45rem 0.875rem',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: viewMode === tab.mode ? '#ffffff' : 'transparent',
+                    color: viewMode === tab.mode ? primaryBg : 'rgba(255, 255, 255, 0.65)',
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: '0.6875rem',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.18em',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.375rem',
+                    transition: 'all 250ms cubic-bezier(0.4, 0, 0.2, 1)',
+                  }}
+                >
+                  <span style={{ 
+                    width: 5, 
+                    height: 5, 
+                    borderRadius: '50%', 
+                    background: viewMode === tab.mode ? primaryBg : tab.dot, 
+                    display: 'inline-block' 
+                  }} />
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Integrated sleek CRM console toolbar */}
+        <div style={{
+          marginTop: '1.75rem',
+          paddingTop: '1.25rem',
+          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '1rem',
+        }}>
+          <span style={{
+            fontFamily: 'Inter, sans-serif',
+            fontSize: '0.6875rem',
+            fontWeight: 500,
+            letterSpacing: '0.2em',
+            textTransform: 'uppercase',
+            color: 'rgba(255, 255, 255, 0.4)',
+          }}>
+            Quick Actions Command:
+          </span>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+            {[
+              { label: 'Create Lead', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> },
+              { label: 'Add Contact', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg> },
+              { label: 'Log Call/Task', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg> },
+              { label: 'New Invoice', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg> },
+              { label: 'Compose Email', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg> }
+            ].map((act, i) => (
+              <button
+                key={i}
+                onClick={() => showToast(`${act.label} widget window is coming soon.`, 'info')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.375rem',
+                  padding: '0.45rem 0.875rem',
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  borderRadius: '6px',
+                  color: '#ffffff',
+                  fontSize: '0.6875rem',
+                  fontWeight: 600,
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#ffffff';
+                  e.currentTarget.style.color = primaryBg;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                  e.currentTarget.style.color = '#ffffff';
+                }}
+              >
+                {act.icon}
+                {act.label}
               </button>
             ))}
           </div>
-        )}
-      </div>
-
-      {/* ── Quick Actions Ribbon ── */}
-      <div style={{
-        background: '#ffffff',
-        border: `1px solid ${cardBorderColor}`,
-        borderRadius: 12,
-        padding: '0.875rem 1.25rem',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '1rem',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
-      }}>
-        <span style={{
-          fontFamily: 'Inter, sans-serif',
-          fontSize: '0.75rem',
-          fontWeight: 600,
-          letterSpacing: '0.18em',
-          textTransform: 'uppercase',
-          color: 'rgba(44, 26, 14, 0.45)',
-        }}>
-          Quick CRM Actions:
-        </span>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
-          {[
-            { label: 'Create Lead', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> },
-            { label: 'Add Contact', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg> },
-            { label: 'Log Call/Task', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg> },
-            { label: 'New Invoice', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg> },
-            { label: 'Compose Email', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg> }
-          ].map((act, i) => (
-            <button
-              key={i}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.375rem',
-                padding: '0.45rem 0.875rem',
-                background: 'rgba(44, 26, 14, 0.04)',
-                border: 'none',
-                borderRadius: '6px',
-                color: primaryBg,
-                fontSize: '0.6875rem',
-                fontWeight: 600,
-                letterSpacing: '0.18em',
-                textTransform: 'uppercase',
-                cursor: 'pointer',
-                transition: 'all 150ms ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = viewMode === 'financial' ? '#F6F2EE' : '#F6F1E8';
-                e.currentTarget.style.color = accentColor;
-                e.currentTarget.style.boxShadow = `inset 0 0 0 1px ${accentColor}`;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(44, 26, 14, 0.04)';
-                e.currentTarget.style.color = primaryBg;
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-              onClick={() => alert(`${act.label} widget window: Coming soon.`)}
-            >
-              {act.icon}
-              {act.label}
-            </button>
-          ))}
         </div>
       </div>
 
-      {/* ── KPI Cards Grid ── */}
+      {/* ── KPI Metrics Overview Grid ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
         {STATS_DATA[viewMode].map((s) => (
           <div
             key={s.id}
             id={s.id}
+            className="kpi-card"
             style={{
               background: '#ffffff',
               border: `1px solid ${cardBorderColor}`,
-              borderRadius: 12,
-              padding: '1.25rem 1.5rem',
+              borderRadius: '12px',
+              padding: '1.5rem',
               display: 'flex',
               flexDirection: 'column',
-              gap: '0.875rem',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
-              transition: 'all 300ms ease',
+              gap: '1rem',
+              boxShadow: '0 4px 15px -3px rgba(42, 22, 40, 0.02)',
+              transition: 'all 300ms cubic-bezier(0.4, 0, 0.2, 1)',
+              cursor: 'default',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-4px)';
+              e.currentTarget.style.borderColor = accentColor;
+              e.currentTarget.style.boxShadow = `0 12px 25px -8px ${accentColor}15`;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.borderColor = cardBorderColor;
+              e.currentTarget.style.boxShadow = '0 4px 15px -3px rgba(42, 22, 40, 0.02)';
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div
                 style={{
-                  width: 40, height: 40, borderRadius: 10,
-                  background: viewMode === 'financial' ? 'rgba(232,118,10,0.08)' : 'rgba(184,137,42,0.08)',
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '8px',
+                  background: viewMode === 'financial' ? 'rgba(232,118,10,0.06)' : 'rgba(184,137,42,0.06)',
                   color: accentColor,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  transition: 'all 300ms ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                 }}
               >
                 {s.icon}
               </div>
               <span
                 style={{
-                  fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.5rem',
-                  borderRadius: 6,
-                  background: s.up ? (viewMode === 'financial' ? 'rgba(232,118,10,0.12)' : 'rgba(184,137,42,0.12)') : 'rgba(196,105,90,0.1)',
-                  color: s.up ? accentColor : '#C4695A',
-                  transition: 'all 300ms ease',
+                  fontSize: '0.6875rem',
+                  fontWeight: 700,
+                  padding: '0.2rem 0.5rem',
+                  borderRadius: '4px',
+                  background: s.up ? (viewMode === 'financial' ? 'rgba(232,118,10,0.1)' : 'rgba(184,137,42,0.1)') : 'rgba(239, 68, 68, 0.08)',
+                  color: s.up ? accentColor : '#ef4444',
                 }}
               >
                 {s.change}
               </span>
             </div>
             <div>
-              <p style={{ margin: 0, fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.03em' }}>{s.value}</p>
-              <p style={{ margin: '0.25rem 0 0', fontSize: '0.6875rem', color: 'rgba(44,26,14,0.5)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.18em', fontFamily: 'Inter, sans-serif' }}>{s.label}</p>
+              <p style={{ margin: 0, fontSize: '1.875rem', fontWeight: 300, letterSpacing: '-0.02em', color: primaryBg, fontFamily: 'Cormorant, serif' }}>
+                {s.value}
+              </p>
+              <p style={{ margin: '0.25rem 0 0', fontSize: '0.625rem', color: 'rgba(42, 22, 40, 0.45)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.2em', fontFamily: 'Inter, sans-serif' }}>
+                {s.label}
+              </p>
             </div>
           </div>
         ))}
       </div>
 
-      {/* ── Middle Row: Sales Pipeline + Active Deals ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: '1.25rem', alignItems: 'stretch' }}>
+      {/* ── Two-Column High-End Operational Layout ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: '1.5rem', alignItems: 'stretch' }}>
         
-        {/* Pipeline Widget */}
-        <div style={{ background: '#ffffff', border: `1px solid ${cardBorderColor}`, borderRadius: 12, padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', transition: 'all 300ms ease' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-            <h2 style={{ margin: 0, fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: 'Inter, sans-serif' }}>
-              Sales Pipeline
-            </h2>
-            <span style={{ fontSize: '0.625rem', color: accentColor, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: 'Inter, sans-serif' }}>
-              {viewMode} stages
-            </span>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem', justifyContent: 'space-between', flex: 1 }}>
-            {PIPELINE_DATA[viewMode].map((p) => (
-              <div key={p.stage}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.375rem' }}>
-                  <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'rgba(44,26,14,0.8)' }}>{p.stage}</span>
-                  <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'rgba(44,26,14,0.4)' }}>{p.count} deals</span>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700 }}>{p.value}</span>
+        {/* LEFT COLUMN: Pipeline, Active Deals & Billing */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          
+          {/* Active Sales Pipeline Card */}
+          <div style={{
+            background: '#ffffff',
+            border: `1px solid ${cardBorderColor}`,
+            borderRadius: '12px',
+            padding: '1.5rem',
+            boxShadow: '0 4px 15px -3px rgba(42, 22, 40, 0.02)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ margin: 0, fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', fontFamily: 'Inter, sans-serif', color: primaryBg }}>
+                Sales Pipeline
+              </h2>
+              <span style={{ fontSize: '0.625rem', color: accentColor, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: 'Inter, sans-serif' }}>
+                {viewMode.toUpperCase()} STAGES
+              </span>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {PIPELINE_DATA[viewMode].map((p) => (
+                <div key={p.stage}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.375rem', fontSize: '0.75rem' }}>
+                    <span style={{ fontWeight: 600, color: 'rgba(42, 22, 40, 0.8)' }}>{p.stage}</span>
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                      <span style={{ color: 'rgba(42, 22, 40, 0.4)' }}>{p.count} deals</span>
+                      <span style={{ fontWeight: 700, color: primaryBg }}>{p.value}</span>
+                    </div>
+                  </div>
+                  <div style={{ height: '5px', background: 'rgba(42, 22, 40, 0.04)', borderRadius: '99px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${p.pct}%`, background: accentColor, borderRadius: '99px', transition: 'width 800ms ease' }} />
                   </div>
                 </div>
-                <div style={{ height: 6, background: viewMode === 'financial' ? '#EDE6DE' : '#EDE7D8', borderRadius: 9999, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${p.pct}%`, background: accentColor, borderRadius: 9999, transition: 'width 600ms ease, background-color 300ms ease' }} />
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Active Deals Table */}
-        <div style={{ background: '#ffffff', border: `1px solid ${cardBorderColor}`, borderRadius: 12, padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.02)', transition: 'all 300ms ease' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-            <h2 style={{ margin: 0, fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: 'Inter, sans-serif' }}>
-              Active Deals
-            </h2>
-            <span style={{ fontSize: '0.625rem', color: accentColor, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
-              Show all ({filteredDeals.length})
-            </span>
-          </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8125rem' }}>
-              <thead>
-                <tr style={{ borderBottom: `1px solid ${cardBorderColor}`, color: 'rgba(44,26,14,0.4)', fontWeight: 600 }}>
-                  <th style={{ padding: '0.75rem 0.5rem', fontSize: '0.6875rem', letterSpacing: '0.18em', fontFamily: 'Inter, sans-serif' }}>DEAL NAME</th>
-                  <th style={{ padding: '0.75rem 0.5rem', fontSize: '0.6875rem', letterSpacing: '0.18em', fontFamily: 'Inter, sans-serif' }}>VALUE</th>
-                  <th style={{ padding: '0.75rem 0.5rem', fontSize: '0.6875rem', letterSpacing: '0.18em', fontFamily: 'Inter, sans-serif' }}>DIVISION</th>
-                  <th style={{ padding: '0.75rem 0.5rem', fontSize: '0.6875rem', letterSpacing: '0.18em', fontFamily: 'Inter, sans-serif' }}>STAGE</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredDeals.map((d, i) => (
-                  <tr key={i} style={{ borderBottom: i < filteredDeals.length - 1 ? '1px solid rgba(44,26,14,0.06)' : 'none' }}>
-                    <td style={{ padding: '0.875rem 0.5rem' }}>
-                      <span style={{ fontWeight: 600, display: 'block' }}>{d.name}</span>
-                      <span style={{ fontSize: '0.75rem', color: 'rgba(44,26,14,0.4)' }}>Owner: {d.owner}</span>
-                    </td>
-                    <td style={{ padding: '0.875rem 0.5rem', fontWeight: 700 }}>{d.value}</td>
-                    <td style={{ padding: '0.875rem 0.5rem' }}>
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.375rem',
-                        fontSize: '0.6875rem',
-                        fontWeight: 600,
-                        padding: '0.2rem 0.5rem',
-                        borderRadius: '4px',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.04em',
-                        background: d.type === 'corporate' ? 'rgba(44, 26, 14, 0.08)' : 'rgba(42, 22, 40, 0.08)',
-                        color: d.type === 'corporate' ? '#2C1A0E' : '#2A1628',
-                      }}>
-                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: d.type === 'corporate' ? '#B8892A' : '#E8760A' }} />
-                        {d.type === 'corporate' ? 'Corporate' : 'Financial'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '0.875rem 0.5rem' }}>
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.375rem',
-                        fontSize: '0.6875rem',
-                        fontWeight: 600,
-                        padding: '0.2rem 0.5rem',
-                        borderRadius: '4px',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.04em',
-                        background: d.type === 'corporate' ? 'rgba(44, 26, 14, 0.08)' : 'rgba(42, 22, 40, 0.08)',
-                        color: d.type === 'corporate' ? '#2C1A0E' : '#2A1628',
-                      }}>
-                        <span style={{ 
-                          width: 5, 
-                          height: 5, 
-                          borderRadius: '50%', 
-                          background: d.type === 'corporate' 
-                            ? (d.stage === 'Lead' ? '#2C1A0E' : d.stage === 'Proposal Sent' ? '#4A2E1A' : d.stage === 'In Progress' ? '#6B3F22' : '#B8892A')
-                            : (d.stage === 'Lead' ? '#2A1628' : d.stage === 'Proposal Sent' ? '#3D2040' : d.stage === 'In Progress' ? '#5A2D5A' : '#E8760A')
-                        }} />
-                        {d.stage}
-                      </span>
-                    </td>
+          {/* Active Deals Table Card */}
+          <div style={{
+            background: '#ffffff',
+            border: `1px solid ${cardBorderColor}`,
+            borderRadius: '12px',
+            padding: '1.5rem',
+            boxShadow: '0 4px 15px -3px rgba(42, 22, 40, 0.02)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h2 style={{ margin: 0, fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', fontFamily: 'Inter, sans-serif', color: primaryBg }}>
+                Active Engagement Pipeline
+              </h2>
+              <span style={{ fontSize: '0.625rem', color: accentColor, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                Show all ({filteredDeals.length})
+              </span>
+            </div>
+            
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8125rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: `1px solid ${cardBorderColor}`, color: 'rgba(42, 22, 40, 0.4)', fontWeight: 600 }}>
+                    <th style={{ padding: '0.75rem 0.5rem', fontSize: '0.625rem', letterSpacing: '0.18em', fontFamily: 'Inter, sans-serif' }}>DEAL DETAILS</th>
+                    <th style={{ padding: '0.75rem 0.5rem', fontSize: '0.625rem', letterSpacing: '0.18em', fontFamily: 'Inter, sans-serif' }}>VALUE</th>
+                    <th style={{ padding: '0.75rem 0.5rem', fontSize: '0.625rem', letterSpacing: '0.18em', fontFamily: 'Inter, sans-serif' }}>STAGE</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filteredDeals.map((d, i) => (
+                    <tr key={i} style={{ borderBottom: i < filteredDeals.length - 1 ? '1px solid rgba(42, 22, 40, 0.05)' : 'none' }}>
+                      <td style={{ padding: '0.75rem 0.5rem' }}>
+                        <span style={{ fontWeight: 600, display: 'block', color: primaryBg }}>{d.name}</span>
+                        <span style={{ fontSize: '0.7rem', color: 'rgba(42, 22, 40, 0.4)' }}>Owner: {d.owner} • {d.company}</span>
+                      </td>
+                      <td style={{ padding: '0.75rem 0.5rem', fontWeight: 700, color: primaryBg }}>{d.value}</td>
+                      <td style={{ padding: '0.75rem 0.5rem' }}>
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.375rem',
+                          fontSize: '0.625rem',
+                          fontWeight: 700,
+                          padding: '0.15rem 0.45rem',
+                          borderRadius: '4px',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.04em',
+                          background: d.type === 'corporate' ? 'rgba(44, 26, 14, 0.08)' : 'rgba(42, 22, 40, 0.08)',
+                          color: d.type === 'corporate' ? '#2C1A0E' : '#2A1628',
+                        }}>
+                          <span style={{ 
+                            width: 5, 
+                            height: 5, 
+                            borderRadius: '50%', 
+                            background: d.type === 'corporate' 
+                              ? (d.stage === 'Lead' ? '#2C1A0E' : d.stage === 'Proposal Sent' ? '#4A2E1A' : d.stage === 'In Progress' ? '#6B3F22' : '#B8892A')
+                              : (d.stage === 'Lead' ? '#2A1628' : d.stage === 'Proposal Sent' ? '#3D2040' : d.stage === 'In Progress' ? '#5A2D5A' : '#E8760A')
+                          }} />
+                          {d.stage}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* ── Third Row: Lead Channels Funnel + Recent Invoices ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: '1.25rem', alignItems: 'stretch' }}>
-        
-        {/* Lead Channels Widget */}
-        <div style={{ background: '#ffffff', border: `1px solid ${cardBorderColor}`, borderRadius: 12, padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', transition: 'all 300ms ease' }}>
-          <h2 style={{ margin: '0 0 1.25rem', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: 'Inter, sans-serif' }}>
-            Lead Acquisition
-          </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1, justifyContent: 'center' }}>
-            {LEAD_CHANNELS[viewMode].map((ch, idx) => (
-              <div key={idx}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '0.25rem' }}>
-                  <span style={{ fontWeight: 600, color: 'rgba(44,26,14,0.7)' }}>{ch.name}</span>
-                  <span style={{ fontWeight: 700 }}>{ch.count} leads</span>
-                </div>
-                <div style={{ height: 12, background: 'rgba(44,26,14,0.04)', borderRadius: 4, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${ch.pct}%`, background: ch.color, borderRadius: 4, transition: 'width 600ms ease' }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Recent Invoices Widget (replicates the guidelines invoice design elements) */}
-        <div style={{ background: '#ffffff', border: `1px solid ${cardBorderColor}`, borderRadius: 12, padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.02)', transition: 'all 300ms ease' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-            <h2 style={{ margin: 0, fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: 'Inter, sans-serif' }}>
-              Billing &amp; Invoices
-            </h2>
-            <span style={{ fontSize: '0.625rem', color: accentColor, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: 'Inter, sans-serif' }}>
-              Recent Billings
-            </span>
-          </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8125rem' }}>
-              <thead>
-                <tr style={{ borderBottom: `1px solid ${cardBorderColor}`, color: 'rgba(44,26,14,0.4)', fontWeight: 600 }}>
-                  <th style={{ padding: '0.75rem 0.5rem', fontSize: '0.6875rem', letterSpacing: '0.18em', fontFamily: 'Inter, sans-serif' }}>INVOICE ID</th>
-                  <th style={{ padding: '0.75rem 0.5rem', fontSize: '0.6875rem', letterSpacing: '0.18em', fontFamily: 'Inter, sans-serif' }}>CLIENT</th>
-                  <th style={{ padding: '0.75rem 0.5rem', fontSize: '0.6875rem', letterSpacing: '0.18em', fontFamily: 'Inter, sans-serif' }}>BILLABLE SERVICE</th>
-                  <th style={{ padding: '0.75rem 0.5rem', fontSize: '0.6875rem', letterSpacing: '0.18em', fontFamily: 'Inter, sans-serif' }}>VALUE</th>
-                  <th style={{ padding: '0.75rem 0.5rem', fontSize: '0.6875rem', letterSpacing: '0.18em', fontFamily: 'Inter, sans-serif' }}>STATUS</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredInvoices.map((inv) => (
-                  <tr key={inv.id} style={{ borderBottom: '1px solid rgba(44,26,14,0.06)' }}>
-                    <td style={{ padding: '0.875rem 0.5rem', fontWeight: 700 }}>{inv.id}</td>
-                    <td style={{ padding: '0.875rem 0.5rem', fontWeight: 600 }}>{inv.client}</td>
-                    <td style={{ padding: '0.875rem 0.5rem', color: 'rgba(44,26,14,0.6)' }}>{inv.service}</td>
-                    <td style={{ padding: '0.875rem 0.5rem', fontWeight: 700 }}>{inv.value}</td>
-                    <td style={{ padding: '0.875rem 0.5rem' }}>
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.3rem',
-                        fontSize: '0.625rem',
-                        fontWeight: 700,
-                        padding: '0.2rem 0.5rem',
-                        borderRadius: '4px',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
-                        background: inv.status === 'Paid' ? 'rgba(109,174,120,0.12)' : inv.status === 'Pending' ? 'rgba(232,118,10,0.12)' : 'rgba(44,26,14,0.08)',
-                        color: inv.status === 'Paid' ? '#6DAE78' : inv.status === 'Pending' ? '#E8760A' : 'rgba(44,26,14,0.6)',
-                      }}>
-                        <span style={{ 
-                          width: 5, 
-                          height: 5, 
-                          borderRadius: '50%', 
-                          background: inv.status === 'Paid' ? '#6DAE78' : inv.status === 'Pending' ? '#E8760A' : 'rgba(44,26,14,0.6)' 
-                        }} />
-                        {inv.status}
-                      </span>
-                    </td>
+          {/* Billing & Invoice Widget */}
+          <div style={{
+            background: '#ffffff',
+            border: `1px solid ${cardBorderColor}`,
+            borderRadius: '12px',
+            padding: '1.5rem',
+            boxShadow: '0 4px 15px -3px rgba(42, 22, 40, 0.02)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h2 style={{ margin: 0, fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', fontFamily: 'Inter, sans-serif', color: primaryBg }}>
+                Billing &amp; Invoices
+              </h2>
+              <span style={{ fontSize: '0.625rem', color: accentColor, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: 'Inter, sans-serif' }}>
+                Recent Billings
+              </span>
+            </div>
+            
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8125rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: `1px solid ${cardBorderColor}`, color: 'rgba(42, 22, 40, 0.4)', fontWeight: 600 }}>
+                    <th style={{ padding: '0.75rem 0.5rem', fontSize: '0.625rem', letterSpacing: '0.18em', fontFamily: 'Inter, sans-serif' }}>INVOICE ID</th>
+                    <th style={{ padding: '0.75rem 0.5rem', fontSize: '0.625rem', letterSpacing: '0.18em', fontFamily: 'Inter, sans-serif' }}>CLIENT</th>
+                    <th style={{ padding: '0.75rem 0.5rem', fontSize: '0.625rem', letterSpacing: '0.18em', fontFamily: 'Inter, sans-serif' }}>VALUE</th>
+                    <th style={{ padding: '0.75rem 0.5rem', fontSize: '0.625rem', letterSpacing: '0.18em', fontFamily: 'Inter, sans-serif' }}>STATUS</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filteredInvoices.map((inv) => (
+                    <tr key={inv.id} style={{ borderBottom: '1px solid rgba(42, 22, 40, 0.05)' }}>
+                      <td style={{ padding: '0.75rem 0.5rem', fontWeight: 700, color: primaryBg }}>{inv.id}</td>
+                      <td style={{ padding: '0.75rem 0.5rem' }}>
+                        <span style={{ fontWeight: 600, display: 'block', color: primaryBg }}>{inv.client}</span>
+                        <span style={{ fontSize: '0.7rem', color: 'rgba(42, 22, 40, 0.4)' }}>{inv.service}</span>
+                      </td>
+                      <td style={{ padding: '0.75rem 0.5rem', fontWeight: 700, color: primaryBg }}>{inv.value}</td>
+                      <td style={{ padding: '0.75rem 0.5rem' }}>
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.3rem',
+                          fontSize: '0.625rem',
+                          fontWeight: 700,
+                          padding: '0.15rem 0.45rem',
+                          borderRadius: '4px',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em',
+                          background: inv.status === 'Paid' ? 'rgba(16, 185, 129, 0.08)' : inv.status === 'Pending' ? 'rgba(232, 118, 10, 0.08)' : 'rgba(42, 22, 40, 0.04)',
+                          color: inv.status === 'Paid' ? '#10b981' : inv.status === 'Pending' ? '#E8760A' : 'rgba(42, 22, 40, 0.5)',
+                        }}>
+                          <span style={{ 
+                            width: 5, 
+                            height: 5, 
+                            borderRadius: '50%', 
+                            background: inv.status === 'Paid' ? '#10b981' : inv.status === 'Pending' ? '#E8760A' : 'rgba(42, 22, 40, 0.5)' 
+                          }} />
+                          {inv.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* ── Fourth Row: Activities, Emails Log, Meetings ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
+        {/* RIGHT COLUMN: Communications & Timeline Activity */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          
+          {/* Unified Communications Hub Card */}
+          <div style={{
+            background: '#ffffff',
+            border: `1px solid ${cardBorderColor}`,
+            borderRadius: '12px',
+            padding: '1.5rem',
+            boxShadow: '0 4px 15px -3px rgba(42, 22, 40, 0.02)',
+            display: 'flex',
+            flexDirection: 'column',
+          }}>
+            <h2 style={{ margin: '0 0 1.25rem 0', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', fontFamily: 'Inter, sans-serif', color: primaryBg }}>
+              Unified Comms Hub
+            </h2>
 
-        {/* Activity Feed */}
-        <div style={{ background: '#ffffff', border: `1px solid ${cardBorderColor}`, borderRadius: 12, padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.02)', transition: 'all 300ms ease' }}>
-          <h2 style={{ margin: '0 0 1.25rem 0', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: 'Inter, sans-serif' }}>
-            Recent Activity
-          </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
-            {ACTIVITIES_DATA[viewMode].map((a, i) => (
-              <div key={i} style={{ display: 'flex', gap: '0.625rem', alignItems: 'flex-start', fontSize: '0.8125rem' }}>
-                <div style={{
-                  width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
-                  background: `${a.dot}12`, color: a.dot,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '0.5625rem', fontWeight: 800
+            {/* Sub-Header: Email Communications */}
+            <div style={{ borderBottom: `1px solid ${cardBorderColor}`, paddingBottom: '0.5rem', marginBottom: '0.75rem' }}>
+              <span style={{ fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.12em', color: accentColor, textTransform: 'uppercase' }}>
+                Recent E-Mail Communication
+              </span>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
+              {filteredEmails.map((em) => (
+                <div key={em.id} style={{
+                  display: 'flex',
+                  gap: '0.75rem',
+                  alignItems: 'flex-start',
+                  fontSize: '0.8125rem',
+                  padding: '0.5rem',
+                  borderRadius: '6px',
+                  background: em.read ? 'transparent' : 'rgba(42, 22, 40, 0.02)',
+                  borderLeft: em.read ? '2px solid transparent' : `2px solid ${accentColor}`,
+                  transition: 'all 200ms ease'
                 }}>
-                  {a.initials}
+                  <div style={{
+                    width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
+                    background: em.type === 'financial' ? 'rgba(232,118,10,0.08)' : 'rgba(184,137,42,0.08)',
+                    color: em.type === 'financial' ? '#E8760A' : '#B8892A',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '0.6875rem', fontWeight: 700
+                  }}>
+                    {em.initials}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0, lineHeight: 1.35 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                      <span style={{ fontWeight: em.read ? 500 : 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: primaryBg }}>
+                        {em.sender}
+                      </span>
+                      <span style={{ fontSize: '0.625rem', color: 'rgba(42, 22, 40, 0.4)', flexShrink: 0 }}>
+                        {em.time}
+                      </span>
+                    </div>
+                    <p style={{ margin: '0.1rem 0 0', fontWeight: em.read ? 400 : 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: primaryBg, fontSize: '0.75rem' }}>
+                      {em.subject}
+                    </p>
+                  </div>
                 </div>
-                <div style={{ flex: 1, minWidth: 0, lineHeight: 1.4 }}>
-                  <p style={{ margin: 0, color: 'rgba(44,26,14,0.8)' }}>
-                    <strong style={{ color: primaryBg, fontWeight: 600 }}>{a.actor}</strong> {a.action} <span style={{ color: a.dot, fontWeight: 600 }}>{a.target}</span>
-                  </p>
-                  <span style={{ fontSize: '0.6875rem', color: 'rgba(44,26,14,0.4)' }}>{a.time}</span>
+              ))}
+              {filteredEmails.length === 0 && (
+                <p style={{ fontSize: '0.75rem', color: 'rgba(42, 22, 40, 0.4)', textAlign: 'center', padding: '1rem 0' }}>
+                  No active emails logged.
+                </p>
+              )}
+            </div>
+
+            {/* Sub-Header: Today's Meetings */}
+            <div style={{ borderBottom: `1px solid ${cardBorderColor}`, paddingBottom: '0.5rem', marginBottom: '0.75rem' }}>
+              <span style={{ fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.12em', color: accentColor, textTransform: 'uppercase' }}>
+                Today's Briefing Calendar
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+              {MEETINGS_DATA[viewMode].map((m, idx) => (
+                <div key={idx} style={{ 
+                  padding: '0.625rem 0.875rem', 
+                  background: m.type === 'financial' ? '#F6F2EE' : m.type === 'corporate' ? '#F6F1E8' : 'rgba(42, 22, 40, 0.02)', 
+                  border: `1px solid ${m.type === 'financial' ? '#DDD0C4' : m.type === 'corporate' ? '#DDD4BE' : 'rgba(42, 22, 40, 0.08)'}`, 
+                  borderRadius: '6px',
+                  transition: 'all 300ms ease'
+                }}>
+                  <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 600, color: primaryBg }}>{m.title}</p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem', fontSize: '0.6875rem', color: 'rgba(42, 22, 40, 0.5)' }}>
+                    <span>{m.client}</span>
+                    <span style={{ fontWeight: 600, color: accentColor }}>{m.time}</span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Email Communication Log */}
-        <div style={{ background: '#ffffff', border: `1px solid ${cardBorderColor}`, borderRadius: 12, padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.02)', transition: 'all 300ms ease' }}>
-          <h2 style={{ margin: '0 0 1.25rem 0', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: 'Inter, sans-serif' }}>
-            Email Logs
-          </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {filteredEmails.map((em) => (
-              <div key={em.id} style={{
-                display: 'flex',
-                gap: '0.625rem',
-                alignItems: 'flex-start',
-                fontSize: '0.8125rem',
-                padding: '0.5rem',
-                borderRadius: '6px',
-                background: em.read ? 'transparent' : 'rgba(44, 26, 14, 0.03)',
-                borderLeft: em.read ? '2px solid transparent' : `2px solid ${accentColor}`,
-                transition: 'all 200ms ease'
-              }}>
-                <div style={{
-                  width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
-                  background: em.type === 'financial' ? 'rgba(232,118,10,0.1)' : 'rgba(184,137,42,0.1)',
-                  color: em.type === 'financial' ? '#E8760A' : '#B8892A',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '0.625rem', fontWeight: 700
-                }}>
-                  {em.initials}
-                </div>
-                <div style={{ flex: 1, minWidth: 0, lineHeight: 1.3 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                    <span style={{ fontWeight: em.read ? 600 : 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {em.sender}
-                    </span>
-                    <span style={{ fontSize: '0.625rem', color: 'rgba(44,26,14,0.4)', flexShrink: 0 }}>
-                      {em.time}
+          {/* Premium Timeline Activity Logs */}
+          <div style={{
+            background: '#ffffff',
+            border: `1px solid ${cardBorderColor}`,
+            borderRadius: '12px',
+            padding: '1.5rem',
+            boxShadow: '0 4px 15px -3px rgba(42, 22, 40, 0.02)',
+          }}>
+            <h2 style={{ margin: '0 0 1.5rem 0', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', fontFamily: 'Inter, sans-serif', color: primaryBg }}>
+              Operations Feed
+            </h2>
+            
+            {/* Timeline structure */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', position: 'relative', paddingLeft: '1rem', borderLeft: `1px solid ${cardBorderColor}` }}>
+              {ACTIVITIES_DATA[viewMode].map((a, i) => (
+                <div key={i} style={{ position: 'relative', fontSize: '0.8125rem' }}>
+                  {/* Timeline dot marker */}
+                  <span style={{
+                    position: 'absolute',
+                    left: '-21px',
+                    top: '5px',
+                    width: '9px',
+                    height: '9px',
+                    borderRadius: '50%',
+                    background: a.dot,
+                    border: '2px solid #ffffff',
+                    boxShadow: '0 0 0 2px rgba(42, 22, 40, 0.04)',
+                  }} />
+                  
+                  <div style={{ lineHeight: 1.4 }}>
+                    <p style={{ margin: 0, color: 'rgba(42, 22, 40, 0.85)' }}>
+                      <strong style={{ color: primaryBg, fontWeight: 600 }}>{a.actor}</strong> {a.action} <span style={{ color: a.dot, fontWeight: 600 }}>{a.target}</span>
+                    </p>
+                    <span style={{ fontSize: '0.65rem', color: 'rgba(42, 22, 40, 0.4)', fontWeight: 500, display: 'block', marginTop: '0.15rem' }}>
+                      {a.time}
                     </span>
                   </div>
-                  <p style={{ margin: '0.1rem 0 0', fontWeight: em.read ? 500 : 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {em.subject}
-                  </p>
-                  <p style={{ margin: '0.1rem 0 0', fontSize: '0.75rem', color: 'rgba(44,26,14,0.5)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {em.preview}
-                  </p>
                 </div>
-              </div>
-            ))}
-            {filteredEmails.length === 0 && (
-              <p style={{ fontSize: '0.75rem', color: 'rgba(44,26,14,0.4)', textAlign: 'center', padding: '1rem 0' }}>
-                No active emails logged for this view.
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Meetings Calendar */}
-        <div style={{ background: '#ffffff', border: `1px solid ${cardBorderColor}`, borderRadius: 12, padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.02)', transition: 'all 300ms ease' }}>
-          <h2 style={{ margin: '0 0 1.25rem 0', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: 'Inter, sans-serif' }}>
-            Today&apos;s Meetings
-          </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-            {MEETINGS_DATA[viewMode].map((m, idx) => (
-              <div key={idx} style={{ 
-                padding: '0.625rem 0.875rem', 
-                background: m.type === 'financial' ? '#F6F2EE' : m.type === 'corporate' ? '#F6F1E8' : 'rgba(44,26,14,0.03)', 
-                border: `1px solid ${m.type === 'financial' ? '#DDD0C4' : m.type === 'corporate' ? '#DDD4BE' : 'rgba(44,26,14,0.1)'}`, 
-                borderRadius: 8,
-                transition: 'all 300ms ease'
-              }}>
-                <p style={{ margin: 0, fontSize: '0.8125rem', fontWeight: 600 }}>{m.title}</p>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem', fontSize: '0.6875rem', color: 'rgba(44,26,14,0.5)' }}>
-                  <span>{m.client}</span>
-                  <span style={{ fontWeight: 600 }}>{m.time}</span>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
 
@@ -747,3 +803,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+
