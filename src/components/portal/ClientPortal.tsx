@@ -127,7 +127,7 @@ export default function ClientPortal() {
   };
 
   useEffect(() => {
-    fetchData();
+    void (async () => { await fetchData(); })();
   }, []);
 
   // Simulator helper: advance or go back in stages
