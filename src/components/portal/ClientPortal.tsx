@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { get, post, ApiError } from '@/lib/apiClient';
+import { get, post } from '@/lib/apiClient';
 import { useNotification } from '@/context/NotificationContext';
 
 interface KycItem {
@@ -47,7 +47,7 @@ interface CtArchiveResponse {
 }
 
 export default function ClientPortal() {
-  const { showToast, showConfirm, showAlert } = useNotification();
+  const { showToast, showConfirm } = useNotification();
   // Theme & brand toggle
   const [activeBrand, setActiveBrand] = useState<'corporate' | 'financial'>('corporate');
 
@@ -59,7 +59,6 @@ export default function ClientPortal() {
   const [profile, setProfile] = useState<TenantProfile | null>(null);
   const [ctFilings, setCtFilings] = useState<CtFiling[]>([]);
   const [lockedMonths, setLockedMonths] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
 
   // Signature state
   const [signatureName, setSignatureName] = useState('');
@@ -94,7 +93,7 @@ export default function ClientPortal() {
   // Fetch real data
   const fetchData = async () => {
     try {
-      setLoading(true);
+
       // KYC Checklist
       try {
         const kycRes = await get<{ success: boolean; data: KycItem[] }>('/bookkeeping/kyc');
@@ -122,8 +121,8 @@ export default function ClientPortal() {
         console.warn('Tax archives offline:', e);
       }
 
-    } finally {
-      setLoading(false);
+    } catch (e) {
+      console.warn('Top level fetch error:', e);
     }
   };
 
@@ -256,7 +255,7 @@ export default function ClientPortal() {
           await fetchData();
           window.dispatchEvent(new Event('kyc-changed'));
           showToast('Passport status forced to EXPIRED.', 'success');
-        } catch (e) {
+        } catch {
           // Mock fallback: expire it in local checklist
           const updated = kycChecklist.map(item => {
             if (item.name.includes('Passport')) {
@@ -273,15 +272,12 @@ export default function ClientPortal() {
     );
   };
 
-  // Color tokens
   const isCorporate = activeBrand === 'corporate';
   const primaryColor = isCorporate ? '#2C1A0E' : '#2A1628';
   const accentColor = isCorporate ? '#B8892A' : '#E8760A';
-  const accentLight = isCorporate ? '#C9A040' : '#F09040';
   const borderColor = isCorporate ? '#DDD4BE' : '#DDD0C4';
   const bgThemeColor = isCorporate ? '#F6F1E8' : '#F6F2EE';
   const dotColor = isCorporate ? '#B8892A' : '#E8760A';
-  const sidebarColor = isCorporate ? '#2C1A0E' : '#2A1628';
 
   // Checklist expired validator for RED badge
   const isKycExpired = kycChecklist.some(item => item.status === 'expired');

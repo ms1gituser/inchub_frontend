@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { io, Socket } from 'socket.io-client';
 import { resolveToken } from '@/lib/apiClient';
@@ -290,9 +291,11 @@ export default function AiChatbot() {
           e.currentTarget.style.boxShadow = '0 8px 30px rgba(184,137,42,0.4)';
         }}
       >
-        <img
+        <Image
           src="/logo_page_6.svg"
           alt="IncHub Chatbot Logo"
+          width={30}
+          height={30}
           style={{ width: '55%', height: '55%', objectFit: 'contain' }}
         />
       </button>
@@ -356,9 +359,11 @@ export default function AiChatbot() {
                 boxShadow: '0 0 0 1px rgba(184,137,42,0.3)',
               }}
             >
-              <img
+              <Image
                 src="/logo_page_6.svg"
                 alt="IncHub Copilot Logo"
+                width={24}
+                height={24}
                 style={{ width: '65%', height: '65%', objectFit: 'contain' }}
               />
             </div>
