@@ -345,7 +345,17 @@ export default function ClientPortal() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', color: primaryColor, fontFamily: 'Inter, sans-serif', transition: 'all 300ms ease' }}>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '2rem',
+      color: primaryColor,
+      fontFamily: 'Inter, sans-serif',
+      transition: 'all 300ms ease',
+      maxWidth: '1536px',
+      margin: '0 auto',
+      width: '100%',
+    }}>
       
       {/* ── Visual Brand Header ── */}
       <div style={{

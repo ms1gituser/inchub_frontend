@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { get } from '@/lib/apiClient';
-import { usePermission } from '@/context/PermissionContext';
+import { usePermission, UserRole } from '@/context/PermissionContext';
 import { useNotification } from '@/context/NotificationContext';
 import ClientPortal from '@/components/portal/ClientPortal';
 
@@ -187,7 +187,7 @@ export default function DashboardPage() {
   const { currentBrand, setCurrentBrand, role } = usePermission();
   const { showToast, showConfirm, showAlert } = useNotification();
 
-  if (role === 'client') {
+  if (role === UserRole.CLIENT) {
     return <ClientPortal />;
   }
 
@@ -224,10 +224,10 @@ export default function DashboardPage() {
   }, []);
 
   // Theme settings based on current viewMode
-  const activeDotColor = viewMode === 'financial' ? '#E8760A' : '#B8892A';
-  const accentColor = viewMode === 'financial' ? '#E8760A' : '#B8892A';
-  const primaryBg = viewMode === 'financial' ? '#2A1628' : '#2C1A0E';
-  const cardBorderColor = viewMode === 'financial' ? '#DDD0C4' : '#DDD4BE';
+  const activeDotColor = viewMode === 'financial' ? 'var(--color-fs-accent)' : 'var(--color-cs-accent)';
+  const accentColor = viewMode === 'financial' ? 'var(--color-fs-accent)' : 'var(--color-cs-accent)';
+  const primaryBg = viewMode === 'financial' ? 'var(--color-fs-primary)' : 'var(--color-cs-primary)';
+  const cardBorderColor = viewMode === 'financial' ? 'var(--color-fs-border)' : 'var(--color-cs-border)';
 
   // Filter components by viewMode
   const filteredDeals = RECENT_DEALS.filter(d => viewMode === 'group' || d.type === viewMode);
@@ -235,7 +235,16 @@ export default function DashboardPage() {
   const filteredEmails = EMAILS.filter(em => viewMode === 'group' || em.type === viewMode);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', color: primaryBg, transition: 'all 300ms ease' }}>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '2rem',
+      color: primaryBg,
+      transition: 'all 300ms ease',
+      maxWidth: '1536px',
+      margin: '0 auto',
+      width: '100%',
+    }}>
       
       {/* ── Executive Brand Welcome Hero Banner ── */}
       <div style={{
@@ -255,7 +264,7 @@ export default function DashboardPage() {
           right: '-10%',
           width: '50%',
           height: '200%',
-          background: `radial-gradient(circle, ${accentColor}12 0%, transparent 60%)`,
+          background: `radial-gradient(circle, color-mix(in srgb, ${accentColor} 12%, transparent) 0%, transparent 60%)`,
           pointerEvents: 'none',
         }} />
 
@@ -277,14 +286,14 @@ export default function DashboardPage() {
                   fontWeight: 700,
                   textTransform: 'uppercase',
                   letterSpacing: '0.12em',
-                  background: kycAlert ? '#fee2e2' : 'rgba(255, 255, 255, 0.08)',
-                  border: `1px solid ${kycAlert ? '#fca5a5' : 'rgba(255, 255, 255, 0.1)'}`,
-                  color: kycAlert ? '#ef4444' : '#ffffff',
+                  background: kycAlert ? 'color-mix(in srgb, var(--color-error, #ef4444) 10%, transparent)' : 'rgba(255, 255, 255, 0.08)',
+                  border: `1px solid ${kycAlert ? 'color-mix(in srgb, var(--color-error, #ef4444) 20%, transparent)' : 'rgba(255, 255, 255, 0.1)'}`,
+                  color: kycAlert ? 'var(--color-error, #ef4444)' : 'white',
                   fontFamily: 'Inter, sans-serif',
                   marginLeft: '0.5rem',
                 }}
               >
-                <span style={{ width: 5, height: 5, borderRadius: '50%', background: kycAlert ? '#ef4444' : activeDotColor }} />
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: kycAlert ? 'var(--color-error, #ef4444)' : activeDotColor }} />
                 {kycAlert ? 'KYC Action Required' : 'KYC Compliant'}
               </span>
             </div>
@@ -303,7 +312,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Brand tabs switcher (CEO / Admin privileges) */}
-          {(role === 'admin' || role === 'ceo') && (
+          {(role === UserRole.ADMIN || role === UserRole.CEO) && (
             <div style={{ 
               display: 'flex', 
               background: 'rgba(255, 255, 255, 0.05)', 
@@ -392,7 +401,7 @@ export default function DashboardPage() {
                   background: 'rgba(255, 255, 255, 0.08)',
                   border: '1px solid rgba(255, 255, 255, 0.08)',
                   borderRadius: '6px',
-                  color: '#ffffff',
+                  color: 'white',
                   fontSize: '0.6875rem',
                   fontWeight: 600,
                   letterSpacing: '0.18em',
@@ -401,12 +410,12 @@ export default function DashboardPage() {
                   transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#ffffff';
+                  e.currentTarget.style.background = 'white';
                   e.currentTarget.style.color = primaryBg;
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
-                  e.currentTarget.style.color = '#ffffff';
+                  e.currentTarget.style.color = 'white';
                 }}
               >
                 {act.icon}
@@ -425,7 +434,7 @@ export default function DashboardPage() {
             id={s.id}
             className="kpi-card"
             style={{
-              background: '#ffffff',
+              background: 'white',
               border: `1px solid ${cardBorderColor}`,
               borderRadius: '12px',
               padding: '1.5rem',
@@ -439,7 +448,7 @@ export default function DashboardPage() {
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'translateY(-4px)';
               e.currentTarget.style.borderColor = accentColor;
-              e.currentTarget.style.boxShadow = `0 12px 25px -8px ${accentColor}15`;
+              e.currentTarget.style.boxShadow = `0 12px 25px -8px color-mix(in srgb, ${accentColor} 15%, transparent)`;
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'translateY(0)';
@@ -453,7 +462,7 @@ export default function DashboardPage() {
                   width: '38px',
                   height: '38px',
                   borderRadius: '8px',
-                  background: viewMode === 'financial' ? 'rgba(232,118,10,0.06)' : 'rgba(184,137,42,0.06)',
+                  background: `color-mix(in srgb, ${accentColor} 6%, transparent)`,
                   color: accentColor,
                   display: 'flex',
                   alignItems: 'center',
@@ -468,8 +477,8 @@ export default function DashboardPage() {
                   fontWeight: 700,
                   padding: '0.2rem 0.5rem',
                   borderRadius: '4px',
-                  background: s.up ? (viewMode === 'financial' ? 'rgba(232,118,10,0.1)' : 'rgba(184,137,42,0.1)') : 'rgba(239, 68, 68, 0.08)',
-                  color: s.up ? accentColor : '#ef4444',
+                  background: s.up ? `color-mix(in srgb, ${accentColor} 10%, transparent)` : 'color-mix(in srgb, var(--color-error, #ef4444) 8%, transparent)',
+                  color: s.up ? accentColor : 'var(--color-error, #ef4444)',
                 }}
               >
                 {s.change}
@@ -495,7 +504,7 @@ export default function DashboardPage() {
           
           {/* Active Sales Pipeline Card */}
           <div style={{
-            background: '#ffffff',
+            background: 'white',
             border: `1px solid ${cardBorderColor}`,
             borderRadius: '12px',
             padding: '1.5rem',
@@ -514,7 +523,7 @@ export default function DashboardPage() {
               {PIPELINE_DATA[viewMode].map((p) => (
                 <div key={p.stage}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.375rem', fontSize: '0.75rem' }}>
-                    <span style={{ fontWeight: 600, color: 'rgba(42, 22, 40, 0.8)' }}>{p.stage}</span>
+                     <span style={{ fontWeight: 600, color: 'rgba(42, 22, 40, 0.8)' }}>{p.stage}</span>
                     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                       <span style={{ color: 'rgba(42, 22, 40, 0.4)' }}>{p.count} deals</span>
                       <span style={{ fontWeight: 700, color: primaryBg }}>{p.value}</span>
@@ -530,7 +539,7 @@ export default function DashboardPage() {
 
           {/* Active Deals Table Card */}
           <div style={{
-            background: '#ffffff',
+            background: 'white',
             border: `1px solid ${cardBorderColor}`,
             borderRadius: '12px',
             padding: '1.5rem',
@@ -573,16 +582,16 @@ export default function DashboardPage() {
                           borderRadius: '4px',
                           textTransform: 'uppercase',
                           letterSpacing: '0.04em',
-                          background: d.type === 'corporate' ? 'rgba(44, 26, 14, 0.08)' : 'rgba(42, 22, 40, 0.08)',
-                          color: d.type === 'corporate' ? '#2C1A0E' : '#2A1628',
+                          background: d.type === 'corporate' ? 'color-mix(in srgb, var(--color-cs-primary) 8%, transparent)' : 'color-mix(in srgb, var(--color-fs-primary) 8%, transparent)',
+                          color: d.type === 'corporate' ? 'var(--color-cs-primary)' : 'var(--color-fs-primary)',
                         }}>
                           <span style={{ 
                             width: 5, 
                             height: 5, 
                             borderRadius: '50%', 
                             background: d.type === 'corporate' 
-                              ? (d.stage === 'Lead' ? '#2C1A0E' : d.stage === 'Proposal Sent' ? '#4A2E1A' : d.stage === 'In Progress' ? '#6B3F22' : '#B8892A')
-                              : (d.stage === 'Lead' ? '#2A1628' : d.stage === 'Proposal Sent' ? '#3D2040' : d.stage === 'In Progress' ? '#5A2D5A' : '#E8760A')
+                              ? (d.stage === 'Lead' ? 'var(--color-cs-primary)' : d.stage === 'Proposal Sent' ? 'var(--color-cs-mid)' : d.stage === 'In Progress' ? 'var(--color-cs-warm)' : 'var(--color-cs-accent)')
+                              : (d.stage === 'Lead' ? 'var(--color-fs-primary)' : d.stage === 'Proposal Sent' ? 'var(--color-fs-mid)' : d.stage === 'In Progress' ? 'var(--color-fs-warm)' : 'var(--color-fs-accent)')
                           }} />
                           {d.stage}
                         </span>
@@ -596,7 +605,7 @@ export default function DashboardPage() {
 
           {/* Billing & Invoice Widget */}
           <div style={{
-            background: '#ffffff',
+            background: 'white',
             border: `1px solid ${cardBorderColor}`,
             borderRadius: '12px',
             padding: '1.5rem',
@@ -641,14 +650,14 @@ export default function DashboardPage() {
                           borderRadius: '4px',
                           textTransform: 'uppercase',
                           letterSpacing: '0.05em',
-                          background: inv.status === 'Paid' ? 'rgba(16, 185, 129, 0.08)' : inv.status === 'Pending' ? 'rgba(232, 118, 10, 0.08)' : 'rgba(42, 22, 40, 0.04)',
-                          color: inv.status === 'Paid' ? '#10b981' : inv.status === 'Pending' ? '#E8760A' : 'rgba(42, 22, 40, 0.5)',
+                          background: inv.status === 'Paid' ? 'color-mix(in srgb, var(--color-success, #10b981) 8%, transparent)' : inv.status === 'Pending' ? 'color-mix(in srgb, var(--color-fs-accent, #E8760A) 8%, transparent)' : 'rgba(42, 22, 40, 0.04)',
+                          color: inv.status === 'Paid' ? 'var(--color-success, #10b981)' : inv.status === 'Pending' ? 'var(--color-fs-accent, #E8760A)' : 'rgba(42, 22, 40, 0.5)',
                         }}>
                           <span style={{ 
                             width: 5, 
                             height: 5, 
                             borderRadius: '50%', 
-                            background: inv.status === 'Paid' ? '#10b981' : inv.status === 'Pending' ? '#E8760A' : 'rgba(42, 22, 40, 0.5)' 
+                            background: inv.status === 'Paid' ? 'var(--color-success, #10b981)' : inv.status === 'Pending' ? 'var(--color-fs-accent, #E8760A)' : 'rgba(42, 22, 40, 0.5)' 
                           }} />
                           {inv.status}
                         </span>
@@ -666,7 +675,7 @@ export default function DashboardPage() {
           
           {/* Unified Communications Hub Card */}
           <div style={{
-            background: '#ffffff',
+            background: 'white',
             border: `1px solid ${cardBorderColor}`,
             borderRadius: '12px',
             padding: '1.5rem',
@@ -700,8 +709,8 @@ export default function DashboardPage() {
                 }}>
                   <div style={{
                     width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
-                    background: em.type === 'financial' ? 'rgba(232,118,10,0.08)' : 'rgba(184,137,42,0.08)',
-                    color: em.type === 'financial' ? '#E8760A' : '#B8892A',
+                    background: em.type === 'financial' ? 'color-mix(in srgb, var(--color-fs-accent) 8%, transparent)' : 'color-mix(in srgb, var(--color-cs-accent) 8%, transparent)',
+                    color: em.type === 'financial' ? 'var(--color-fs-accent)' : 'var(--color-cs-accent)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: '0.6875rem', fontWeight: 700
                   }}>
@@ -740,8 +749,8 @@ export default function DashboardPage() {
               {MEETINGS_DATA[viewMode].map((m, idx) => (
                 <div key={idx} style={{ 
                   padding: '0.625rem 0.875rem', 
-                  background: m.type === 'financial' ? '#F6F2EE' : m.type === 'corporate' ? '#F6F1E8' : 'rgba(42, 22, 40, 0.02)', 
-                  border: `1px solid ${m.type === 'financial' ? '#DDD0C4' : m.type === 'corporate' ? '#DDD4BE' : 'rgba(42, 22, 40, 0.08)'}`, 
+                  background: m.type === 'financial' ? 'var(--color-fs-bg)' : m.type === 'corporate' ? 'var(--color-cs-bg)' : 'rgba(42, 22, 40, 0.02)', 
+                  border: `1px solid ${m.type === 'financial' ? 'var(--color-fs-border)' : m.type === 'corporate' ? 'var(--color-cs-border)' : 'rgba(42, 22, 40, 0.08)'}`, 
                   borderRadius: '6px',
                   transition: 'all 300ms ease'
                 }}>
@@ -757,7 +766,7 @@ export default function DashboardPage() {
 
           {/* Premium Timeline Activity Logs */}
           <div style={{
-            background: '#ffffff',
+            background: 'white',
             border: `1px solid ${cardBorderColor}`,
             borderRadius: '12px',
             padding: '1.5rem',

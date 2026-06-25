@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { NavSection } from '@/types/navigation';
-import { usePermission } from '@/context/PermissionContext';
+import { usePermission, UserRole } from '@/context/PermissionContext';
 
 /* ── SVG Icons (inline, zero-dependency) ─────────────────────────────────── */
 type IconProps = React.SVGProps<SVGSVGElement>;
@@ -260,11 +260,11 @@ export default function Sidebar({ collapsed, hidden, onToggle, activeBrand }: Si
             {section.items
               .filter((item) => {
                 // Settings is admin/ceo only
-                if (item.href === '/settings' && role !== 'admin' && role !== 'ceo') {
+                if (item.href === '/settings' && role !== UserRole.ADMIN && role !== UserRole.CEO) {
                   return false;
                 }
                 // Accounting is gated to admin, ceo, accountant
-                if (item.href === '/accounting' && role !== 'admin' && role !== 'ceo' && role !== 'accountant') {
+                if (item.href === '/accounting' && role !== UserRole.ADMIN && role !== UserRole.CEO && role !== UserRole.ACCOUNTANT) {
                   return false;
                 }
                 return true;
