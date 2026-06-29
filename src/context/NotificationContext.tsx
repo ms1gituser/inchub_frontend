@@ -250,7 +250,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
               <h3
                 style={{
                   margin: 0,
-                  fontFamily: 'Cormorant, serif',
+                  fontFamily: 'var(--font-serif)',
                   fontSize: '1.25rem',
                   fontWeight: 400,
                   letterSpacing: '-0.02em',
@@ -388,7 +388,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
               <h3
                 style={{
                   margin: 0,
-                  fontFamily: 'Cormorant, serif',
+                  fontFamily: 'var(--font-serif)',
                   fontSize: '1.25rem',
                   fontWeight: 400,
                   letterSpacing: '-0.02em',

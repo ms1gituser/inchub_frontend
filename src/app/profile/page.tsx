@@ -9,8 +9,8 @@ export default function ProfilePage() {
         <p style={{ margin: 0, fontSize: '0.75rem', color: 'rgba(44,26,14,0.6)', fontWeight: 600, letterSpacing: '0.2em', fontFamily: 'Inter, sans-serif', textTransform: 'uppercase' }}>
           System Settings • User Identity
         </p>
-        <h1 style={{ margin: '0.35rem 0 0', fontSize: '2.25rem', fontWeight: 300, color: '#2C1A0E', letterSpacing: '-0.02em', fontFamily: 'Cormorant, serif' }}>
-          Identity & <span style={{ fontFamily: 'Cormorant, serif', fontStyle: 'italic' }}>Security</span> Credentials
+        <h1 style={{ margin: '0.35rem 0 0', fontSize: '2.25rem', fontWeight: 300, color: '#2C1A0E', letterSpacing: '-0.02em', fontFamily: 'var(--font-serif)' }}>
+          Identity & <span style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic' }}>Security</span> Credentials
         </h1>
       </div>
 

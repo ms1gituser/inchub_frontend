@@ -13,8 +13,8 @@ export default function DealsPage() {
         <p style={{ margin: 0, fontSize: '0.75rem', color: 'rgba(44,26,14,0.6)', fontWeight: 600, letterSpacing: '0.2em', fontFamily: 'Inter, sans-serif', textTransform: 'uppercase' }}>
           Customer Relationship Management • {isFinancial ? 'Financial Services' : 'Corporate Services'}
         </p>
-        <h1 style={{ margin: '0.35rem 0 0', fontSize: '2.25rem', fontWeight: 700, color: 'var(--color-primary)', letterSpacing: '-0.02em', fontFamily: 'Cormorant, serif' }}>
-          Deals <span style={{ fontFamily: 'Cormorant, serif', fontStyle: 'italic' }}>Pipeline</span>
+        <h1 style={{ margin: '0.35rem 0 0', fontSize: '2.25rem', fontWeight: 700, color: 'var(--color-primary)', letterSpacing: '-0.02em', fontFamily: 'var(--font-serif)' }}>
+          Deals <span style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic' }}>Pipeline</span>
         </h1>
       </div>
 

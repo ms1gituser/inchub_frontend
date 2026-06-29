@@ -13,8 +13,8 @@ export default function EmailPage() {
         <p style={{ margin: 0, fontSize: '0.75rem', color: 'rgba(44,26,14,0.6)', fontWeight: 600, letterSpacing: '0.2em', fontFamily: 'Inter, sans-serif', textTransform: 'uppercase' }}>
           System Tools • Secure Communication Gateway ({isFinancial ? 'Financial Services' : 'Corporate Services'})
         </p>
-        <h1 style={{ margin: '0.35rem 0 0', fontSize: '2.25rem', fontWeight: 700, color: 'var(--color-primary)', letterSpacing: '-0.02em', fontFamily: 'Cormorant, serif' }}>
-          Email <span style={{ fontFamily: 'Cormorant, serif', fontStyle: 'italic' }}>Smart</span> Dispatcher
+        <h1 style={{ margin: '0.35rem 0 0', fontSize: '2.25rem', fontWeight: 700, color: 'var(--color-primary)', letterSpacing: '-0.02em', fontFamily: 'var(--font-serif)' }}>
+          Email <span style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic' }}>Smart</span> Dispatcher
         </h1>
       </div>
 

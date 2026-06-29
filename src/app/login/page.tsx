@@ -105,7 +105,7 @@ export default function LoginPage() {
                 color: '#2C1A0E',
                 margin: 0,
                 letterSpacing: '-0.02em',
-                fontFamily: "'Cormorant', var(--font-serif), Georgia, serif",
+                fontFamily: 'var(--font-serif)',
               }}
             >
               IncHub CRM Console

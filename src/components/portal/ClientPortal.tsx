@@ -387,7 +387,7 @@ export default function ClientPortal() {
             </div>
             <h1 style={{
               margin: 0, fontSize: '2.25rem', fontWeight: 300, letterSpacing: '-0.02em',
-              fontFamily: "'Cormorant', var(--font-serif), serif"
+              fontFamily: 'var(--font-serif)'
             }}>
               Welcome to your <span style={{ fontStyle: 'italic', color: accentColor }}>IncHub Workspace</span>
             </h1>
@@ -546,7 +546,7 @@ export default function ClientPortal() {
           <div style={{ background: '#ffffff', border: `1px solid ${borderColor}`, borderRadius: 16, padding: '1.75rem', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
             <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '0.75rem', marginBottom: '1.25rem' }}>
               <span style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.18em', color: accentColor, textTransform: 'uppercase' }}>STAGE 1</span>
-              <h3 style={{ margin: '0.15rem 0 0 0', fontSize: '1.1rem', fontWeight: 600, fontFamily: "'Cormorant', var(--font-serif), serif" }}>
+              <h3 style={{ margin: '0.15rem 0 0 0', fontSize: '1.1rem', fontWeight: 600, fontFamily: 'var(--font-serif)' }}>
                 Client Profile &amp; KYC Verification
               </h3>
             </div>
@@ -628,7 +628,7 @@ export default function ClientPortal() {
           <div style={{ background: '#ffffff', border: `1px solid ${borderColor}`, borderRadius: 16, padding: '1.75rem', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
             <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '0.75rem', marginBottom: '1.25rem' }}>
               <span style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.18em', color: accentColor, textTransform: 'uppercase' }}>STAGE 2</span>
-              <h3 style={{ margin: '0.15rem 0 0 0', fontSize: '1.1rem', fontWeight: 600, fontFamily: "'Cormorant', var(--font-serif), serif" }}>
+              <h3 style={{ margin: '0.15rem 0 0 0', fontSize: '1.1rem', fontWeight: 600, fontFamily: 'var(--font-serif)' }}>
                 Compliance Auditing &amp; CDD Risk Rating
               </h3>
             </div>
@@ -694,7 +694,7 @@ export default function ClientPortal() {
           <div style={{ background: '#ffffff', border: `1px solid ${borderColor}`, borderRadius: 16, padding: '1.75rem', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
             <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '0.75rem', marginBottom: '1.25rem' }}>
               <span style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.18em', color: accentColor, textTransform: 'uppercase' }}>STAGE 3</span>
-              <h3 style={{ margin: '0.15rem 0 0 0', fontSize: '1.1rem', fontWeight: 600, fontFamily: "'Cormorant', var(--font-serif), serif" }}>
+              <h3 style={{ margin: '0.15rem 0 0 0', fontSize: '1.1rem', fontWeight: 600, fontFamily: 'var(--font-serif)' }}>
                 Engagement Letter &amp; Contract Signature
               </h3>
             </div>
@@ -780,7 +780,7 @@ export default function ClientPortal() {
           <div style={{ background: '#ffffff', border: `1px solid ${borderColor}`, borderRadius: 16, padding: '1.75rem', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
             <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '0.75rem', marginBottom: '1.25rem' }}>
               <span style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.18em', color: accentColor, textTransform: 'uppercase' }}>STAGE 5</span>
-              <h3 style={{ margin: '0.15rem 0 0 0', fontSize: '1.1rem', fontWeight: 600, fontFamily: "'Cormorant', var(--font-serif), serif" }}>
+              <h3 style={{ margin: '0.15rem 0 0 0', fontSize: '1.1rem', fontWeight: 600, fontFamily: 'var(--font-serif)' }}>
                 Google Drive Hierarchical Workspace Activation
               </h3>
             </div>
@@ -846,7 +846,7 @@ export default function ClientPortal() {
           <div style={{ background: '#ffffff', border: `1px solid ${borderColor}`, borderRadius: 16, padding: '1.75rem', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
             <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '0.75rem', marginBottom: '1.25rem' }}>
               <span style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.18em', color: accentColor, textTransform: 'uppercase' }}>STAGE 4</span>
-              <h3 style={{ margin: '0.15rem 0 0 0', fontSize: '1.1rem', fontWeight: 600, fontFamily: "'Cormorant', var(--font-serif), serif" }}>
+              <h3 style={{ margin: '0.15rem 0 0 0', fontSize: '1.1rem', fontWeight: 600, fontFamily: 'var(--font-serif)' }}>
                 Initial Retainer Billing &amp; Payment Gateway
               </h3>
             </div>
@@ -952,7 +952,7 @@ export default function ClientPortal() {
           <div style={{ background: '#ffffff', border: `1px solid ${borderColor}`, borderRadius: 16, padding: '1.75rem', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
             <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '0.75rem', marginBottom: '1.25rem' }}>
               <span style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.18em', color: accentColor, textTransform: 'uppercase' }}>STAGE 6</span>
-              <h3 style={{ margin: '0.15rem 0 0 0', fontSize: '1.1rem', fontWeight: 600, fontFamily: "'Cormorant', var(--font-serif), serif" }}>
+              <h3 style={{ margin: '0.15rem 0 0 0', fontSize: '1.1rem', fontWeight: 600, fontFamily: 'var(--font-serif)' }}>
                 Bookkeeping Month-Lock Gate &amp; Transaction Limits
               </h3>
             </div>
@@ -1030,7 +1030,7 @@ export default function ClientPortal() {
           <div style={{ background: '#ffffff', border: `1px solid ${borderColor}`, borderRadius: 16, padding: '1.75rem', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
             <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '0.75rem', marginBottom: '1.25rem' }}>
               <span style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.18em', color: accentColor, textTransform: 'uppercase' }}>STAGE 7</span>
-              <h3 style={{ margin: '0.15rem 0 0 0', fontSize: '1.1rem', fontWeight: 600, fontFamily: "'Cormorant', var(--font-serif), serif" }}>
+              <h3 style={{ margin: '0.15rem 0 0 0', fontSize: '1.1rem', fontWeight: 600, fontFamily: 'var(--font-serif)' }}>
                 Corporate Tax Filing Intake &amp; Document Archive
               </h3>
             </div>
