@@ -492,8 +492,8 @@ export default function AccountingPage() {
             Financial Services • UAE Compliance
           </p>
         </div>
-        <h1 style={{ margin: 0, fontSize: '2.5rem', fontWeight: 300, color: '#2A1628', letterSpacing: '-0.02em', fontFamily: 'Cormorant, serif' }}>
-          Accounting Operations & <span style={{ fontFamily: 'Cormorant, serif', fontStyle: 'italic' }}>AI Bookkeeping</span>
+        <h1 style={{ margin: 0, fontSize: '2.5rem', fontWeight: 300, color: '#2A1628', letterSpacing: '-0.02em', fontFamily: 'var(--font-serif)' }}>
+          Accounting Operations & <span style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic' }}>AI Bookkeeping</span>
         </h1>
       </div>
 

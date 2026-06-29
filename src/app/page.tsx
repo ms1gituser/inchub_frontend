@@ -449,7 +449,7 @@ export default function DashboardPage() {
               fontSize: '2.5rem',
               fontWeight: 300,
               letterSpacing: '-0.02em',
-              fontFamily: 'Cormorant, serif',
+              fontFamily: 'var(--font-serif)',
               color: 'var(--color-primary)'
             }}>
               Welcome, <span style={{ fontStyle: 'italic', color: accentColor }}>Mahesh</span>
@@ -803,7 +803,7 @@ export default function DashboardPage() {
                 <div key={idx} style={{ padding: '1rem', border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--bg-page)' }}>
                   <span style={{ display: 'block', fontSize: '0.7rem', color: 'rgba(0,0,0,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>Rank #{idx + 1}</span>
                   <span style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, color: primaryBg, margin: '0.25rem 0' }}>{cust.name}</span>
-                  <span style={{ display: 'block', fontSize: '1.125rem', fontWeight: 300, color: accentColor, fontFamily: 'Cormorant, serif' }}>AED {(cust.amount ?? 0).toLocaleString()}</span>
+                  <span style={{ display: 'block', fontSize: '1.125rem', fontWeight: 300, color: accentColor, fontFamily: 'var(--font-serif)' }}>AED {(cust.amount ?? 0).toLocaleString()}</span>
                 </div>
               ))}
             </div>
@@ -1107,7 +1107,7 @@ function StatCard({ label, value, change, up, icon, accentColor, primaryBg }: St
         </span>
       </div>
       <div>
-        <p style={{ margin: 0, fontSize: '1.875rem', fontWeight: 300, letterSpacing: '-0.02em', color: primaryBg, fontFamily: 'Cormorant, serif' }}>
+        <p style={{ margin: 0, fontSize: '1.875rem', fontWeight: 300, letterSpacing: '-0.02em', color: primaryBg, fontFamily: 'var(--font-serif)' }}>
           {value}
         </p>
         <p style={{ margin: '0.25rem 0 0', fontSize: '0.625rem', color: 'rgba(0,0,0,0.4)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.15em', fontFamily: 'Inter, sans-serif' }}>

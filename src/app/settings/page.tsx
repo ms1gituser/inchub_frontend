@@ -9,8 +9,8 @@ export default function SettingsDashboard() {
         <p style={{ margin: 0, fontSize: '0.75rem', color: 'rgba(44,26,14,0.6)', fontWeight: 600, letterSpacing: '0.2em', fontFamily: 'Inter, sans-serif', textTransform: 'uppercase' }}>
           System Management • Settings Panel
         </p>
-        <h1 style={{ margin: '0.35rem 0 0', fontSize: '2.25rem', fontWeight: 300, color: '#2C1A0E', letterSpacing: '-0.02em', fontFamily: 'Cormorant, serif' }}>
-          Control <span style={{ fontFamily: 'Cormorant, serif', fontStyle: 'italic' }}>Panel</span>
+        <h1 style={{ margin: '0.35rem 0 0', fontSize: '2.25rem', fontWeight: 300, color: '#2C1A0E', letterSpacing: '-0.02em', fontFamily: 'var(--font-serif)' }}>
+          Control <span style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic' }}>Panel</span>
         </h1>
       </div>
 
