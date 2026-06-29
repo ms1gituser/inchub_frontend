@@ -41,8 +41,12 @@ $stashResult = git stash save "Safe pull auto-stash"
 $hasStash = $stashResult -match "Saved working directory"
 
 # 4. Pull changes from remote branch
-Write-Host "🚀 Pulling latest changes from remote..." -ForegroundColor Yellow
-$pullResult = git pull origin main 2>&1
+$currentBranch = (git branch --show-current).Trim()
+if ([string]::IsNullOrEmpty($currentBranch)) {
+    $currentBranch = "main"
+}
+Write-Host "🚀 Pulling latest changes from remote branch: $currentBranch..." -ForegroundColor Yellow
+$pullResult = git pull origin $currentBranch 2>&1
 
 # 5. Check if there are merge conflicts
 if ($LASTEXITCODE -ne 0 -or ($pullResult -match "conflict")) {
@@ -80,7 +84,17 @@ if ($hasStash) {
     git stash pop | Out-Null
 }
 
-# 7. Clean up backup directory
+# 7. Restore backed up configuration files (ensures local changes/secrets are never overwritten by remote)
+Write-Host "🔄 Restoring backed up local configuration files..." -ForegroundColor Yellow
+foreach ($File in $FilesToBackup) {
+    $BackupPath = "$BackupDir/$File"
+    if (Test-Path $BackupPath) {
+        Copy-Item $BackupPath -Destination $File -Force
+        Write-Host "   Restored: $File" -ForegroundColor DarkGray
+    }
+}
+
+# 8. Clean up backup directory
 if (Test-Path $BackupDir) {
     Remove-Item -Recurse -Force $BackupDir
 }
