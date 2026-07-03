@@ -43,7 +43,7 @@
 
   /* Typography */
   --font-sans: 'Inter', var(--font-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-sans);
+  --font-serif: var(--font-serif), Georgia, serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 
   /* ── IncHub Dual-Brand Architecture ── */

@@ -184,6 +184,8 @@ export default function AiChatbot() {
           '[17:45:12] OAuth 2.0 token verified successfully\n' +
           '[17:45:15] Batch Push: Reconciled 12 invoices to QuickBooks ledger\n' +
           '[17:45:18] Push confirmed by QuickBooks Webhook (Response: 200 OK)';
+      } else if (lowerText.includes('schedule') || lowerText.includes('booking') || lowerText.includes('slot') || lowerText.includes('book') || lowerText.includes('meet') || lowerText.includes('appointment')) {
+        replyText = 'Looking up booking slots on Cal.com... 📅\n\nI found an open slot! You can book it here: https://cal.com/inchub-support/demo-session';
       } else if (lowerText.includes('hello') || lowerText.includes('hi')) {
         replyText = 'Hello! Let me know if you would like me to audit bookkeeping thresholds, inspect OCR data extraction confidence levels, or review QuickBooks syncing.';
       } else {

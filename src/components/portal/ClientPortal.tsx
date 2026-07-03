@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { get, post } from '@/lib/apiClient';
+import { get, post, put } from '@/lib/apiClient';
 import { useNotification } from '@/context/NotificationContext';
 
 interface KycItem {
@@ -18,6 +18,10 @@ interface TenantProfile {
   vat_status: string;
   drive_root_folder_id: string | null;
   ct_filing_deadline: string | null;
+  onboarding_stage?: number;
+  is_contract_signed?: boolean;
+  contract_signature_name?: string | null;
+  is_retainer_paid?: boolean;
 }
 
 interface CtFiling {
@@ -130,22 +134,48 @@ export default function ClientPortal() {
     void (async () => { await fetchData(); })();
   }, []);
 
-  // Simulator helper: advance or go back in stages
-  const setSimulatorStage = (stageNum: number) => {
-    setCurrentUnlockedStage(stageNum);
-    if (stageNum >= 4) {
-      setIsContractSigned(true);
-    } else {
-      setIsContractSigned(false);
+  // Sync local states from the database profile when fetched
+  useEffect(() => {
+    if (profile) {
+      if (profile.onboarding_stage !== undefined && profile.onboarding_stage !== null) {
+        setCurrentUnlockedStage(profile.onboarding_stage);
+      }
+      if (profile.is_contract_signed !== undefined && profile.is_contract_signed !== null) {
+        setIsContractSigned(profile.is_contract_signed);
+      }
+      if (profile.contract_signature_name) {
+        setSignatureName(profile.contract_signature_name);
+      }
+      if (profile.is_retainer_paid !== undefined && profile.is_retainer_paid !== null) {
+        setPaymentDone(profile.is_retainer_paid);
+      }
     }
-    if (stageNum >= 5) {
-      setPaymentDone(true);
-    } else {
-      setPaymentDone(false);
+  }, [profile]);
+
+  // Simulator helper: advance or go back in stages and persist in DB
+  const setSimulatorStage = async (stageNum: number) => {
+    setCurrentUnlockedStage(stageNum);
+    const contractSigned = stageNum >= 4;
+    const paymentDone = stageNum >= 5;
+
+    setIsContractSigned(contractSigned);
+    setPaymentDone(paymentDone);
+
+    try {
+      await put('/bookkeeping/profile/onboarding', {
+        stage: stageNum,
+        is_contract_signed: contractSigned,
+        is_retainer_paid: paymentDone,
+      });
+      showToast(`Simulator: updated database onboarding state to Stage ${stageNum}`, 'success');
+      await fetchData();
+    } catch (e) {
+      console.warn('Failed to sync simulator stage to database:', e);
+      showToast('Simulator override applied in offline mode.', 'info');
     }
   };
 
-  // Sign contract trigger
+  // Sign contract trigger (M3 Agreement stage)
   const handleSignContract = () => {
     if (!signatureName.trim()) {
       showToast('Please enter your full name to sign the service agreement.', 'warning');
@@ -153,34 +183,59 @@ export default function ClientPortal() {
     }
     showConfirm(
       `Do you agree to all the terms of the service agreement and want to digitally sign as "${signatureName.trim()}"?`,
-      () => {
-        setIsContractSigned(true);
-        // Auto advance stage to Stage 4 (Billing Retainer)
-        if (currentUnlockedStage < 4) {
-          setCurrentUnlockedStage(4);
+      async () => {
+        try {
+          const res = await post<{ success: boolean; data: TenantProfile }>('/bookkeeping/profile/sign-contract', {
+            signature_name: signatureName.trim(),
+          });
+          if (res?.success) {
+            setIsContractSigned(true);
+            if (currentUnlockedStage < 4) {
+              setCurrentUnlockedStage(4);
+            }
+            showToast('Contract signed digitally. Proceeding to retainer payment.', 'success');
+            await fetchData();
+          }
+        } catch (e) {
+          console.error('[Contract Sign Error]', e);
+          showToast('Failed to sign contract. Using offline fallback.', 'warning');
+          setIsContractSigned(true);
+          if (currentUnlockedStage < 4) {
+            setCurrentUnlockedStage(4);
+          }
         }
-        showToast('Contract signed and locked. Transitioning to Initial Retainer payment.', 'success');
       },
       'Sign Service Agreement'
     );
   };
 
-  // Pay retainer trigger
+  // Pay retainer trigger (M3 Payment stage)
   const handlePayRetainer = (e: React.FormEvent) => {
     e.preventDefault();
     showConfirm(
       "Confirm payment of AED 8,500 retainer fee via PayTabs? This transaction will debit your card.",
-      () => {
+      async () => {
         setPaymentLoading(true);
-        setTimeout(() => {
-          setPaymentLoading(false);
+        try {
+          const res = await post<{ success: boolean; data: { profile: TenantProfile } }>('/bookkeeping/profile/pay-retainer', {});
+          if (res?.success) {
+            setPaymentDone(true);
+            if (currentUnlockedStage < 5) {
+              setCurrentUnlockedStage(5);
+            }
+            showToast('Payment authorized successfully via PayTabs! GDrive workspace activated.', 'success');
+            await fetchData();
+          }
+        } catch (err) {
+          console.error('[Retainer Pay Error]', err);
+          showToast('Retainer payment failed. Using offline fallback.', 'warning');
           setPaymentDone(true);
-          // Auto advance to Stage 5 (Workspace Setup)
           if (currentUnlockedStage < 5) {
             setCurrentUnlockedStage(5);
           }
-          showToast('Payment authorized successfully via PayTabs! GDrive workspace activated.', 'success');
-        }, 1500);
+        } finally {
+          setPaymentLoading(false);
+        }
       },
       'Confirm Retainer Payment'
     );
