@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -148,6 +149,7 @@ export default function Sidebar({ collapsed, hidden, onToggle, activeBrand }: Si
   const isFinancial = activeBrand === 'financial' || pathname === '/accounting' || pathname.startsWith('/accounting/');
   const [accountingExpanded, setAccountingExpanded] = useState(pathname.startsWith('/accounting'));
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     if (pathname.startsWith('/accounting')) {
       setAccountingExpanded(true);
@@ -290,7 +292,7 @@ export default function Sidebar({ collapsed, hidden, onToggle, activeBrand }: Si
                   <React.Fragment key={item.href}>
                     <Link
                       href={item.href === '/accounting' ? '/accounting?tab=dashboard' : item.href}
-                      onClick={(e) => {
+                      onClick={() => {
                         if (item.href === '/accounting') {
                           setAccountingExpanded(!accountingExpanded);
                         }

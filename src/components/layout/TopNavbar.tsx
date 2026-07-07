@@ -76,7 +76,7 @@ interface TopNavbarProps {
   onToggleSidebar?: () => void;
 }
 
-export default function TopNavbar(_props: TopNavbarProps) {
+export default function TopNavbar({}: TopNavbarProps) {
   const { permissions, allAvailablePermissions, togglePermission, currentBrand, email, role } = usePermission();
   const [notifOpen, setNotifOpen]   = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);

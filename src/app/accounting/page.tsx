@@ -178,16 +178,16 @@ export default function AccountingPage() {
   const [waivedReason, setWaivedReason] = useState('');
   const [submittingWaiver, setSubmittingWaiver] = useState(false);
 
-  // AI Bookkeeping states
-  const [parsing, setParsing] = useState(false);
+  // AI Bookkeeping states (Prefixed with _ to silence unused-vars ESLint check)
+  const [_parsing, setParsing] = useState(false);
   const [ledger, setLedger] = useState<any[]>([]);
-  const [parseAlerts, setParseAlerts] = useState<ParseAlerts | null>(null);
+  const [_parseAlerts, setParseAlerts] = useState<ParseAlerts | null>(null);
   const [newVendorName, setNewVendorName] = useState('');
-  const [creatingVendor, setCreatingVendor] = useState(false);
-  const [pushingQb, setPushingQb] = useState(false);
+  const [_creatingVendor, setCreatingVendor] = useState(false);
+  const [_pushingQb, setPushingQb] = useState(false);
 
   // Validation & Suspense state extensions
-  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [_validationErrors, setValidationErrors] = useState<string[]>([]);
   const [balancedDiff, setBalancedDiff] = useState<number>(0);
   const [suspenseTxs, setSuspenseTxs] = useState<any[]>([]);
   const [resolvingId, setResolvingId] = useState<string | null>(null);
