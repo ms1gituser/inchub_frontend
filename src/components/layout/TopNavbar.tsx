@@ -81,7 +81,7 @@ export default function TopNavbar(_props: TopNavbarProps) {
   const [notifOpen, setNotifOpen]   = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [shieldOpen, setShieldOpen]   = useState(false);
-  const [kycExpired, setKycExpired]   = useState(false);
+  const [kycStatus, setKycStatus] = useState<'GREEN' | 'AMBER' | 'RED' | null>(null);
 
   const userEmail = email || 'admin@inchcrm.com';
   const userDisplayName = role ? role.toUpperCase() : 'USER';
@@ -99,22 +99,14 @@ export default function TopNavbar(_props: TopNavbarProps) {
 
     async function checkKyc() {
       try {
-        interface KycItemLocal {
-          name: string;
-          status: string;
-          expiry_date: string | null;
-        }
-        interface KycResponseLocal {
-          success: boolean;
-          data: KycItemLocal[];
-        }
-        const response = await get<KycResponseLocal>('/bookkeeping/kyc');
-        if (active && response?.success && Array.isArray(response.data)) {
-          const hasExpired = response.data.some((item) => item.status === 'expired');
-          setKycExpired(hasExpired);
+        interface KycStatusResponse { success: boolean; kyc_status: string; }
+        const response = await get<KycStatusResponse>('/kyc/status');
+        if (active && response?.success) {
+          const s = response.kyc_status as 'GREEN' | 'AMBER' | 'RED';
+          setKycStatus(s);
         }
       } catch (err) {
-        console.warn('KYC check offline (backend is not running):', err instanceof Error ? err.message : err);
+        console.warn('KYC status check offline:', err instanceof Error ? err.message : err);
       } finally {
         if (active) {
           timerId = setTimeout(checkKyc, 10000);
@@ -232,8 +224,8 @@ export default function TopNavbar(_props: TopNavbarProps) {
         New
       </button>
 
-      {/* ── KYC Expired Alert Badge ── */}
-      {kycExpired && (
+      {/* ── KYC RAG Status Badge ── */}
+      {kycStatus && kycStatus !== 'GREEN' && (
         <div
           id="global-kyc-alert"
           style={{
@@ -243,17 +235,20 @@ export default function TopNavbar(_props: TopNavbarProps) {
             padding: '0 0.75rem',
             height: 36,
             borderRadius: 8,
-            background: '#fee2e2',
-            border: '1px solid #fca5a5',
-            color: '#ef4444',
+            background: kycStatus === 'RED' ? '#fee2e2' : '#fefce8',
+            border: `1px solid ${kycStatus === 'RED' ? '#fca5a5' : '#fde047'}`,
+            color: kycStatus === 'RED' ? '#ef4444' : '#ca8a04',
             fontSize: '0.75rem',
             fontWeight: 700,
+            cursor: 'pointer',
           }}
+          onClick={() => { window.location.href = '/accounting'; }}
+          title="Click to open KYC Checklist"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
-          KYC ALERT: DOCUMENT EXPIRED
+          {kycStatus === 'RED' ? 'KYC: ACTION REQUIRED' : 'KYC: EXPIRING SOON'}
         </div>
       )}
 

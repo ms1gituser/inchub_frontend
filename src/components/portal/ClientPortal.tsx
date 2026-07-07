@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { get, post } from '@/lib/apiClient';
+import { get, post, put } from '@/lib/apiClient';
 import { useNotification } from '@/context/NotificationContext';
 
 interface KycItem {
@@ -18,6 +18,10 @@ interface TenantProfile {
   vat_status: string;
   drive_root_folder_id: string | null;
   ct_filing_deadline: string | null;
+  onboarding_stage?: number;
+  is_contract_signed?: boolean;
+  contract_signature_name?: string | null;
+  is_retainer_paid?: boolean;
 }
 
 interface CtFiling {
@@ -59,6 +63,11 @@ export default function ClientPortal() {
   const [profile, setProfile] = useState<TenantProfile | null>(null);
   const [ctFilings, setCtFilings] = useState<CtFiling[]>([]);
   const [lockedMonths, setLockedMonths] = useState<string[]>([]);
+
+  // VAT Log states
+  const [vatLog, setVatLog] = useState<any>(null);
+  const [waivedReason, setWaivedReason] = useState('');
+  const [submittingWaiver, setSubmittingWaiver] = useState(false);
 
   // Signature state
   const [signatureName, setSignatureName] = useState('');
@@ -110,6 +119,14 @@ export default function ClientPortal() {
         console.warn('Profile offline:', e);
       }
 
+      // VAT Log
+      try {
+        const vatRes = await get<{ success: boolean; data: any }>('/bookkeeping/vat/log');
+        if (vatRes?.success) setVatLog(vatRes.data);
+      } catch (e) {
+        console.warn('VAT Log offline:', e);
+      }
+
       // Corporate Tax Archive & month lock statuses
       try {
         const archiveRes = await get<CtArchiveResponse>('/bookkeeping/ct/archive');
@@ -126,26 +143,90 @@ export default function ClientPortal() {
     }
   };
 
+  const handleFileDownload = async (key: string) => {
+    try {
+      const res = await get<{ success: boolean; downloadUrl?: string }>(`/files/download?key=${encodeURIComponent(key)}`);
+      if (res?.success && res.downloadUrl) {
+        window.open(res.downloadUrl, '_blank');
+      } else {
+        showToast('Failed to obtain download URL from server.', 'error');
+      }
+    } catch (err) {
+      console.error('[Download Error]', err);
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      showToast(errorMsg || 'Error fetching secure link.', 'error');
+    }
+  };
+
+  const handleWaiveVat = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!waivedReason.trim()) {
+      showToast('Waiver reason is required.', 'warning');
+      return;
+    }
+    setSubmittingWaiver(true);
+    try {
+      const res = await post<{ success: boolean; message: string; data: any }>('/bookkeeping/vat/waive', {
+        waived_reason: waivedReason.trim()
+      });
+      if (res?.success) {
+        showToast(res.message || 'VAT registration threshold waived successfully.', 'success');
+        setWaivedReason('');
+        await fetchData();
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Failed to submit waiver.', 'error');
+    } finally {
+      setSubmittingWaiver(false);
+    }
+  };
+
   useEffect(() => {
     void (async () => { await fetchData(); })();
   }, []);
 
-  // Simulator helper: advance or go back in stages
-  const setSimulatorStage = (stageNum: number) => {
-    setCurrentUnlockedStage(stageNum);
-    if (stageNum >= 4) {
-      setIsContractSigned(true);
-    } else {
-      setIsContractSigned(false);
+  // Sync local states from the database profile when fetched
+  useEffect(() => {
+    if (profile) {
+      if (profile.onboarding_stage !== undefined && profile.onboarding_stage !== null) {
+        setCurrentUnlockedStage(profile.onboarding_stage);
+      }
+      if (profile.is_contract_signed !== undefined && profile.is_contract_signed !== null) {
+        setIsContractSigned(profile.is_contract_signed);
+      }
+      if (profile.contract_signature_name) {
+        setSignatureName(profile.contract_signature_name);
+      }
+      if (profile.is_retainer_paid !== undefined && profile.is_retainer_paid !== null) {
+        setPaymentDone(profile.is_retainer_paid);
+      }
     }
-    if (stageNum >= 5) {
-      setPaymentDone(true);
-    } else {
-      setPaymentDone(false);
+  }, [profile]);
+
+  // Simulator helper: advance or go back in stages and persist in DB
+  const setSimulatorStage = async (stageNum: number) => {
+    setCurrentUnlockedStage(stageNum);
+    const contractSigned = stageNum >= 4;
+    const paymentDone = stageNum >= 5;
+
+    setIsContractSigned(contractSigned);
+    setPaymentDone(paymentDone);
+
+    try {
+      await put('/bookkeeping/profile/onboarding', {
+        stage: stageNum,
+        is_contract_signed: contractSigned,
+        is_retainer_paid: paymentDone,
+      });
+      showToast(`Simulator: updated database onboarding state to Stage ${stageNum}`, 'success');
+      await fetchData();
+    } catch (e) {
+      console.warn('Failed to sync simulator stage to database:', e);
+      showToast('Simulator override applied in offline mode.', 'info');
     }
   };
 
-  // Sign contract trigger
+  // Sign contract trigger (M3 Agreement stage)
   const handleSignContract = () => {
     if (!signatureName.trim()) {
       showToast('Please enter your full name to sign the service agreement.', 'warning');
@@ -153,34 +234,59 @@ export default function ClientPortal() {
     }
     showConfirm(
       `Do you agree to all the terms of the service agreement and want to digitally sign as "${signatureName.trim()}"?`,
-      () => {
-        setIsContractSigned(true);
-        // Auto advance stage to Stage 4 (Billing Retainer)
-        if (currentUnlockedStage < 4) {
-          setCurrentUnlockedStage(4);
+      async () => {
+        try {
+          const res = await post<{ success: boolean; data: TenantProfile }>('/bookkeeping/profile/sign-contract', {
+            signature_name: signatureName.trim(),
+          });
+          if (res?.success) {
+            setIsContractSigned(true);
+            if (currentUnlockedStage < 4) {
+              setCurrentUnlockedStage(4);
+            }
+            showToast('Contract signed digitally. Proceeding to retainer payment.', 'success');
+            await fetchData();
+          }
+        } catch (e) {
+          console.error('[Contract Sign Error]', e);
+          showToast('Failed to sign contract. Using offline fallback.', 'warning');
+          setIsContractSigned(true);
+          if (currentUnlockedStage < 4) {
+            setCurrentUnlockedStage(4);
+          }
         }
-        showToast('Contract signed and locked. Transitioning to Initial Retainer payment.', 'success');
       },
       'Sign Service Agreement'
     );
   };
 
-  // Pay retainer trigger
+  // Pay retainer trigger (M3 Payment stage)
   const handlePayRetainer = (e: React.FormEvent) => {
     e.preventDefault();
     showConfirm(
       "Confirm payment of AED 8,500 retainer fee via PayTabs? This transaction will debit your card.",
-      () => {
+      async () => {
         setPaymentLoading(true);
-        setTimeout(() => {
-          setPaymentLoading(false);
+        try {
+          const res = await post<{ success: boolean; data: { profile: TenantProfile } }>('/bookkeeping/profile/pay-retainer', {});
+          if (res?.success) {
+            setPaymentDone(true);
+            if (currentUnlockedStage < 5) {
+              setCurrentUnlockedStage(5);
+            }
+            showToast('Payment authorized successfully via PayTabs! GDrive workspace activated.', 'success');
+            await fetchData();
+          }
+        } catch (err) {
+          console.error('[Retainer Pay Error]', err);
+          showToast('Retainer payment failed. Using offline fallback.', 'warning');
           setPaymentDone(true);
-          // Auto advance to Stage 5 (Workspace Setup)
           if (currentUnlockedStage < 5) {
             setCurrentUnlockedStage(5);
           }
-          showToast('Payment authorized successfully via PayTabs! GDrive workspace activated.', 'success');
-        }, 1500);
+        } finally {
+          setPaymentLoading(false);
+        }
       },
       'Confirm Retainer Payment'
     );
@@ -335,10 +441,104 @@ export default function ClientPortal() {
   const getVatStatusText = () => {
     if (cumulativeTurnover >= 375000) return 'MANDATORY UAE VAT REGISTRATION LIMIT EXCEEDED';
     if (cumulativeTurnover >= 350000) return 'CRITICAL COMPLIANCE THRESHOLD MATCHED';
-    if (cumulativeTurnover >= 300000) return 'VOLUNTARY LIMIT EXCEEDED (AED 300K)';
+    if (cumulativeTurnover >= 250000) return 'VOLUNTARY LIMIT EXCEEDED (AED 250K)';
     if (cumulativeTurnover >= 185000) return 'VOLUNTARY REGISTER LOG ELIGIBLE';
     return 'Turnover is under AED 185K voluntary limit';
   };
+
+  if (vatLog?.alert_level === 'EMERGENCY_375K' && vatLog?.status === 'PENDING') {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '70vh',
+        padding: '2rem',
+        fontFamily: 'Inter, sans-serif'
+      }}>
+        <div style={{
+          background: '#ffffff',
+          border: '1px solid #ef4444',
+          borderRadius: '16px',
+          padding: '2.5rem',
+          maxWidth: '550px',
+          width: '100%',
+          boxShadow: '0 20px 50px rgba(239, 68, 68, 0.1)',
+          textAlign: 'center'
+        }}>
+          <div style={{
+            width: '64px',
+            height: '64px',
+            borderRadius: '50%',
+            background: '#fee2e2',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 1.5rem',
+            color: '#ef4444'
+          }}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          </div>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#991b1b', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 1rem' }}>
+            UAE VAT Mandatory Registration Required
+          </h2>
+          <p style={{ fontSize: '0.85rem', color: '#7f1d1d', lineHeight: 1.6, marginBottom: '2rem' }}>
+            Annual rolling turnover has reached or exceeded the UAE VAT mandatory registration limit of <strong>AED 375,000</strong> (Current: AED {cumulativeTurnover.toLocaleString()}).
+            <br />
+            As a result, further accounting and statement processing activities are temporarily locked. To resume operations, a Manager or CEO must submit an official waiver reason below.
+          </p>
+          <form onSubmit={handleWaiveVat} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', textAlign: 'left' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: '#991b1b', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Waiver Reason / Acknowledgment Signed by Manager/CEO
+              </label>
+              <textarea
+                required
+                value={waivedReason}
+                onChange={(e) => setWaivedReason(e.target.value)}
+                placeholder="Specify the reason for voluntary delay or CEO/Manager signed waiver approval..."
+                style={{
+                  width: '100%',
+                  height: '100px',
+                  padding: '0.75rem',
+                  border: '1px solid #fca5a5',
+                  borderRadius: '8px',
+                  fontSize: '0.8rem',
+                  resize: 'none',
+                  outline: 'none',
+                  fontFamily: 'Inter, sans-serif'
+                }}
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={submittingWaiver}
+              style={{
+                background: '#991b1b',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '0.85rem',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                transition: 'background 0.2s'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#7f1d1d'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = '#991b1b'; }}
+            >
+              {submittingWaiver ? 'SUBMITTING WAIVER...' : 'APPROVE & SIGN WAIVER OVERRIDE'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -1114,9 +1314,9 @@ export default function ClientPortal() {
                             <span style={{ color: '#10b981' }}>{filing.status}</span>
                           </div>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.2rem' }}>
-                            <a href="#" onClick={(e) => { e.preventDefault(); showToast(`Downloading return: ${filing.ct_return_doc_id}`, 'info'); }} style={{ fontSize: '0.65rem', color: accentColor, textDecoration: 'none', fontWeight: 600 }}>[Return document]</a>
-                            <a href="#" onClick={(e) => { e.preventDefault(); showToast(`Downloading receipt: ${filing.payment_receipt_doc_id}`, 'info'); }} style={{ fontSize: '0.65rem', color: accentColor, textDecoration: 'none', fontWeight: 600 }}>[Receipt]</a>
-                            <a href="#" onClick={(e) => { e.preventDefault(); showToast(`Downloading financials: ${filing.financial_statements_doc_id}`, 'info'); }} style={{ fontSize: '0.65rem', color: accentColor, textDecoration: 'none', fontWeight: 600 }}>[Financial Statements]</a>
+                            <a href="#" onClick={(e) => { e.preventDefault(); handleFileDownload(filing.ct_return_doc_id); }} style={{ fontSize: '0.65rem', color: accentColor, textDecoration: 'none', fontWeight: 600 }}>[Return document]</a>
+                            <a href="#" onClick={(e) => { e.preventDefault(); handleFileDownload(filing.payment_receipt_doc_id); }} style={{ fontSize: '0.65rem', color: accentColor, textDecoration: 'none', fontWeight: 600 }}>[Receipt]</a>
+                            <a href="#" onClick={(e) => { e.preventDefault(); handleFileDownload(filing.financial_statements_doc_id); }} style={{ fontSize: '0.65rem', color: accentColor, textDecoration: 'none', fontWeight: 600 }}>[Financial Statements]</a>
                           </div>
                         </div>
                       ))
