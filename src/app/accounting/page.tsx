@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { get, post, ApiError } from '@/lib/apiClient';
 import { useNotification } from '@/context/NotificationContext';
 import ReconciliationPanel from './reconciliation-panel';
@@ -8,6 +9,17 @@ import SuspenseWorkspace from './suspense-workspace';
 import QuickBooksWorkspace from './quickbooks-workspace';
 import KycComplianceWorkspace from '@/components/kyc/KycComplianceWorkspace';
 import KycSummaryCard from '@/components/kyc/KycSummaryCard';
+import DynamicJsonForm from '@/components/ui/DynamicJsonForm';
+
+import DashboardTab from './tabs/dashboard';
+import ClientListTab from './tabs/client-list';
+import AiQueueTab from './tabs/ai-queue';
+import ReconciliationTab from './tabs/reconciliation';
+import VatTab from './tabs/vat';
+import CorporateTaxTab from './tabs/corporate-tax';
+import ReportsTab from './tabs/reports';
+import QuickBooksTab from './tabs/quickbooks';
+import VendorsTab from './tabs/vendors';
 
 // Types
 interface KycItem {
@@ -128,6 +140,9 @@ interface ParseResponse {
 
 export default function AccountingPage() {
   const { showToast, showConfirm } = useNotification();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
+
   // State variables
   const [kycChecklist, setKycChecklist] = useState<KycItem[]>([]);
   const [loadingKyc, setLoadingKyc] = useState(true);
@@ -135,7 +150,33 @@ export default function AccountingPage() {
   const [lockedMonths, setLockedMonths] = useState<string[]>([]);
   const [ctFilings, setCtFilings] = useState<CtFiling[]>([]);
   const [lockError, setLockError] = useState<string | null>(null);
-  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<'ocr' | 'reconciliation' | 'suspense' | 'quickbooks' | 'kyc'>('ocr');
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<'ocr' | 'reconciliation' | 'suspense' | 'quickbooks' | 'kyc' | 'period-locks' | 'corporate-tax'>('ocr');
+
+  // Sync tab selection with query parameter
+  useEffect(() => {
+    if (tabParam) {
+      if (tabParam === 'ocr' || tabParam === 'ai-queue') {
+        setActiveWorkspaceTab('ocr');
+      } else if (tabParam === 'reconciliation') {
+        setActiveWorkspaceTab('reconciliation');
+      } else if (tabParam === 'suspense' || tabParam === 'vendors') {
+        setActiveWorkspaceTab('suspense');
+      } else if (tabParam === 'quickbooks') {
+        setActiveWorkspaceTab('quickbooks');
+      } else if (tabParam === 'kyc' || tabParam === 'client-list') {
+        setActiveWorkspaceTab('kyc');
+      } else if (tabParam === 'period-locks' || tabParam === 'reports') {
+        setActiveWorkspaceTab('period-locks');
+      } else if (tabParam === 'corporate-tax') {
+        setActiveWorkspaceTab('corporate-tax');
+      }
+    }
+  }, [tabParam]);
+
+  // VAT Log states
+  const [vatLog, setVatLog] = useState<any>(null);
+  const [waivedReason, setWaivedReason] = useState('');
+  const [submittingWaiver, setSubmittingWaiver] = useState(false);
 
   // AI Bookkeeping states
   const [parsing, setParsing] = useState(false);
@@ -171,6 +212,7 @@ export default function AccountingPage() {
   const [ctTurnover, setCtTurnover] = useState('520000');
   const [ctTaxableIncome, setCtTaxableIncome] = useState('95000');
   const [filingCt, setFilingCt] = useState(false);
+  const [ctSchema, setCtSchema] = useState<any>(null);
 
   // Whisper meeting recorder states
   const [recording, setRecording] = useState(false);
@@ -206,6 +248,41 @@ export default function AccountingPage() {
     }
   };
 
+  const fetchVatLog = async () => {
+    try {
+      const res = await get<{ success: boolean; data: any }>('/bookkeeping/vat/log');
+      if (res?.success) {
+        setVatLog(res.data);
+      }
+    } catch (e: unknown) {
+      console.error('[VAT Log Fetch Error]', e);
+    }
+  };
+
+  const handleWaiveVat = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!waivedReason.trim()) {
+      showToast('Waiver reason is required.', 'warning');
+      return;
+    }
+    setSubmittingWaiver(true);
+    try {
+      const res = await post<{ success: boolean; message: string; data: any }>('/bookkeeping/vat/waive', {
+        waived_reason: waivedReason.trim()
+      });
+      if (res?.success) {
+        showToast(res.message || 'VAT registration threshold waived successfully.', 'success');
+        setWaivedReason('');
+        await fetchVatLog();
+        await fetchProfile();
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Failed to submit waiver.', 'error');
+    } finally {
+      setSubmittingWaiver(false);
+    }
+  };
+
   const fetchCtArchive = async () => {
     try {
       const res = await get<CtArchiveResponse>('/bookkeeping/ct/archive');
@@ -215,6 +292,17 @@ export default function AccountingPage() {
       }
     } catch (e: unknown) {
       console.error('[Archive Fetch Error]', e);
+    }
+  };
+
+  const fetchCtSchema = async () => {
+    try {
+      const res = await get<any>('/bookkeeping/ct/schema');
+      if (res?.success) {
+        setCtSchema(res.schema);
+      }
+    } catch (e) {
+      console.error('[Schema Fetch Error]', e);
     }
   };
 
@@ -616,7 +704,9 @@ export default function AccountingPage() {
       await Promise.resolve();
       fetchKyc();
       fetchProfile();
+      fetchVatLog();
       fetchCtArchive();
+      fetchCtSchema();
       fetchSuspense();
       fetchFailedOcrJobs();
       fetchFailedStatements();
@@ -662,7 +752,7 @@ export default function AccountingPage() {
 
   // UAE VAT limits definition
   const vatLimitVoluntary = 185000;
-  const vatLimitWarning = 300000;
+  const vatLimitWarning = 250000;
   const vatLimitCritical = 350000;
   const vatLimitMandatory = 375000;
 
@@ -673,6 +763,100 @@ export default function AccountingPage() {
     if (cumulativeTurnover >= vatLimitVoluntary) return 'VOLUNTARY REGISTRATION AVAILABLE';
     return 'STANDARD RETAINER RETENTION';
   };
+
+  if (vatLog?.alert_level === 'EMERGENCY_375K' && vatLog?.status === 'PENDING') {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '70vh',
+        padding: '2rem',
+        fontFamily: 'Inter, sans-serif'
+      }}>
+        <div style={{
+          background: '#ffffff',
+          border: '1px solid #ef4444',
+          borderRadius: '16px',
+          padding: '2.5rem',
+          maxWidth: '550px',
+          width: '100%',
+          boxShadow: '0 20px 50px rgba(239, 68, 68, 0.1)',
+          textAlign: 'center'
+        }}>
+          <div style={{
+            width: '64px',
+            height: '64px',
+            borderRadius: '50%',
+            background: '#fee2e2',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 1.5rem',
+            color: '#ef4444'
+          }}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          </div>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#991b1b', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 1rem' }}>
+            UAE VAT Mandatory Registration Required
+          </h2>
+          <p style={{ fontSize: '0.85rem', color: '#7f1d1d', lineHeight: 1.6, marginBottom: '2rem' }}>
+            Annual rolling turnover has reached or exceeded the UAE VAT mandatory registration limit of <strong>AED 375,000</strong> (Current: AED {cumulativeTurnover.toLocaleString()}).
+            <br />
+            As a result, further accounting and statement processing activities are temporarily locked. To resume operations, a Manager or CEO must submit an official waiver reason below.
+          </p>
+          <form onSubmit={handleWaiveVat} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', textAlign: 'left' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: '#991b1b', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Waiver Reason / Acknowledgment Signed by Manager/CEO
+              </label>
+              <textarea
+                required
+                value={waivedReason}
+                onChange={(e) => setWaivedReason(e.target.value)}
+                placeholder="Specify the reason for voluntary delay or CEO/Manager signed waiver approval..."
+                style={{
+                  width: '100%',
+                  height: '100px',
+                  padding: '0.75rem',
+                  border: '1px solid #fca5a5',
+                  borderRadius: '8px',
+                  fontSize: '0.8rem',
+                  resize: 'none',
+                  outline: 'none',
+                  fontFamily: 'Inter, sans-serif'
+                }}
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={submittingWaiver}
+              style={{
+                background: '#991b1b',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '0.85rem',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                transition: 'background 0.2s'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#7f1d1d'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = '#991b1b'; }}
+            >
+              {submittingWaiver ? 'SUBMITTING WAIVER...' : 'APPROVE & SIGN WAIVER OVERRIDE'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -687,24 +871,275 @@ export default function AccountingPage() {
       margin: '0 auto',
       width: '100%',
     }}>
-      {/* Brand Workspace Header */}
-      <div style={{ borderBottom: '1px solid #DDD0C4', paddingBottom: '1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#E8760A', display: 'inline-block' }} />
-          <p style={{ margin: 0, fontSize: '0.75rem', color: 'rgba(42,22,40,0.6)', fontWeight: 600, letterSpacing: '0.2em', textTransform: 'uppercase' }}>
-            Financial Services • UAE Compliance
-          </p>
-        </div>
-        <h1 style={{ margin: 0, fontSize: '2.5rem', fontWeight: 300, color: '#2A1628', letterSpacing: '-0.02em', fontFamily: 'var(--font-serif)' }}>
-          Accounting Operations & <span style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic' }}>AI Bookkeeping</span>
-        </h1>
-      </div>
+      {!tabParam && (
+        <>
+          {/* Brand Workspace Header */}
+          <div style={{ borderBottom: '1px solid #DDD0C4', paddingBottom: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#E8760A', display: 'inline-block' }} />
+              <p style={{ margin: 0, fontSize: '0.75rem', color: 'rgba(42,22,40,0.6)', fontWeight: 600, letterSpacing: '0.2em', textTransform: 'uppercase' }}>
+                Financial Services • UAE Compliance
+              </p>
+            </div>
+            <h1 style={{ margin: 0, fontSize: '2.5rem', fontWeight: 300, color: '#2A1628', letterSpacing: '-0.02em', fontFamily: 'var(--font-serif)' }}>
+              Accounting Operations & <span style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic' }}>AI Bookkeeping</span>
+            </h1>
+          </div>
 
-      {/* Row 1: KYC Compliance Checklist & Month-Lock Sequential Gate */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-        {/* KYC Compliance — Summary Card (links to full KYC tab) */}
-        <KycSummaryCard onOpenTab={() => setActiveWorkspaceTab('kyc')} />
-        <div style={{ background: '#ffffff', border: '1px solid rgba(42,22,40,0.08)', borderRadius: '16px', padding: '1.75rem', boxShadow: '0 10px 30px -10px rgba(42,22,40,0.06), 0 1px 3px rgba(42,22,40,0.02)', display: 'flex', flexDirection: 'column', transition: 'all 0.3s ease' }}>
+          {/* Row 1: KYC Compliance Checklist */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
+            {/* KYC Compliance — Summary Card (links to full KYC tab) */}
+            <KycSummaryCard onOpenTab={() => setActiveWorkspaceTab('kyc')} />
+          </div>
+
+          {/* Row 2: Transaction Usage Tracker & VAT Voluntary Log */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+            {/* Transaction Usage Tracker */}
+            <div style={{ background: '#ffffff', border: '1px solid rgba(42,22,40,0.08)', borderRadius: '16px', padding: '1.75rem', boxShadow: '0 10px 30px -10px rgba(42,22,40,0.06), 0 1px 3px rgba(42,22,40,0.02)', transition: 'all 0.3s ease' }}>
+              <h2 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '1.25rem', fontFamily: 'Inter, sans-serif', letterSpacing: '0.22em', textTransform: 'uppercase', color: '#2A1628' }}>
+                Transaction Count limits
+              </h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.5rem', fontWeight: 600 }}>
+                <span>Monthly Usage</span>
+                <span>{currentTransactions} / {baselineTransactions} transactions</span>
+              </div>
+              {/* Progress Bar */}
+              <div style={{ height: '10px', background: '#F6F2EE', borderRadius: '9999px', overflow: 'hidden', border: '1px solid rgba(42,22,40,0.06)', marginBottom: '1rem' }}>
+                <div style={{ width: `${transactionPercentage}%`, height: '100%', background: currentTransactions > baselineTransactions ? '#ef4444' : '#E8760A', transition: 'width 300ms ease' }} />
+              </div>
+
+              <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.6)', lineHeight: 1.5 }}>
+                {currentTransactions > baselineTransactions ? (
+                  <span style={{ color: '#ef4444', fontWeight: 700 }}>
+                    ⚠️ WARNING: Contracted baseline volume exceeded. Consecutive threshold breach (3 months) will trigger mandatory pricing renegotiation and agreement addendum generation.
+                  </span>
+                ) : (
+                  <span>Your current transaction volume is within the standard contract baseline. Consecutive monthly breaches are monitored.</span>
+                )}
+              </div>
+            </div>
+
+            {/* VAT Voluntary Log & Alert */}
+            <div style={{ background: '#ffffff', border: '1px solid rgba(42,22,40,0.08)', borderRadius: '16px', padding: '1.75rem', boxShadow: '0 10px 30px -10px rgba(42,22,40,0.06), 0 1px 3px rgba(42,22,40,0.02)', transition: 'all 0.3s ease' }}>
+              <h2 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '1.25rem', fontFamily: 'Inter, sans-serif', letterSpacing: '0.22em', textTransform: 'uppercase', color: '#2A1628' }}>
+                VAT Voluntary log & alerts
+              </h2>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.5rem', fontWeight: 600 }}>
+                <span>Rolling Annual Turnover</span>
+                <span>AED {cumulativeTurnover.toLocaleString()}</span>
+              </div>
+
+              {/* Progress bar towards AED 375k */}
+              <div style={{ height: '10px', background: '#F6F2EE', borderRadius: '9999px', overflow: 'hidden', border: '1px solid #DDD0C4', marginBottom: '1rem' }}>
+                <div style={{ width: `${Math.min((cumulativeTurnover / 375000) * 100, 100)}%`, height: '100%', background: '#E8760A', transition: 'width 300ms ease' }} />
+              </div>
+
+              {/* Alert levels indicators */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.625rem', color: 'rgba(42,22,40,0.5)', fontWeight: 600, marginBottom: '1rem' }}>
+                <span>AED 185k (Voluntary)</span>
+                <span>AED 250k (Warning)</span>
+                <span>AED 350k (Critical)</span>
+                <span>AED 375k (Mandatory)</span>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0.5rem 0.75rem', background: '#F6F2EE', border: '1px solid #DDD0C4', borderRadius: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: vatLog?.status === 'WAIVED' ? '#10b981' : (cumulativeTurnover >= vatLimitMandatory ? '#ef4444' : cumulativeTurnover >= vatLimitVoluntary ? '#f59e0b' : '#10b981') }} />
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.05em', color: '#2A1628' }}>
+                    CURRENT AUDIT: {vatLog?.status === 'WAIVED' ? 'WAIVED BY MANAGER' : getVatStatusText()}
+                  </span>
+                </div>
+                {vatLog?.status === 'WAIVED' && (
+                  <div style={{ fontSize: '0.6875rem', color: 'rgba(42,22,40,0.6)', borderTop: '1px solid #DDD0C4', paddingTop: '0.25rem', marginTop: '0.25rem' }}>
+                    <strong>Waived By:</strong> {vatLog.waived_by}<br/>
+                    <strong>Reason:</strong> {vatLog.waived_reason}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+
+      {/* Tab Section Wrapper to restrict sticky boundary */}
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {!tabParam && (
+          <div style={{ 
+            display: 'flex', 
+            gap: '1rem', 
+            position: 'sticky', 
+            top: '-1.75rem', 
+            zIndex: 50, 
+            background: '#FAF6F0', 
+            marginTop: '-1.75rem', 
+            paddingTop: '1.75rem', 
+            marginLeft: '-2rem', 
+            marginRight: '-2rem', 
+            paddingLeft: '2rem', 
+            paddingRight: '2rem', 
+            borderBottom: '2px solid rgba(42,22,40,0.08)', 
+            paddingBottom: '0.75rem', 
+            overflowX: 'auto', 
+            whiteSpace: 'nowrap', 
+            scrollbarWidth: 'none' 
+          }}>
+            <button
+              onClick={() => setActiveWorkspaceTab('ocr')}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                borderBottom: activeWorkspaceTab === 'ocr' ? '3px solid #2A1628' : 'none',
+                color: activeWorkspaceTab === 'ocr' ? '#2A1628' : 'rgba(42,22,40,0.5)',
+                fontSize: '0.85rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                padding: '0.5rem 1rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                flexShrink: 0
+              }}
+            >
+              OCR Ingestion
+            </button>
+            <button
+              onClick={() => setActiveWorkspaceTab('kyc')}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                borderBottom: activeWorkspaceTab === 'kyc' ? '3px solid #2A1628' : 'none',
+                color: activeWorkspaceTab === 'kyc' ? '#2A1628' : 'rgba(42,22,40,0.5)',
+                fontSize: '0.85rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                padding: '0.5rem 1rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                flexShrink: 0
+              }}
+            >
+              KYC Compliance
+            </button>
+            <button
+              onClick={() => setActiveWorkspaceTab('reconciliation')}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                borderBottom: activeWorkspaceTab === 'reconciliation' ? '3px solid #2A1628' : 'none',
+                color: activeWorkspaceTab === 'reconciliation' ? '#2A1628' : 'rgba(42,22,40,0.5)',
+                fontSize: '0.85rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                padding: '0.5rem 1rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                flexShrink: 0
+              }}
+            >
+              Reconciliation Panel
+            </button>
+            <button
+              onClick={() => setActiveWorkspaceTab('suspense')}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                borderBottom: activeWorkspaceTab === 'suspense' ? '3px solid #2A1628' : 'none',
+                color: activeWorkspaceTab === 'suspense' ? '#2A1628' : 'rgba(42,22,40,0.5)',
+                fontSize: '0.85rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                padding: '0.5rem 1rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                flexShrink: 0
+              }}
+            >
+              Suspense Workspace
+            </button>
+            <button
+              onClick={() => setActiveWorkspaceTab('quickbooks')}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                borderBottom: activeWorkspaceTab === 'quickbooks' ? '3px solid #2A1628' : 'none',
+                color: activeWorkspaceTab === 'quickbooks' ? '#2A1628' : 'rgba(42,22,40,0.5)',
+                fontSize: '0.85rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                padding: '0.5rem 1rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                flexShrink: 0
+              }}
+            >
+              QuickBooks Integration
+            </button>
+            <button
+              onClick={() => setActiveWorkspaceTab('period-locks')}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                borderBottom: activeWorkspaceTab === 'period-locks' ? '3px solid #2A1628' : 'none',
+                color: activeWorkspaceTab === 'period-locks' ? '#2A1628' : 'rgba(42,22,40,0.5)',
+                fontSize: '0.85rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                padding: '0.5rem 1rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                flexShrink: 0
+              }}
+            >
+              Bookkeeping Period Locks
+            </button>
+            <button
+              onClick={() => setActiveWorkspaceTab('corporate-tax')}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                borderBottom: activeWorkspaceTab === 'corporate-tax' ? '3px solid #2A1628' : 'none',
+                color: activeWorkspaceTab === 'corporate-tax' ? '#2A1628' : 'rgba(42,22,40,0.5)',
+                fontSize: '0.85rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                padding: '0.5rem 1rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                flexShrink: 0
+              }}
+            >
+              Corporate Tax
+            </button>
+          </div>
+        )}
+
+      {tabParam === 'dashboard' && <DashboardTab />}
+      {tabParam === 'client-list' && <ClientListTab />}
+      {tabParam === 'ai-queue' && <AiQueueTab />}
+      {tabParam === 'reconciliation' && <ReconciliationTab />}
+      {tabParam === 'vat' && <VatTab />}
+      {tabParam === 'corporate-tax' && <CorporateTaxTab />}
+      {tabParam === 'reports' && <ReportsTab />}
+      {tabParam === 'quickbooks' && <QuickBooksTab />}
+      {tabParam === 'vendors' && <VendorsTab />}
+
+      {!tabParam && activeWorkspaceTab === 'kyc' && (
+        <KycComplianceWorkspace />
+      )}
+      {!tabParam && activeWorkspaceTab === 'reconciliation' && (
+        <ReconciliationPanel onReconciled={() => {
+          fetchSuspense();
+        }} />
+      )}
+      {!tabParam && activeWorkspaceTab === 'suspense' && (
+        <SuspenseWorkspace />
+      )}
+      {!tabParam && activeWorkspaceTab === 'quickbooks' && (
+        <QuickBooksWorkspace />
+      )}
+      {!tabParam && activeWorkspaceTab === 'period-locks' && (
+        <div style={{ background: '#ffffff', border: '1px solid rgba(42,22,40,0.08)', borderRadius: '16px', padding: '1.75rem', boxShadow: '0 10px 30px -10px rgba(42,22,40,0.06), 0 1px 3px rgba(42,22,40,0.02)', display: 'flex', flexDirection: 'column', transition: 'all 0.3s ease', marginTop: '1.5rem' }}>
           <h2 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '1.25rem', fontFamily: 'Inter, sans-serif', letterSpacing: '0.22em', textTransform: 'uppercase', color: '#2A1628' }}>
             Bookkeeping Period Locks
           </h2>
@@ -727,7 +1162,7 @@ export default function AccountingPage() {
                 <div
                   key={month.m}
                   style={{
-                    padding: '0.75rem',
+                    padding: '1.25rem 0.75rem',
                     background: isLocked ? '#EDE6DE' : '#ffffff',
                     border: `1px solid ${isLocked ? '#DDD0C4' : '#E8760A'}`,
                     borderRadius: '8px',
@@ -735,7 +1170,7 @@ export default function AccountingPage() {
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    gap: '0.5rem',
+                    gap: '0.75rem',
                     transition: 'all 200ms',
                   }}
                 >
@@ -752,7 +1187,7 @@ export default function AccountingPage() {
                         color: '#ffffff',
                         border: 'none',
                         borderRadius: '4px',
-                        padding: '0.3rem 0',
+                        padding: '0.35rem 0',
                         fontSize: '0.65rem',
                         fontWeight: 700,
                         cursor: 'pointer',
@@ -772,7 +1207,7 @@ export default function AccountingPage() {
 
           {/* Sequential Lock Error Display Panel */}
           {lockError && (
-            <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '6px', color: '#ef4444', fontSize: '0.75rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+            <div style={{ marginTop: '1.25rem', padding: '0.75rem', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '6px', color: '#ef4444', fontSize: '0.75rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0, marginTop: '2px' }}>
                 <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
               </svg>
@@ -780,449 +1215,8 @@ export default function AccountingPage() {
             </div>
           )}
         </div>
-      </div>
-
-      {/* Row 2: Transaction Usage Tracker & VAT Voluntary Log */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-        {/* Transaction Usage Tracker */}
-        <div style={{ background: '#ffffff', border: '1px solid rgba(42,22,40,0.08)', borderRadius: '16px', padding: '1.75rem', boxShadow: '0 10px 30px -10px rgba(42,22,40,0.06), 0 1px 3px rgba(42,22,40,0.02)', transition: 'all 0.3s ease' }}>
-          <h2 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '1.25rem', fontFamily: 'Inter, sans-serif', letterSpacing: '0.22em', textTransform: 'uppercase', color: '#2A1628' }}>
-            Transaction Count limits
-          </h2>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.5rem', fontWeight: 600 }}>
-            <span>Monthly Usage</span>
-            <span>{currentTransactions} / {baselineTransactions} transactions</span>
-          </div>
-          {/* Progress Bar */}
-          <div style={{ height: '10px', background: '#F6F2EE', borderRadius: '9999px', overflow: 'hidden', border: '1px solid rgba(42,22,40,0.06)', marginBottom: '1rem' }}>
-            <div style={{ width: `${transactionPercentage}%`, height: '100%', background: currentTransactions > baselineTransactions ? '#ef4444' : '#E8760A', transition: 'width 300ms ease' }} />
-          </div>
-
-          <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.6)', lineHeight: 1.5 }}>
-            {currentTransactions > baselineTransactions ? (
-              <span style={{ color: '#ef4444', fontWeight: 700 }}>
-                ⚠️ WARNING: Contracted baseline volume exceeded. Consecutive threshold breach (3 months) will trigger mandatory pricing renegotiation and agreement addendum generation.
-              </span>
-            ) : (
-              <span>Your current transaction volume is within the standard contract baseline. Consecutive monthly breaches are monitored.</span>
-            )}
-          </div>
-        </div>
-
-        {/* VAT Voluntary Log & Alert */}
-        <div style={{ background: '#ffffff', border: '1px solid rgba(42,22,40,0.08)', borderRadius: '16px', padding: '1.75rem', boxShadow: '0 10px 30px -10px rgba(42,22,40,0.06), 0 1px 3px rgba(42,22,40,0.02)', transition: 'all 0.3s ease' }}>
-          <h2 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '1.25rem', fontFamily: 'Inter, sans-serif', letterSpacing: '0.22em', textTransform: 'uppercase', color: '#2A1628' }}>
-            VAT Voluntary log & alerts
-          </h2>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.5rem', fontWeight: 600 }}>
-            <span>Rolling Annual Turnover</span>
-            <span>AED {cumulativeTurnover.toLocaleString()}</span>
-          </div>
-
-          {/* Progress bar towards AED 375k */}
-          <div style={{ height: '10px', background: '#F6F2EE', borderRadius: '9999px', overflow: 'hidden', border: '1px solid #DDD0C4', marginBottom: '1rem' }}>
-            <div style={{ width: `${Math.min((cumulativeTurnover / 375000) * 100, 100)}%`, height: '100%', background: '#E8760A', transition: 'width 300ms ease' }} />
-          </div>
-
-          {/* Alert levels indicators */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.625rem', color: 'rgba(42,22,40,0.5)', fontWeight: 600, marginBottom: '1rem' }}>
-            <span>AED 185k (Voluntary)</span>
-            <span>AED 300k (Warning)</span>
-            <span>AED 350k (Critical)</span>
-            <span>AED 375k (Mandatory)</span>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', background: '#F6F2EE', border: '1px solid #DDD0C4', borderRadius: '6px' }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: cumulativeTurnover >= vatLimitMandatory ? '#ef4444' : cumulativeTurnover >= vatLimitVoluntary ? '#f59e0b' : '#10b981' }} />
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.05em', color: '#2A1628' }}>
-              CURRENT AUDIT: {getVatStatusText()}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Row 3: 9-Stage AI Bookkeeping Engine Panel */}
-      <div style={{ background: '#ffffff', border: '1px solid rgba(42,22,40,0.08)', borderRadius: '16px', padding: '1.75rem', boxShadow: '0 10px 30px -10px rgba(42,22,40,0.06), 0 1px 3px rgba(42,22,40,0.02)', transition: 'all 0.3s ease' }}>
-        <div style={{ borderBottom: '1px solid rgba(42,22,40,0.08)', paddingBottom: '0.75rem', marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ fontSize: '0.85rem', fontWeight: 700, margin: 0, fontFamily: 'Inter, sans-serif', letterSpacing: '0.22em', textTransform: 'uppercase', color: '#2A1628' }}>
-            9-Stage AI Bookkeeping Workspace
-          </h2>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-             {kycChecklist.some((item) => item.status === 'expired') && (
-               <div style={{ display: 'flex', alignItems: 'center', background: '#fef2f2', color: '#b91c1c', border: '1px solid #fca5a5', padding: '0.4rem 0.75rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600 }}>
-                 ⚠️ UPLOADS LOCKED BY KYC GATE
-               </div>
-             )}
-             <button
-              onClick={() => {
-                if (kycChecklist.some((item) => item.status === 'expired')) {
-                  showToast('Cannot upload bank statement while KYC compliance documents are expired.', 'error');
-                  return;
-                }
-                fileInputRef.current?.click();
-              }}
-              disabled={parsing || kycChecklist.some((item) => item.status === 'expired')}
-              style={{
-                background: '#2A1628',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '6px',
-                padding: '0.5rem 1rem',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                cursor: kycChecklist.some((item) => item.status === 'expired') ? 'not-allowed' : 'pointer',
-                letterSpacing: '0.15em',
-                textTransform: 'uppercase',
-                opacity: kycChecklist.some((item) => item.status === 'expired') ? 0.4 : 1
-              }}
-              onMouseEnter={(e) => { 
-                if (!kycChecklist.some((item) => item.status === 'expired')) {
-                  e.currentTarget.style.background = '#3D2040'; 
-                }
-              }}
-              onMouseLeave={(e) => { 
-                if (!kycChecklist.some((item) => item.status === 'expired')) {
-                  e.currentTarget.style.background = '#2A1628'; 
-                }
-              }}
-            >
-              {parsing ? 'PROCESSING OCR...' : 'UPLOAD STATEMENT'}
-            </button>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleStatementUpload}
-              style={{ display: 'none' }}
-              accept=".pdf,.csv,.xlsx,.xls"
-              disabled={kycChecklist.some((item) => item.status === 'expired')}
-            />
-            <button
-              onClick={handleQuickBooksPush}
-              disabled={pushingQb}
-              style={{
-                background: '#E8760A',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '6px',
-                padding: '0.5rem 1rem',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                letterSpacing: '0.15em',
-                textTransform: 'uppercase',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = '#F09040'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = '#E8760A'; }}
-            >
-              {pushingQb ? 'SYNCING...' : 'PUSH TO QUICKBOOKS'}
-            </button>
-          </div>
-        </div>
-
-        {failedStatements.length > 0 && (
-          <div style={{ marginBottom: '1.25rem', padding: '1rem', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '8px' }}>
-            <h4 style={{ fontSize: '0.75rem', fontWeight: 700, color: '#b91c1c', margin: '0 0 0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Failed Bank Statement Imports ({failedStatements.length})
-            </h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {failedStatements.map((stmt) => (
-                <div key={stmt.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
-                  <span style={{ color: '#b91c1c', fontWeight: 600 }}>{stmt.file_name} (Reason: {stmt.parsing_errors?.error || 'Unknown'})</span>
-                  <button
-                    onClick={() => handleRetryStatement(stmt.id)}
-                    style={{ background: '#b91c1c', color: '#fff', border: 'none', borderRadius: '4px', padding: '0.25rem 0.6rem', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 700 }}
-                  >
-                    RETRY PARSING
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Ledger Construction Table */}
-        <div style={{ marginBottom: '1.5rem' }}>
-          <h3 style={{ fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#2A1628', marginBottom: '0.75rem' }}>
-            Extracted ledger entries
-          </h3>
-          {ledger.length === 0 ? (
-            <div style={{ height: '140px', border: '1px dashed #DDD0C4', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(42,22,40,0.5)', fontSize: '0.85rem' }}>
-              No statement parsed yet. Upload a bank statement file to construct the ledger.
-            </div>
-          ) : (
-            <div style={{ overflowX: 'auto', border: '1px solid #DDD0C4', borderRadius: '8px' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8125rem' }}>
-                <thead>
-                  <tr style={{ background: '#F6F2EE', borderBottom: '1px solid #DDD0C4' }}>
-                    <th style={{ padding: '0.75rem 1rem', fontWeight: 600 }}>Date</th>
-                    <th style={{ padding: '0.75rem 1rem', fontWeight: 600 }}>Description</th>
-                    <th style={{ padding: '0.75rem 1rem', fontWeight: 600 }}>Reference</th>
-                    <th style={{ padding: '0.75rem 1rem', fontWeight: 600, textAlign: 'right' }}>Amount (AED)</th>
-                    <th style={{ padding: '0.75rem 1rem', fontWeight: 600 }}>Type</th>
-                    <th style={{ padding: '0.75rem 1rem', fontWeight: 600 }}>Match Level</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ledger.map((entry: any, idx) => (
-                    <tr key={idx} style={{ borderBottom: idx === ledger.length - 1 ? 'none' : '1px solid #DDD0C4' }}>
-                      <td style={{ padding: '0.75rem 1rem' }}>{entry.date}</td>
-                      <td style={{ padding: '0.75rem 1rem', fontWeight: 500 }}>{entry.description}</td>
-                      <td style={{ padding: '0.75rem 1rem', color: 'rgba(42,22,40,0.6)' }}>{entry.reference || 'N/A'}</td>
-                      <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 600, color: entry.type === 'debit' ? '#ef4444' : '#10b981' }}>
-                        {entry.amount.toFixed(2)}
-                      </td>
-                      <td style={{ padding: '0.75rem 1rem', textTransform: 'uppercase', fontWeight: 600, fontSize: '0.7rem', color: entry.type === 'debit' ? '#ef4444' : '#10b981' }}>
-                        {entry.type === 'debit' ? 'DR (OUT)' : 'CR (IN)'}
-                      </td>
-                      <td style={{ padding: '0.75rem 1rem' }}>
-                        <span style={{
-                          background: entry.match_level === 'L1' || entry.match_level === 'L2' ? 'rgba(16, 185, 129, 0.1)' : entry.match_level === 'L6' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-                          color: entry.match_level === 'L1' || entry.match_level === 'L2' ? '#10b981' : entry.match_level === 'L6' ? '#ef4444' : '#f59e0b',
-                          padding: '0.2rem 0.5rem',
-                          borderRadius: '4px',
-                          fontSize: '0.7rem',
-                          fontWeight: 700
-                        }}>
-                          {entry.match_level ? `${entry.match_level} - ${entry.status}` : 'Exact AI Match (L1)'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* Counterparty Creator Panel */}
-        <div style={{ padding: '1rem', background: '#F6F2EE', border: '1px solid #DDD0C4', borderRadius: '8px' }}>
-          <h3 style={{ fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#2A1628', margin: '0 0 0.75rem' }}>
-            In-Workspace counterparty creator
-          </h3>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <input
-              type="text"
-              value={newVendorName}
-              onChange={(e) => setNewVendorName(e.target.value)}
-              placeholder="Enter Vendor or Supplier Name..."
-              style={{
-                flex: 1,
-                height: '38px',
-                border: '1px solid #DDD0C4',
-                borderRadius: '6px',
-                padding: '0 0.875rem',
-                fontSize: '0.85rem',
-                outline: 'none',
-                color: '#2A1628',
-              }}
-            />
-            <button
-              onClick={handleAddVendor}
-              disabled={creatingVendor || !newVendorName.trim()}
-              style={{
-                background: '#2A1628',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '6px',
-                padding: '0 1.25rem',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                cursor: newVendorName.trim() ? 'pointer' : 'default',
-                letterSpacing: '0.15em',
-                textTransform: 'uppercase',
-                opacity: newVendorName.trim() ? 1 : 0.6,
-              }}
-            >
-              Add Partner
-            </button>
-          </div>
-        </div>
-
-        {/* Validation Errors & Integrity Logs Panel */}
-        {(validationErrors.length > 0 || balancedDiff > 0) && (
-          <div style={{ marginTop: '1.25rem', padding: '1rem', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '8px' }}>
-            <h4 style={{ fontSize: '0.8rem', fontWeight: 700, color: '#b91c1c', margin: '0 0 0.5rem 0', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-              Ledger Integrity Validation Report
-            </h4>
-            <p style={{ fontSize: '0.75rem', color: '#b91c1c', margin: '0 0 0.5rem 0', fontWeight: 600 }}>
-              Balance Discrepancy (Credits vs Debits): AED {balancedDiff.toFixed(2)}
-            </p>
-            {validationErrors.length > 0 && (
-              <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.75rem', color: '#b91c1c', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                {validationErrors.map((err, i) => <li key={i}>{err}</li>)}
-              </ul>
-            )}
-          </div>
-        )}
-
-        {/* Suspense Workspace Reconciliation Bucket */}
-        {suspenseTxs.length > 0 && (
-          <div style={{ marginTop: '1.25rem', padding: '1.25rem', background: '#Fbf8f5', border: '1px solid #DDD0C4', borderRadius: '8px' }}>
-            <h4 style={{ fontSize: '0.8rem', fontWeight: 700, color: '#2A1628', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-              Suspense Reconciliation Workspace ({suspenseTxs.length} items)
-            </h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {suspenseTxs.map((tx) => (
-                <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: '6px' }}>
-                  <div style={{ fontSize: '0.75rem', color: '#2A1628' }}>
-                    <strong>{tx.date}</strong> | {tx.description} | <span style={{ color: '#ef4444', fontWeight: 600 }}>AED {Number(tx.amount).toFixed(2)}</span>
-                  </div>
-                  {resolvingId === tx.id ? (
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <input
-                        type="text"
-                        placeholder="Type Correct Counterparty..."
-                        value={resolvingVendor}
-                        onChange={(e) => setResolvingVendor(e.target.value)}
-                        style={{ height: '28px', fontSize: '0.75rem', border: '1px solid #DDD0C4', borderRadius: '4px', padding: '0 0.5rem' }}
-                      />
-                      <button
-                        onClick={() => handleResolveSuspense(tx.id)}
-                        style={{ height: '28px', background: '#10b981', color: '#fff', border: 'none', borderRadius: '4px', padding: '0 0.5rem', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer' }}
-                      >
-                        SAVE
-                      </button>
-                      <button
-                        onClick={() => { setResolvingId(null); setResolvingVendor(''); }}
-                        style={{ height: '28px', background: '#6b7280', color: '#fff', border: 'none', borderRadius: '4px', padding: '0 0.5rem', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer' }}
-                      >
-                        CANCEL
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setResolvingId(tx.id)}
-                      style={{ background: '#E8760A', color: '#fff', border: 'none', borderRadius: '4px', padding: '0.3rem 0.75rem', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer' }}
-                    >
-                      RESOLVE
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* OCR Warnings Block */}
-        {parseAlerts && (
-          <div style={{ marginTop: '1.25rem', padding: '1rem', background: '#fffbeb', border: '1px solid #fef3c7', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <h4 style={{ fontSize: '0.8rem', fontWeight: 700, color: '#b45309', margin: 0, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-              Data Integrity warnings
-            </h4>
-            <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.75rem', color: '#b45309', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-              {parseAlerts?.transaction_alert_message && <li>{parseAlerts?.transaction_alert_message}</li>}
-              {parseAlerts?.vat_alert_message && <li>{parseAlerts?.vat_alert_message}</li>}
-              {parseAlerts?.three_month_consequences && <li>{parseAlerts?.three_month_consequences}</li>}
-            </ul>
-          </div>
-        )}
-      </div>
-
-
-      <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem', borderBottom: '2px solid rgba(42,22,40,0.08)', paddingBottom: '0.5rem', flexWrap: 'wrap' }}>
-        <button
-          onClick={() => setActiveWorkspaceTab('ocr')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            borderBottom: activeWorkspaceTab === 'ocr' ? '3px solid #2A1628' : 'none',
-            color: activeWorkspaceTab === 'ocr' ? '#2A1628' : 'rgba(42,22,40,0.5)',
-            fontSize: '0.85rem',
-            fontWeight: 800,
-            cursor: 'pointer',
-            padding: '0.5rem 1rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em'
-          }}
-        >
-          OCR Ingestion
-        </button>
-        <button
-          onClick={() => setActiveWorkspaceTab('kyc')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            borderBottom: activeWorkspaceTab === 'kyc' ? '3px solid #E8760A' : 'none',
-            color: activeWorkspaceTab === 'kyc' ? '#E8760A' : 'rgba(42,22,40,0.5)',
-            fontSize: '0.85rem',
-            fontWeight: 800,
-            cursor: 'pointer',
-            padding: '0.5rem 1rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em'
-          }}
-        >
-          KYC Compliance
-        </button>
-        <button
-          onClick={() => setActiveWorkspaceTab('reconciliation')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            borderBottom: activeWorkspaceTab === 'reconciliation' ? '3px solid #2A1628' : 'none',
-            color: activeWorkspaceTab === 'reconciliation' ? '#2A1628' : 'rgba(42,22,40,0.5)',
-            fontSize: '0.85rem',
-            fontWeight: 800,
-            cursor: 'pointer',
-            padding: '0.5rem 1rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em'
-          }}
-        >
-          Reconciliation Panel
-        </button>
-        <button
-          onClick={() => setActiveWorkspaceTab('suspense')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            borderBottom: activeWorkspaceTab === 'suspense' ? '3px solid #2A1628' : 'none',
-            color: activeWorkspaceTab === 'suspense' ? '#2A1628' : 'rgba(42,22,40,0.5)',
-            fontSize: '0.85rem',
-            fontWeight: 800,
-            cursor: 'pointer',
-            padding: '0.5rem 1rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em'
-          }}
-        >
-          Suspense Workspace
-        </button>
-        <button
-          onClick={() => setActiveWorkspaceTab('quickbooks')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            borderBottom: activeWorkspaceTab === 'quickbooks' ? '3px solid #2A1628' : 'none',
-            color: activeWorkspaceTab === 'quickbooks' ? '#2A1628' : 'rgba(42,22,40,0.5)',
-            fontSize: '0.85rem',
-            fontWeight: 800,
-            cursor: 'pointer',
-            padding: '0.5rem 1rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em'
-          }}
-        >
-          QuickBooks Integration
-        </button>
-      </div>
-
-      {activeWorkspaceTab === 'kyc' && (
-        <KycComplianceWorkspace />
       )}
-      {activeWorkspaceTab === 'reconciliation' && (
-        <ReconciliationPanel onReconciled={() => {
-          fetchSuspense();
-        }} />
-      )}
-      {activeWorkspaceTab === 'suspense' && (
-        <SuspenseWorkspace />
-      )}
-      {activeWorkspaceTab === 'quickbooks' && (
-        <QuickBooksWorkspace />
-      )}
-      {activeWorkspaceTab === 'ocr' && (
+      {!tabParam && activeWorkspaceTab === 'ocr' && (
         <div style={{ background: '#ffffff', border: '1px solid rgba(42,22,40,0.08)', borderRadius: '16px', padding: '1.75rem', boxShadow: '0 10px 30px -10px rgba(42,22,40,0.06)', marginTop: '1.5rem' }}>
           <h2 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '1.25rem', fontFamily: 'Inter, sans-serif', letterSpacing: '0.22em', textTransform: 'uppercase', color: '#2A1628' }}>
             Stage 1: Document OCR Ingestion Workspace (Enterprise Ingestion)
@@ -1468,7 +1462,7 @@ export default function AccountingPage() {
                   )}
                 </div>
               ) : (
-                <div style={{ height: '100%', border: '1px dashed #DDD0C4', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(42,22,40,0.5)', fontSize: '0.8rem', minHeight: '300px' }}>
+                <div style={{ height: '100%', border: '1px dashed #DDD0C4', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '2rem', color: 'rgba(42,22,40,0.5)', fontSize: '0.8rem', minHeight: '300px' }}>
                   Upload an invoice or select a pending human review item to parse structured details, confidence tags, and math warnings.
                 </div>
               )}
@@ -1478,73 +1472,89 @@ export default function AccountingPage() {
       )}
 
       {/* Row 4: Corporate Tax return filing & meeting transcribe recorder */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.25fr', gap: '1.5rem' }}>
+      {!tabParam && activeWorkspaceTab === 'corporate-tax' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginTop: '1.5rem' }}>
+          
         {/* Corporate Tax return filing */}
         <div style={{ background: '#ffffff', border: '1px solid rgba(42,22,40,0.08)', borderRadius: '16px', padding: '1.75rem', boxShadow: '0 10px 30px -10px rgba(42,22,40,0.06), 0 1px 3px rgba(42,22,40,0.02)', transition: 'all 0.3s ease' }}>
           <h2 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '1.25rem', fontFamily: 'Inter, sans-serif', letterSpacing: '0.22em', textTransform: 'uppercase', color: '#2A1628' }}>
             Year-End CT Filing Form
           </h2>
           {/* ... existing form ... */}
-          <form onSubmit={handleFileCorporateTax} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#2A1628', marginBottom: '0.35rem' }}>
-                Filing Year
-              </label>
-              <input
-                type="number"
-                value={ctYear}
-                onChange={(e) => setCtYear(e.target.value)}
-                style={{ width: '100%', height: '36px', border: '1px solid #DDD0C4', borderRadius: '6px', padding: '0 0.75rem', fontSize: '0.85rem' }}
-                required
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#2A1628', marginBottom: '0.35rem' }}>
-                Annual Turnover (AED)
-              </label>
-              <input
-                type="number"
-                value={ctTurnover}
-                onChange={(e) => setCtTurnover(e.target.value)}
-                style={{ width: '100%', height: '36px', border: '1px solid #DDD0C4', borderRadius: '6px', padding: '0 0.75rem', fontSize: '0.85rem' }}
-                required
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#2A1628', marginBottom: '0.35rem' }}>
-                Taxable Income (AED)
-              </label>
-              <input
-                type="number"
-                value={ctTaxableIncome}
-                onChange={(e) => setCtTaxableIncome(e.target.value)}
-                style={{ width: '100%', height: '36px', border: '1px solid #DDD0C4', borderRadius: '6px', padding: '0 0.75rem', fontSize: '0.85rem' }}
-                required
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={filingCt}
-              style={{
-                width: '100%',
-                background: '#2A1628',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '6px',
-                padding: '0.6rem 0',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                letterSpacing: '0.15em',
-                textTransform: 'uppercase',
-                marginTop: '0.5rem',
+          <div style={{ background: 'rgba(232, 118, 10, 0.04)', border: '1px solid rgba(232, 118, 10, 0.15)', borderRadius: '8px', padding: '0.85rem', marginBottom: '1.25rem', fontSize: '0.75rem', color: '#2A1628', lineHeight: 1.4 }}>
+            <span style={{ fontWeight: 700, color: '#E8760A', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.25rem' }}>
+              UAE Corporate Tax Schedule Notice
+            </span>
+            • Net Profit up to <strong>AED 375,000</strong>: <strong>0% Tax Rate</strong><br/>
+            • Net Profit exceeding <strong>AED 375,000</strong>: <strong>9% Tax Rate</strong>
+          </div>
+
+          {ctSchema ? (
+            <DynamicJsonForm
+              schema={{
+                ...ctSchema,
+                sections: [
+                  {
+                    title: "Filing Basics",
+                    fields: [
+                      {
+                        name: "filing_year",
+                        type: "number",
+                        label: "Filing Year",
+                        defaultValue: 2026,
+                        width: "third",
+                        validation: { required: "Filing year is required" }
+                      },
+                      {
+                        name: "turnover_aed",
+                        type: "number",
+                        label: "Annual Turnover (AED)",
+                        defaultValue: 520000,
+                        width: "third",
+                        validation: { required: "Turnover is required" }
+                      },
+                      {
+                        name: "taxable_income_aed",
+                        type: "number",
+                        label: "Taxable Income (AED)",
+                        defaultValue: 95000,
+                        width: "third",
+                        validation: { required: "Taxable Income is required" }
+                      }
+                    ]
+                  },
+                  ...(ctSchema.sections || []),
+                  ...(ctSchema.fields ? [{ title: "Intake Fields", fields: ctSchema.fields }] : [])
+                ]
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = '#3D2040'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = '#2A1628'; }}
-            >
-              {filingCt ? 'FILING CT RETURN...' : 'SUBMIT TAX FILING'}
-            </button>
-          </form>
+              onSubmit={async (values) => {
+                const { filing_year, turnover_aed, taxable_income_aed, ...rest } = values;
+                setFilingCt(true);
+                try {
+                  const res = await post('/bookkeeping/ct/file', {
+                    year: Number(filing_year || 2026),
+                    intake_form_data: {
+                      turnover_aed: Number(turnover_aed || 0),
+                      taxable_income_aed: Number(taxable_income_aed || 0),
+                      ...rest
+                    }
+                  });
+                  if (res && typeof res === 'object' && 'success' in res && res.success) {
+                    showToast(`Year-end Corporate Tax return submitted for FY ${filing_year || 2026}!`, 'success');
+                    await fetchCtArchive();
+                  }
+                } catch (err) {
+                  const errMsg = err instanceof Error ? err.message : String(err);
+                  showToast(errMsg || 'Filing failed', 'error');
+                } finally {
+                  setFilingCt(false);
+                }
+              }}
+              successMessage="Corporate Tax Return filed successfully!"
+            />
+          ) : (
+            <div style={{ fontSize: '0.8rem', color: 'rgba(42,22,40,0.5)', padding: '1rem 0' }}>Loading Dynamic Tax Intake Form...</div>
+          )}
 
           {/* Filed CT Archives Grid */}
           <div style={{ marginTop: '1.5rem' }}>
@@ -1663,7 +1673,223 @@ export default function AccountingPage() {
             </div>
           )}
         </div>
+      
+        </div>
+      )}
       </div>
+
+      {/* 9-Stage AI Bookkeeping Engine Panel (Commented out as requested) */}
+      {/*
+      <div style={{ background: '#ffffff', border: '1px solid rgba(42,22,40,0.08)', borderRadius: '16px', padding: '1.75rem', boxShadow: '0 10px 30px -10px rgba(42,22,40,0.06), 0 1px 3px rgba(42,22,40,0.02)', transition: 'all 0.3s ease', marginTop: '2rem' }}>
+        <div style={{ borderBottom: '1px solid rgba(42,22,40,0.08)', paddingBottom: '0.75rem', marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ fontSize: '0.85rem', fontWeight: 700, margin: 0, fontFamily: 'Inter, sans-serif', letterSpacing: '0.22em', textTransform: 'uppercase', color: '#2A1628' }}>
+            9-Stage AI Bookkeeping Workspace
+          </h2>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+             {kycChecklist.some((item) => item.status === 'expired') && (
+               <div style={{ display: 'flex', alignItems: 'center', background: '#fef2f2', color: '#b91c1c', border: '1px solid #fca5a5', padding: '0.4rem 0.75rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600 }}>
+                 ⚠️ UPLOADS LOCKED BY KYC GATE
+               </div>
+             )}
+             <button
+              onClick={() => {
+                if (kycChecklist.some((item) => item.status === 'expired')) {
+                  showToast('Cannot upload bank statement while KYC compliance documents are expired.', 'error');
+                  return;
+                }
+                fileInputRef.current?.click();
+              }}
+              disabled={parsing || kycChecklist.some((item) => item.status === 'expired')}
+              style={{
+                background: '#2A1628',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '0.5rem 1rem',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                cursor: kycChecklist.some((item) => item.status === 'expired') ? 'not-allowed' : 'pointer',
+                letterSpacing: '0.15em',
+                textTransform: 'uppercase',
+                opacity: kycChecklist.some((item) => item.status === 'expired') ? 0.4 : 1
+              }}
+              onMouseEnter={(e) => { 
+                if (!kycChecklist.some((item) => item.status === 'expired')) {
+                  e.currentTarget.style.background = '#3D2040'; 
+                }
+              }}
+              onMouseLeave={(e) => { 
+                if (!kycChecklist.some((item) => item.status === 'expired')) {
+                  e.currentTarget.style.background = '#2A1628'; 
+                }
+              }}
+            >
+              {parsing ? 'PROCESSING OCR...' : 'UPLOAD STATEMENT'}
+            </button>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleStatementUpload}
+              style={{ display: 'none' }}
+              accept=".pdf,.csv,.xlsx,.xls"
+              disabled={kycChecklist.some((item) => item.status === 'expired')}
+            />
+            <button
+              onClick={handleQuickBooksPush}
+              disabled={pushingQb}
+              style={{
+                background: '#E8760A',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '0.5rem 1rem',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                letterSpacing: '0.15em',
+                textTransform: 'uppercase',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#F09040'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = '#E8760A'; }}
+            >
+              {pushingQb ? 'SYNCING...' : 'PUSH TO QUICKBOOKS'}
+            </button>
+          </div>
+        </div>
+
+        {failedStatements.length > 0 && (
+          <div style={{ marginBottom: '1.25rem', padding: '1rem', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '8px' }}>
+            <h4 style={{ fontSize: '0.75rem', fontWeight: 700, color: '#b91c1c', margin: '0 0 0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Failed Bank Statement Imports ({failedStatements.length})
+            </h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {failedStatements.map((stmt) => (
+                <div key={stmt.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
+                  <span style={{ color: '#b91c1c', fontWeight: 600 }}>{stmt.file_name} (Reason: {stmt.parsing_errors?.error || 'Unknown'})</span>
+                  <button
+                    onClick={() => handleRetryStatement(stmt.id)}
+                    style={{ background: '#b91c1c', color: '#fff', border: 'none', borderRadius: '4px', padding: '0.25rem 0.6rem', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 700 }}
+                  >
+                    RETRY PARSING
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <h3 style={{ fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#2A1628', margin: '0 0 0.75rem' }}>
+          Extracted Ledger Entries
+        </h3>
+
+        {parsing ? (
+          <div style={{ padding: '2rem 0', textAlign: 'center', fontSize: '0.85rem', color: 'rgba(42,22,40,0.5)' }}>Processing Statement & Extracting Ledger Entries...</div>
+        ) : ledger.length === 0 ? (
+          <div style={{ padding: '3rem 0', textAlign: 'center', border: '1px dashed #DDD0C4', borderRadius: '8px', fontSize: '0.85rem', color: 'rgba(42,22,40,0.4)', marginBottom: '1.25rem' }}>
+            No statement parsed yet. Upload a bank statement file to construct the ledger.
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto', marginBottom: '1.25rem', border: '1px solid #DDD0C4', borderRadius: '8px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem' }}>
+              <thead>
+                <tr style={{ background: '#F6F2EE', borderBottom: '2px solid #DDD0C4', color: '#2A1628' }}>
+                  <th style={{ padding: '0.75rem 1rem', fontWeight: 700 }}>Date</th>
+                  <th style={{ padding: '0.75rem 1rem', fontWeight: 700 }}>Description</th>
+                  <th style={{ padding: '0.75rem 1rem', fontWeight: 700 }}>Reference</th>
+                  <th style={{ padding: '0.75rem 1rem', fontWeight: 700 }}>Amount</th>
+                  <th style={{ padding: '0.75rem 1rem', fontWeight: 700 }}>Type</th>
+                  <th style={{ padding: '0.75rem 1rem', fontWeight: 700 }}>Match Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ledger.map((entry: any, idx) => (
+                  <tr key={entry.id || idx} style={{ borderBottom: '1px solid #DDD0C4', background: entry.status === 'matched' ? 'rgba(16, 185, 129, 0.02)' : 'rgba(239, 68, 68, 0.02)' }}>
+                    <td style={{ padding: '0.75rem 1rem', fontWeight: 600 }}>{entry.date}</td>
+                    <td style={{ padding: '0.75rem 1rem', fontWeight: 500 }}>{entry.description}</td>
+                    <td style={{ padding: '0.75rem 1rem', color: 'rgba(42,22,40,0.6)' }}>{entry.reference || 'N/A'}</td>
+                    <td style={{ padding: '0.75rem 1rem', fontWeight: 600, color: entry.type === 'debit' ? '#ef4444' : '#10b981' }}>
+                      AED {Number(entry.amount).toFixed(2)}
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem', textTransform: 'uppercase', fontWeight: 600, fontSize: '0.7rem', color: entry.type === 'debit' ? '#ef4444' : '#10b981' }}>
+                      {entry.type === 'debit' ? 'DR (OUT)' : 'CR (IN)'}
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem' }}>
+                      <span style={{
+                        background: entry.match_level === 'L1' || entry.match_level === 'L2' ? 'rgba(16, 185, 129, 0.1)' : entry.match_level === 'L6' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                        color: entry.match_level === 'L1' || entry.match_level === 'L2' ? '#10b981' : entry.match_level === 'L6' ? '#ef4444' : '#f59e0b',
+                        padding: '0.2rem 0.5rem',
+                        borderRadius: '4px',
+                        fontSize: '0.7rem',
+                        fontWeight: 700
+                      }}>
+                        {entry.match_level ? `${entry.match_level} - ${entry.status}` : 'Exact AI Match (L1)'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <div style={{ padding: '1rem', background: '#F6F2EE', border: '1px solid #DDD0C4', borderRadius: '8px' }}>
+          <h3 style={{ fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#2A1628', margin: '0 0 0.75rem' }}>
+            In-Workspace counterparty creator
+          </h3>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <input
+              type="text"
+              value={newVendorName}
+              onChange={(e) => setNewVendorName(e.target.value)}
+              placeholder="Enter Vendor or Supplier Name..."
+              style={{
+                flex: 1,
+                height: '38px',
+                border: '1px solid #DDD0C4',
+                borderRadius: '6px',
+                padding: '0 0.875rem',
+                fontSize: '0.85rem',
+                outline: 'none',
+                color: '#2A1628',
+              }}
+            />
+            <button
+              onClick={handleAddVendor}
+              disabled={creatingVendor || !newVendorName.trim()}
+              style={{
+                background: '#2A1628',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '0 1.25rem',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                cursor: newVendorName.trim() ? 'pointer' : 'default',
+                letterSpacing: '0.15em',
+                textTransform: 'uppercase',
+                opacity: newVendorName.trim() ? 1 : 0.6,
+              }}
+            >
+              Add Partner
+            </button>
+          </div>
+        </div>
+
+        {parseAlerts && (
+          <div style={{ marginTop: '1.25rem', padding: '1rem', background: '#fffbeb', border: '1px solid #fef3c7', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <h4 style={{ fontSize: '0.8rem', fontWeight: 700, color: '#b45309', margin: 0, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              Data Integrity warnings
+            </h4>
+            <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.75rem', color: '#b45309', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              {parseAlerts?.transaction_alert_message && <li>{parseAlerts?.transaction_alert_message}</li>}
+              {parseAlerts?.vat_alert_message && <li>{parseAlerts?.vat_alert_message}</li>}
+              {parseAlerts?.three_month_consequences && <li>{parseAlerts?.three_month_consequences}</li>}
+            </ul>
+          </div>
+        )}
+      </div>
+      */}
     </div>
   );
 }
+

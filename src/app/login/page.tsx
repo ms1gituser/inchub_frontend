@@ -317,7 +317,7 @@ export default function LoginPage() {
           <div
             style={{
               marginTop: '1.5rem',
-              padding: '1rem',
+              padding: '1.25rem 1rem',
               background: 'rgba(44, 26, 14, 0.04)',
               border: '1px dashed rgba(44, 26, 14, 0.15)',
               borderRadius: 10,
@@ -327,14 +327,61 @@ export default function LoginPage() {
               lineHeight: 1.6,
             }}
           >
-            <div style={{ fontWeight: 600, color: '#2C1A0E', marginBottom: '0.25rem', letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: '0.7rem' }}>
-              Demo Access Credentials
+            <div style={{ fontWeight: 600, color: '#2C1A0E', marginBottom: '0.75rem', letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: '0.7rem', textAlign: 'center' }}>
+              Select Role for Quick Autofill
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span><strong>Email:</strong> admin@inchcrm.com</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span><strong>Password:</strong> admin123</span>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              {/* Admin Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('admin@inchcrm.com');
+                  setPassword('admin123');
+                }}
+                style={{
+                  flex: 1,
+                  background: '#ffffff',
+                  border: '1px solid rgba(44, 26, 14, 0.15)',
+                  borderRadius: '6px',
+                  padding: '0.6rem 0.5rem',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'all 0.15s ease',
+                  fontFamily: 'inherit',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#B8892A'; e.currentTarget.style.background = '#FAF8F5'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(44, 26, 14, 0.15)'; e.currentTarget.style.background = '#ffffff'; }}
+              >
+                <div style={{ fontWeight: 600, color: '#2C1A0E', fontSize: '0.75rem', marginBottom: '0.15rem' }}>Admin Console</div>
+                <div style={{ color: '#78716c', fontSize: '0.65rem' }}>admin@inchcrm.com</div>
+                <div style={{ color: '#a8a29e', fontSize: '0.6rem' }}>Pass: admin123</div>
+              </button>
+              
+              {/* Client Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('client@inchcrm.com');
+                  setPassword('client123');
+                }}
+                style={{
+                  flex: 1,
+                  background: '#ffffff',
+                  border: '1px solid rgba(44, 26, 14, 0.15)',
+                  borderRadius: '6px',
+                  padding: '0.6rem 0.5rem',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'all 0.15s ease',
+                  fontFamily: 'inherit',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#B8892A'; e.currentTarget.style.background = '#FAF8F5'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(44, 26, 14, 0.15)'; e.currentTarget.style.background = '#ffffff'; }}
+              >
+                <div style={{ fontWeight: 600, color: '#2C1A0E', fontSize: '0.75rem', marginBottom: '0.15rem' }}>Client Portal</div>
+                <div style={{ color: '#78716c', fontSize: '0.65rem' }}>client@inchcrm.com</div>
+                <div style={{ color: '#a8a29e', fontSize: '0.6rem' }}>Pass: client123</div>
+              </button>
             </div>
           </div>
 

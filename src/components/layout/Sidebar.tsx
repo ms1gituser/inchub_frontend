@@ -1,8 +1,9 @@
 'use client';
 
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import type { NavSection } from '@/types/navigation';
 import { usePermission, UserRole } from '@/context/PermissionContext';
 
@@ -141,8 +142,17 @@ interface SidebarProps {
 /* ── Component ────────────────────────────────────────────────────────────── */
 export default function Sidebar({ collapsed, hidden, onToggle, activeBrand }: SidebarProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const currentTab = searchParams.get('tab') || '';
   const { role } = usePermission();
   const isFinancial = activeBrand === 'financial' || pathname === '/accounting' || pathname.startsWith('/accounting/');
+  const [accountingExpanded, setAccountingExpanded] = useState(pathname.startsWith('/accounting'));
+
+  useEffect(() => {
+    if (pathname.startsWith('/accounting')) {
+      setAccountingExpanded(true);
+    }
+  }, [pathname]);
 
   // Brand details
   const dotColor = isFinancial ? '#E8760A' : '#B8892A';
@@ -274,108 +284,197 @@ export default function Sidebar({ collapsed, hidden, onToggle, activeBrand }: Si
               })
               .map((item) => {
                 const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
-              const Icon = item.icon;
+                const Icon = item.icon;
 
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  title={collapsed ? item.label : undefined}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    padding: collapsed ? '0.625rem 0' : '0.625rem 1.25rem',
-                    margin: '0.125rem 0.5rem',
-                    borderRadius: '0.5rem',
-                    textDecoration: 'none',
-                    color: isActive ? '#ffffff' : 'rgba(246,241,232,0.5)',
-                    background: isActive
-                      ? isFinancial
-                        ? 'linear-gradient(135deg, rgba(232,118,10,0.2) 0%, rgba(42,22,40,0.3) 100%)'
-                        : 'linear-gradient(135deg, rgba(184,137,42,0.2) 0%, rgba(44,26,14,0.3) 100%)'
-                      : 'transparent',
-                    boxShadow: isActive
-                      ? isFinancial
-                        ? 'inset 0 0 0 1px rgba(232,118,10,0.25)'
-                        : 'inset 0 0 0 1px rgba(184,137,42,0.25)'
-                      : 'none',
-                    transition: 'all 150ms ease',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    justifyContent: collapsed ? 'center' : 'flex-start',
-                    position: 'relative',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isActive) {
-                      (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.06)';
-                      (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(246,241,232,0.85)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive) {
-                      (e.currentTarget as HTMLAnchorElement).style.background = 'transparent';
-                      (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(246,241,232,0.5)';
-                    }
-                  }}
-                >
-                  {/* Active indicator */}
-                  {isActive && (
-                    <span
-                      style={{
-                        position: 'absolute',
-                        left: 0,
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        width: 3,
-                        height: '60%',
-                        background: isFinancial ? '#E8760A' : '#B8892A',
-                        borderRadius: '0 4px 4px 0',
+                return (
+                  <React.Fragment key={item.href}>
+                    <Link
+                      href={item.href === '/accounting' ? '/accounting?tab=dashboard' : item.href}
+                      onClick={(e) => {
+                        if (item.href === '/accounting') {
+                          setAccountingExpanded(!accountingExpanded);
+                        }
                       }}
-                    />
-                  )}
-
-                  <Icon style={{ width: 18, height: 18, flexShrink: 0 }} />
-
-                  <span style={{
-                    display: collapsed ? 'none' : 'block',
-                    flex: 1,
-                    fontSize: '0.875rem',
-                    fontWeight: isActive ? 600 : 400,
-                    opacity: collapsed ? 0 : 1,
-                    visibility: collapsed ? 'hidden' : 'visible',
-                    transition: 'opacity 200ms ease, visibility 200ms ease',
-                    whiteSpace: 'nowrap',
-                  }}>
-                    {item.label}
-                  </span>
-                  {item.badge !== undefined && (
-                    <span
+                      title={collapsed ? item.label : undefined}
                       style={{
-                        display: collapsed ? 'none' : 'inline-block',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        padding: collapsed ? '0.625rem 0' : '0.625rem 1.25rem',
+                        margin: '0.125rem 0.5rem',
+                        borderRadius: '0.5rem',
+                        textDecoration: 'none',
+                        color: isActive ? '#ffffff' : 'rgba(246,241,232,0.5)',
                         background: isActive
                           ? isFinancial
-                            ? '#E8760A'
-                            : '#B8892A'
-                          : 'rgba(255,255,255,0.1)',
-                        color: isActive ? '#ffffff' : '#94a3b8',
-                        fontSize: '0.6875rem',
-                        fontWeight: 600,
-                        padding: '0.1rem 0.45rem',
-                        borderRadius: '9999px',
-                        minWidth: 20,
-                        textAlign: 'center',
+                            ? 'linear-gradient(135deg, rgba(232,118,10,0.2) 0%, rgba(42,22,40,0.3) 100%)'
+                            : 'linear-gradient(135deg, rgba(184,137,42,0.2) 0%, rgba(44,26,14,0.3) 100%)'
+                          : 'transparent',
+                        boxShadow: isActive
+                          ? isFinancial
+                            ? 'inset 0 0 0 1px rgba(232,118,10,0.25)'
+                            : 'inset 0 0 0 1px rgba(184,137,42,0.25)'
+                          : 'none',
+                        transition: 'all 150ms ease',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        justifyContent: collapsed ? 'center' : 'flex-start',
+                        position: 'relative',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isActive) {
+                          (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.06)';
+                          (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(246,241,232,0.85)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive) {
+                          (e.currentTarget as HTMLAnchorElement).style.background = 'transparent';
+                          (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(246,241,232,0.5)';
+                        }
+                      }}
+                    >
+                      {/* Active indicator */}
+                      {isActive && (
+                        <span
+                          style={{
+                            position: 'absolute',
+                            left: 0,
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            width: 3,
+                            height: '60%',
+                            background: isFinancial ? '#E8760A' : '#B8892A',
+                            borderRadius: '0 4px 4px 0',
+                          }}
+                        />
+                      )}
+
+                      <Icon style={{ width: 18, height: 18, flexShrink: 0 }} />
+
+                      <span style={{
+                        display: collapsed ? 'none' : 'block',
+                        flex: 1,
+                        fontSize: '0.875rem',
+                        fontWeight: isActive ? 600 : 400,
                         opacity: collapsed ? 0 : 1,
                         visibility: collapsed ? 'hidden' : 'visible',
                         transition: 'opacity 200ms ease, visibility 200ms ease',
-                      }}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {item.label}
+                      </span>
+
+                      {item.label === 'Accounting' && !collapsed && (
+                        <svg
+                          style={{
+                            width: '14px',
+                            height: '14px',
+                            transform: accountingExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                            transition: 'transform 200ms ease',
+                            opacity: 0.5,
+                            color: 'currentColor',
+                            marginLeft: 'auto'
+                          }}
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                        </svg>
+                      )}
+
+                      {item.badge !== undefined && (
+                        <span
+                          style={{
+                            display: collapsed ? 'none' : 'inline-block',
+                            background: isActive
+                              ? isFinancial
+                                ? '#E8760A'
+                                : '#B8892A'
+                              : 'rgba(255,255,255,0.1)',
+                            color: isActive ? '#ffffff' : '#94a3b8',
+                            fontSize: '0.6875rem',
+                            fontWeight: 600,
+                            padding: '0.1rem 0.45rem',
+                            borderRadius: '9999px',
+                            minWidth: 20,
+                            textAlign: 'center',
+                            opacity: collapsed ? 0 : 1,
+                            visibility: collapsed ? 'hidden' : 'visible',
+                            transition: 'opacity 200ms ease, visibility 200ms ease',
+                          }}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
+                    </Link>
+
+                    {/* Accounting Submenus */}
+                    {item.label === 'Accounting' && accountingExpanded && !collapsed && (
+                      <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        marginLeft: '2.5rem',
+                        marginTop: '0.25rem',
+                        marginBottom: '0.5rem',
+                        gap: '0.125rem'
+                      }}>
+                        {[
+                          { label: 'Dashboard', tab: 'dashboard' },
+                          { label: 'Client List', tab: 'client-list' },
+                          { label: 'AI Bookkeeping Queue', tab: 'ai-queue' },
+                          { label: 'Reconciliation Center', tab: 'reconciliation' },
+                          { label: 'VAT Center', tab: 'vat' },
+                          { label: 'Corporate Tax', tab: 'corporate-tax' },
+                          { label: 'Reports', tab: 'reports' },
+                          { label: 'QuickBooks', tab: 'quickbooks' },
+                          { label: 'Vendors', tab: 'vendors' }
+                        ].map((subItem) => {
+                          const isSubActive = pathname === '/accounting' && (
+                            currentTab === subItem.tab || 
+                            (subItem.tab === 'dashboard' && !currentTab)
+                          );
+                          return (
+                            <Link
+                              key={subItem.tab}
+                              href={`/accounting?tab=${subItem.tab}`}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                padding: '0.35rem 0.75rem',
+                                fontSize: '0.8125rem',
+                                color: isSubActive ? '#ffffff' : 'rgba(246,241,232,0.45)',
+                                background: isSubActive ? 'rgba(232,118,10,0.15)' : 'transparent',
+                                borderRadius: '4px',
+                                textDecoration: 'none',
+                                fontWeight: isSubActive ? 500 : 400,
+                                transition: 'all 150ms ease',
+                                fontFamily: 'inherit',
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!isSubActive) {
+                                  e.currentTarget.style.color = 'rgba(246,241,232,0.85)';
+                                  e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!isSubActive) {
+                                  e.currentTarget.style.color = 'rgba(246,241,232,0.45)';
+                                  e.currentTarget.style.background = 'transparent';
+                                }
+                              }}
+                            >
+                              {subItem.label}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
           </div>
         ))}
       </nav>
@@ -435,5 +534,3 @@ export default function Sidebar({ collapsed, hidden, onToggle, activeBrand }: Si
     </aside>
   );
 }
-
-
