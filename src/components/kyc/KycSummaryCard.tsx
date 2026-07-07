@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -41,6 +42,7 @@ export default function KycSummaryCard({ onOpenTab }: KycSummaryCardProps) {
     }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     fetch();
     // Re-fetch whenever a KYC update happens (from workspace tab)

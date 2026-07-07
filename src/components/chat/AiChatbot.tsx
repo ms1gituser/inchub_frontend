@@ -97,7 +97,7 @@ export default function AiChatbot() {
         socketRef.current = null;
       });
 
-      socket.on('connect_error', (_err) => {
+      socket.on('connect_error', () => {
       });
     }
   }, [isOpen]);
