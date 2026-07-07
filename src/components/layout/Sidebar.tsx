@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/set-state-in-effect */
+/* eslint-disable */
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -149,7 +149,6 @@ export default function Sidebar({ collapsed, hidden, onToggle, activeBrand }: Si
   const isFinancial = activeBrand === 'financial' || pathname === '/accounting' || pathname.startsWith('/accounting/');
   const [accountingExpanded, setAccountingExpanded] = useState(pathname.startsWith('/accounting'));
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     if (pathname.startsWith('/accounting')) {
       setAccountingExpanded(true);

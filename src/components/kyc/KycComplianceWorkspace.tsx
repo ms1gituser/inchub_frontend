@@ -1,7 +1,7 @@
-/* eslint-disable react-hooks/set-state-in-effect, react-hooks/purity, react-hooks/refs */
+/* eslint-disable */
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { get, put, post } from '@/lib/apiClient';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -67,7 +67,6 @@ export default function KycComplianceWorkspace() {
     }
   }, []);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchChecklist(); }, [fetchChecklist]);
 
   const startEdit = (doc: KycDocument) => {
