@@ -22,6 +22,21 @@ export default function DashboardTab() {
   const [complianceFilter, setComplianceFilter] = React.useState('All Statuses');
   const [qboFilter, setQboFilter] = React.useState('All Statuses');
 
+  const [activeDropdown, setActiveDropdown] = React.useState<string | null>(null);
+
+  const filterConfigs = [
+    { label: 'Client Scope', key: 'client', value: clientFilter, setter: setClientFilter, options: ['All Clients', 'ABC Trading LLC', 'XYZ Holdings', 'Alpha Tech FZCO', 'Beta Industries', 'Gamma Solutions'] },
+    { label: 'Manager', key: 'manager', value: managerFilter, setter: setManagerFilter, options: ['All Managers', 'John Doe', 'Sarah Khan', 'Mike Brown', 'Priya Nair'] },
+    { label: 'Bookkeeper', key: 'bookkeeper', value: bookkeeperFilter, setter: setBookkeeperFilter, options: ['All Bookkeepers', 'Alex Mercer', 'Emma Watson', 'Liam Neeson'] },
+    { label: 'Country', key: 'country', value: countryFilter, setter: setCountryFilter, options: ['All Countries', 'UAE', 'UK', 'USA', 'Saudi Arabia'] },
+    { label: 'Entity Type', key: 'entity', value: entityFilter, setter: setEntityFilter, options: ['All Entities', 'LLC', 'FZCO', 'Branch', 'Sole Proprietor'] },
+    { label: 'Industry', key: 'industry', value: industryFilter, setter: setIndustryFilter, options: ['All Industries', 'Trading', 'Holding', 'Tech', 'Real Estate', 'Logistics'] },
+    { label: 'Date Range', key: 'date', value: dateFilter, setter: setDateFilter, options: ['This Month', 'Last Month', 'This Quarter', 'This Year'] },
+    { label: 'Financial Year', key: 'fy', value: fyFilter, setter: setFyFilter, options: ['FY 2026', 'FY 2025', 'FY 2024'] },
+    { label: 'Compliance', key: 'compliance', value: complianceFilter, setter: setComplianceFilter, options: ['All Statuses', 'Compliant', 'At Risk', 'Non-Compliant'] },
+    { label: 'QuickBooks', key: 'qbo', value: qboFilter, setter: setQboFilter, options: ['All Statuses', 'Connected', 'Error', 'Disconnected'] },
+  ];
+
   // Popup & Search States
   const [searchQuery, setSearchQuery] = React.useState('');
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
@@ -76,8 +91,30 @@ export default function DashboardTab() {
           .dashboard-filters-row select {
             width: 100%;
             min-width: 0;
-            padding: 0.2rem 0.15rem !important;
-            font-size: 0.65rem !important;
+            padding: 0.35rem 1.25rem 0.35rem 0.5rem !important;
+            font-size: 0.725rem !important;
+            color: #2A1628 !important;
+            background-color: #FAF8F5 !important;
+            border: 1px solid #DDD0C4 !important;
+            border-radius: 6px !important;
+            cursor: pointer !important;
+            outline: none !important;
+            appearance: none !important;
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
+            background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23E8760A' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") !important;
+            background-repeat: no-repeat !important;
+            background-position: right 0.35rem center !important;
+            background-size: 0.6rem !important;
+            transition: all 120ms ease !important;
+          }
+          .dashboard-filters-row select:hover {
+            border-color: #E8760A !important;
+            background-color: #ffffff !important;
+          }
+          .dashboard-filters-row select:focus {
+            border-color: #E8760A !important;
+            box-shadow: 0 0 0 2px rgba(232, 118, 10, 0.15) !important;
           }
           .dashboard-lists-grid {
             grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
@@ -244,163 +281,90 @@ export default function DashboardTab() {
       }}>
         {/* Filters row */}
         <div className="dashboard-filters-row" style={{ display: 'grid', gap: '0.4rem', alignItems: 'center' }}>
-          
-          {/* Client Filter */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <span style={{ fontSize: '0.625rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase' }}>Client Scope</span>
-            <select 
-              value={clientFilter} 
-              onChange={(e) => setClientFilter(e.target.value)}
-              style={{ padding: '0.3rem 0.5rem', fontSize: '0.75rem', border: '1px solid #DDD0C4', borderRadius: '6px', color: '#2A1628', background: '#ffffff', cursor: 'pointer', outline: 'none' }}
-            >
-              <option value="All Clients">All Clients</option>
-              <option value="ABC Trading LLC">ABC Trading LLC</option>
-              <option value="XYZ Holdings">XYZ Holdings</option>
-              <option value="Alpha Tech FZCO">Alpha Tech FZCO</option>
-              <option value="Beta Industries">Beta Industries</option>
-              <option value="Gamma Solutions">Gamma Solutions</option>
-            </select>
-          </div>
-
-          {/* Manager Filter */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <span style={{ fontSize: '0.625rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase' }}>Manager</span>
-            <select 
-              value={managerFilter} 
-              onChange={(e) => setManagerFilter(e.target.value)}
-              style={{ padding: '0.3rem 0.5rem', fontSize: '0.75rem', border: '1px solid #DDD0C4', borderRadius: '6px', color: '#2A1628', background: '#ffffff', cursor: 'pointer', outline: 'none' }}
-            >
-              <option value="All Managers">All Managers</option>
-              <option value="John Doe">John Doe</option>
-              <option value="Sarah Khan">Sarah Khan</option>
-              <option value="Mike Brown">Mike Brown</option>
-              <option value="Priya Nair">Priya Nair</option>
-            </select>
-          </div>
-
-          {/* Bookkeeper Filter */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <span style={{ fontSize: '0.625rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase' }}>Bookkeeper</span>
-            <select 
-              value={bookkeeperFilter} 
-              onChange={(e) => setBookkeeperFilter(e.target.value)}
-              style={{ padding: '0.3rem 0.5rem', fontSize: '0.75rem', border: '1px solid #DDD0C4', borderRadius: '6px', color: '#2A1628', background: '#ffffff', cursor: 'pointer', outline: 'none' }}
-            >
-              <option value="All Bookkeepers">All Bookkeepers</option>
-              <option value="Alex Mercer">Alex Mercer</option>
-              <option value="Emma Watson">Emma Watson</option>
-              <option value="Liam Neeson">Liam Neeson</option>
-            </select>
-          </div>
-
-          {/* Country Filter */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <span style={{ fontSize: '0.625rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase' }}>Country</span>
-            <select 
-              value={countryFilter} 
-              onChange={(e) => setCountryFilter(e.target.value)}
-              style={{ padding: '0.3rem 0.5rem', fontSize: '0.75rem', border: '1px solid #DDD0C4', borderRadius: '6px', color: '#2A1628', background: '#ffffff', cursor: 'pointer', outline: 'none' }}
-            >
-              <option value="All Countries">All Countries</option>
-              <option value="UAE">UAE</option>
-              <option value="UK">UK</option>
-              <option value="USA">USA</option>
-              <option value="Saudi Arabia">Saudi Arabia</option>
-            </select>
-          </div>
-
-          {/* Entity Type */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <span style={{ fontSize: '0.625rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase' }}>Entity Type</span>
-            <select 
-              value={entityFilter} 
-              onChange={(e) => setEntityFilter(e.target.value)}
-              style={{ padding: '0.3rem 0.5rem', fontSize: '0.75rem', border: '1px solid #DDD0C4', borderRadius: '6px', color: '#2A1628', background: '#ffffff', cursor: 'pointer', outline: 'none' }}
-            >
-              <option value="All Entities">All Entities</option>
-              <option value="LLC">LLC</option>
-              <option value="FZCO">FZCO</option>
-              <option value="Branch">Branch</option>
-              <option value="Sole Proprietor">Sole Proprietor</option>
-            </select>
-          </div>
-
-          {/* Industry */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <span style={{ fontSize: '0.625rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase' }}>Industry</span>
-            <select 
-              value={industryFilter} 
-              onChange={(e) => setIndustryFilter(e.target.value)}
-              style={{ padding: '0.3rem 0.5rem', fontSize: '0.75rem', border: '1px solid #DDD0C4', borderRadius: '6px', color: '#2A1628', background: '#ffffff', cursor: 'pointer', outline: 'none' }}
-            >
-              <option value="All Industries">All Industries</option>
-              <option value="Trading">Trading</option>
-              <option value="Holding">Holding</option>
-              <option value="Tech">Tech</option>
-              <option value="Real Estate">Real Estate</option>
-              <option value="Logistics">Logistics</option>
-            </select>
-          </div>
-
-          {/* Date Range */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <span style={{ fontSize: '0.625rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase' }}>Date Range</span>
-            <select 
-              value={dateFilter} 
-              onChange={(e) => setDateFilter(e.target.value)}
-              style={{ padding: '0.3rem 0.5rem', fontSize: '0.75rem', border: '1px solid #DDD0C4', borderRadius: '6px', color: '#2A1628', background: '#ffffff', cursor: 'pointer', outline: 'none' }}
-            >
-              <option value="This Month">This Month</option>
-              <option value="Last Month">Last Month</option>
-              <option value="This Quarter">This Quarter</option>
-              <option value="This Year">This Year</option>
-            </select>
-          </div>
-
-          {/* Financial Year */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <span style={{ fontSize: '0.625rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase' }}>Financial Year</span>
-            <select 
-              value={fyFilter} 
-              onChange={(e) => setFyFilter(e.target.value)}
-              style={{ padding: '0.3rem 0.5rem', fontSize: '0.75rem', border: '1px solid #DDD0C4', borderRadius: '6px', color: '#2A1628', background: '#ffffff', cursor: 'pointer', outline: 'none' }}
-            >
-              <option value="FY 2026">FY 2026</option>
-              <option value="FY 2025">FY 2025</option>
-              <option value="FY 2024">FY 2024</option>
-            </select>
-          </div>
-
-          {/* Compliance Status */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <span style={{ fontSize: '0.625rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase' }}>Compliance</span>
-            <select 
-              value={complianceFilter} 
-              onChange={(e) => setComplianceFilter(e.target.value)}
-              style={{ padding: '0.3rem 0.5rem', fontSize: '0.75rem', border: '1px solid #DDD0C4', borderRadius: '6px', color: '#2A1628', background: '#ffffff', cursor: 'pointer', outline: 'none' }}
-            >
-              <option value="All Statuses">All Statuses</option>
-              <option value="Compliant">Compliant</option>
-              <option value="At Risk">At Risk</option>
-              <option value="Non-Compliant">Non-Compliant</option>
-            </select>
-          </div>
-
-          {/* QuickBooks Status */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <span style={{ fontSize: '0.625rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase' }}>QuickBooks</span>
-            <select 
-              value={qboFilter} 
-              onChange={(e) => setQboFilter(e.target.value)}
-              style={{ padding: '0.3rem 0.5rem', fontSize: '0.75rem', border: '1px solid #DDD0C4', borderRadius: '6px', color: '#2A1628', background: '#ffffff', cursor: 'pointer', outline: 'none' }}
-            >
-              <option value="All Statuses">All Statuses</option>
-              <option value="Connected">Connected</option>
-              <option value="Error">Error</option>
-              <option value="Disconnected">Disconnected</option>
-            </select>
-          </div>
-
+          {filterConfigs.map((f) => {
+            const isOpen = activeDropdown === f.key;
+            return (
+              <div key={f.key} style={{ display: 'flex', flexDirection: 'column', gap: '2px', position: 'relative' }}>
+                <span style={{ fontSize: '0.625rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase' }}>{f.label}</span>
+                <div
+                  onClick={() => setActiveDropdown(isOpen ? null : f.key)}
+                  style={{
+                    padding: '0.35rem 0.5rem',
+                    fontSize: '0.725rem',
+                    border: '1px solid #DDD0C4',
+                    borderRadius: '6px',
+                    color: '#2A1628',
+                    background: '#ffffff',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    userSelect: 'none',
+                    fontWeight: 500,
+                    outline: 'none',
+                    transition: 'all 120ms ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#E8760A';
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isOpen) e.currentTarget.style.borderColor = '#DDD0C4';
+                  }}
+                >
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.value}</span>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 150ms ease', color: '#E8760A', flexShrink: 0, marginLeft: '4px' }}>
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </div>
+                {isOpen && (
+                  <div style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 4px)',
+                    left: 0,
+                    right: 0,
+                    background: '#ffffff',
+                    border: '1px solid #DDD0C4',
+                    borderRadius: '8px',
+                    boxShadow: '0 8px 24px rgba(42,22,40,0.12)',
+                    zIndex: 50,
+                    overflow: 'hidden',
+                    padding: '4px',
+                    minWidth: '140px'
+                  }}>
+                    {f.options.map((opt) => (
+                      <div
+                        key={opt}
+                        onClick={() => {
+                          f.setter(opt);
+                          setActiveDropdown(null);
+                        }}
+                        style={{
+                          padding: '0.4rem 0.625rem',
+                          fontSize: '0.725rem',
+                          color: '#2A1628',
+                          cursor: 'pointer',
+                          borderRadius: '6px',
+                          background: f.value === opt ? 'rgba(232, 118, 10, 0.06)' : 'transparent',
+                          fontWeight: f.value === opt ? 600 : 400,
+                          transition: 'all 100ms ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'rgba(232, 118, 10, 0.06)';
+                          e.currentTarget.style.color = '#E8760A';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = f.value === opt ? 'rgba(232, 118, 10, 0.06)' : 'transparent';
+                          e.currentTarget.style.color = '#2A1628';
+                        }}
+                      >
+                        {opt}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         {/* Action buttons + search */}
@@ -431,20 +395,6 @@ export default function DashboardTab() {
           {/* Action Toolbar buttons */}
           <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', position: 'relative' }}>
             
-            <button 
-              onClick={() => {
-                const viewName = prompt('Enter a name for this custom view:');
-                if (viewName) {
-                  setSavedViews([...savedViews, viewName]);
-                  alert(`View "${viewName}" saved successfully!`);
-                }
-              }}
-              style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', fontWeight: 600, border: '1px solid #DDD0C4', background: '#ffffff', borderRadius: '6px', cursor: 'pointer', color: '#2A1628', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></svg>
-              Save View
-            </button>
-
             <button 
               onClick={() => {
                 setClientFilter('All Clients');
