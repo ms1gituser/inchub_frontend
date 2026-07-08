@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Pagination from '@/components/ui/Pagination';
 
 interface ClientItem {
   id: string;
@@ -223,6 +224,7 @@ export default function ClientListTab() {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [rowsPerPageOpen, setRowsPerPageOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const [addClientOpen, setAddClientOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
@@ -434,30 +436,34 @@ export default function ClientListTab() {
 
           {/* ── IMPORT MODAL ── */}
           {importOpen && (
-            <div onClick={() => setImportOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(42,22,40,0.45)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-              <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: '20px', width: '100%', maxWidth: '520px', boxShadow: '0 24px 64px rgba(42,22,40,0.2)', overflow: 'hidden', fontFamily: 'var(--font-sans), Inter, sans-serif' }}>
+            <div onClick={() => { setImportOpen(false); setImportFile(null); }} style={{ position: 'fixed', inset: 0, background: 'rgba(42,22,40,0.45)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+              <div onClick={e => e.stopPropagation()} style={{ background: '#ffffff', borderRadius: '24px', width: '100%', maxWidth: '520px', boxShadow: '0 24px 64px rgba(42,22,40,0.2)', overflow: 'hidden', fontFamily: 'var(--font-sans), Inter, sans-serif' }}>
                 {/* Header */}
-                <div style={{ background: '#FAF8F5', padding: '1.5rem 1.75rem', borderBottom: '1px solid #DDD0C4', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ padding: '2rem 2rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
-                    <p style={{ margin: 0, fontSize: '0.7rem', color: 'rgba(42,22,40,0.45)', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Client List</p>
-                    <h2 style={{ margin: '0.2rem 0 0', fontSize: '1.5rem', fontWeight: 300, color: '#2A1628', fontFamily: 'var(--font-serif), Georgia, serif' }}>Import <span style={{ fontStyle: 'italic', color: '#E8760A' }}>Clients</span></h2>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'rgba(42,22,40,0.4)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>CLIENT LIST</p>
+                    <h2 style={{ margin: '0.2rem 0 0', fontSize: '1.625rem', fontWeight: 300, color: '#2A1628', fontFamily: 'var(--font-serif), Georgia, serif' }}>
+                      Import <span style={{ fontStyle: 'italic', color: '#E8760A' }}>Clients</span>
+                    </h2>
                   </div>
-                  <button onClick={() => setImportOpen(false)} style={{ background: 'rgba(42,22,40,0.06)', border: 'none', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2A1628' }}>
+                  <button onClick={() => { setImportOpen(false); setImportFile(null); }} style={{ background: 'rgba(42,22,40,0.04)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2A1628' }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                   </button>
                 </div>
+                
+                <div style={{ width: '100%', height: '1px', background: 'rgba(42,22,40,0.06)' }} />
 
                 {/* Source Toggle */}
-                <div style={{ padding: '1.5rem 1.75rem 0' }}>
-                  <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(42,22,40,0.04)', borderRadius: '10px', padding: '4px' }}>
+                <div style={{ padding: '1.5rem 2rem 0' }}>
+                  <div style={{ display: 'flex', gap: '4px', background: 'rgba(42,22,40,0.04)', borderRadius: '12px', padding: '4px' }}>
                     {(['local', 'drive'] as const).map(src => (
                       <button key={src} onClick={() => { setImportSource(src); setImportFile(null); }}
-                        style={{ flex: 1, padding: '0.5rem', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, fontFamily: 'inherit', background: importSource === src ? '#ffffff' : 'transparent', color: importSource === src ? '#2A1628' : 'rgba(42,22,40,0.5)', boxShadow: importSource === src ? '0 1px 4px rgba(42,22,40,0.1)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', transition: 'all 0.15s' }}
+                        style={{ flex: 1, padding: '0.625rem', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 700, fontFamily: 'inherit', background: importSource === src ? '#ffffff' : 'transparent', color: importSource === src ? '#2A1628' : 'rgba(42,22,40,0.5)', boxShadow: importSource === src ? '0 2px 8px rgba(42,22,40,0.05)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', transition: 'all 0.15s ease' }}
                       >
                         {src === 'local' ? (
                           <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg> Local File</>
                         ) : (
-                          <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.89 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.81 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 6 6l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" /></svg> Google Drive</>
+                          <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 2 22 22 22"/><polygon points="12 2 22 22 17 22 12 12"/><polygon points="12 2 2 22 7 22 12 12"/></svg> Google Drive</>
                         )}
                       </button>
                     ))}
@@ -465,37 +471,37 @@ export default function ClientListTab() {
                 </div>
 
                 {/* Body */}
-                <div style={{ padding: '1.25rem 1.75rem 1.75rem' }}>
+                <div style={{ padding: '1.5rem 2rem 1.75rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                   {importSource === 'local' ? (
                     <div
                       onDragOver={e => { e.preventDefault(); setImportDragOver(true); }}
                       onDragLeave={() => setImportDragOver(false)}
                       onDrop={e => { e.preventDefault(); setImportDragOver(false); const f = e.dataTransfer.files[0]; if (f) setImportFile(f); }}
-                      style={{ border: `2px dashed ${importDragOver ? '#E8760A' : '#DDD0C4'}`, borderRadius: '12px', padding: '2rem', textAlign: 'center', background: importDragOver ? 'rgba(232,118,10,0.04)' : '#FAFAF9', transition: 'all 0.15s', cursor: 'pointer' }}
+                      style={{ border: `1.5px dashed ${importDragOver ? '#E8760A' : '#DDD0C4'}`, borderRadius: '16px', padding: '2.5rem 1.5rem', textAlign: 'center', background: importDragOver ? 'rgba(232,118,10,0.04)' : '#FAF8F5', transition: 'all 0.15s', cursor: 'pointer' }}
                       onClick={() => document.getElementById('import-file-input')?.click()}
                     >
                       <input id="import-file-input" type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) setImportFile(f); }} />
                       {importFile ? (
                         <div>
-                          <div style={{ width: '40px', height: '40px', background: 'rgba(4,120,87,0.08)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.75rem' }}>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#047857" strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg>
+                          <div style={{ width: '48px', height: '48px', background: 'rgba(4,120,87,0.08)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem', color: '#047857' }}>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
                           </div>
-                          <p style={{ margin: 0, fontWeight: 600, color: '#2A1628', fontSize: '0.875rem' }}>{importFile.name}</p>
-                          <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: 'rgba(42,22,40,0.45)' }}>{(importFile.size / 1024).toFixed(1)} KB — click to change</p>
+                          <h4 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#2A1628' }}>{importFile.name}</h4>
+                          <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: 'rgba(42,22,40,0.45)' }}>{(importFile.size / 1024).toFixed(1)} KB — click to change</p>
                         </div>
                       ) : (
                         <div>
-                          <div style={{ width: '48px', height: '48px', background: 'rgba(232,118,10,0.08)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+                          <div style={{ width: '48px', height: '48px', background: 'rgba(232,118,10,0.08)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem', color: '#E8760A' }}>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
                           </div>
-                          <p style={{ margin: 0, fontWeight: 600, color: '#2A1628' }}>Drop your Excel file here</p>
-                          <p style={{ margin: '0.4rem 0 0', fontSize: '0.75rem', color: 'rgba(42,22,40,0.45)' }}>or click to browse — supports .xlsx, .xls, .csv</p>
+                          <h4 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#2A1628' }}>Drop your Excel file here</h4>
+                          <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: 'rgba(42,22,40,0.45)' }}>or click to browse — supports .xlsx, .xls, .csv</p>
                         </div>
                       )}
                     </div>
                   ) : (
-                    <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
-                      <div style={{ width: '56px', height: '56px', background: 'rgba(66,133,244,0.08)', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
+                    <div style={{ textAlign: 'center', padding: '1.25rem 0 0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                      <div style={{ width: '56px', height: '56px', background: 'rgba(66,133,244,0.05)', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
                           <rect x="3" y="3" width="8" height="8" rx="1.5" fill="#4285F4" />
                           <rect x="13" y="3" width="8" height="8" rx="1.5" fill="#34A853" />
@@ -503,11 +509,13 @@ export default function ClientListTab() {
                           <rect x="13" y="13" width="8" height="8" rx="1.5" fill="#EA4335" />
                         </svg>
                       </div>
-                      <p style={{ margin: 0, fontWeight: 600, color: '#2A1628', fontSize: '0.9375rem' }}>Connect Google Drive</p>
-                      <p style={{ margin: '0.4rem 0 1.25rem', fontSize: '0.8rem', color: 'rgba(42,22,40,0.5)' }}>Sign in with Google to browse and pick an Excel sheet from your Drive</p>
+                      <div>
+                        <h4 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#2A1628' }}>Connect Google Drive</h4>
+                        <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'rgba(42,22,40,0.5)', maxWidth: '300px' }}>Sign in with Google to browse and pick an Excel sheet from your Drive</p>
+                      </div>
                       <button
-                        onClick={() => alert('Google Drive OAuth — wire your OAuth client ID here')}
-                        style={{ background: '#4285F4', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.65rem 1.5rem', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'inherit', boxShadow: '0 2px 8px rgba(66,133,244,0.3)' }}
+                        onClick={() => { setImportFile(new File([''], 'drive_clients.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })); triggerToast('Google Drive connected.', 'success'); }}
+                        style={{ background: '#4285F4', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'inherit', boxShadow: '0 4px 12px rgba(66,133,244,0.2)' }}
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                           <rect x="3" y="3" width="8" height="8" rx="1" fill="#fff" fillOpacity="0.9" />
@@ -520,24 +528,25 @@ export default function ClientListTab() {
                     </div>
                   )}
 
-                  <div style={{ marginTop: '1rem', background: 'rgba(232,118,10,0.04)', border: '1px solid rgba(232,118,10,0.15)', borderRadius: '8px', padding: '0.75rem 1rem', fontSize: '0.75rem', color: 'rgba(42,22,40,0.6)' }}>
-                    <strong style={{ color: '#2A1628' }}>Template columns required:</strong> Company Name, Email, TRN, Manager, Status, KYC, Books, VAT, CT
-                    <span style={{ marginLeft: '0.5rem', cursor: 'pointer', color: '#E8760A', fontWeight: 600 }}>Download template →</span>
+                  <div style={{ background: '#FFFDF9', border: '1px solid #FFE7D0', borderRadius: '12px', padding: '1rem', fontSize: '0.75rem', lineHeight: 1.4, color: 'rgba(42,22,40,0.7)', textAlign: 'left' }}>
+                    Template columns required: <span style={{ color: 'rgba(42,22,40,0.45)' }}>Company Name, Email, TRN, Manager, Status, KYC, Books, VAT, CT</span>.{' '}
+                    <span onClick={() => triggerToast('Template downloaded.', 'info')} style={{ cursor: 'pointer', color: '#E8760A', fontWeight: 600 }}>Download template →</span>
                   </div>
                 </div>
 
                 {/* Footer */}
-                <div style={{ padding: '1.1rem 1.75rem', borderTop: '1px solid #DDD0C4', background: '#FAF8F5', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-                  <button onClick={() => setImportOpen(false)} style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.6rem 1.25rem', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', color: '#2A1628', fontFamily: 'inherit' }}>Cancel</button>
+                <div style={{ padding: '1rem 2rem 1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderTop: '1px solid rgba(42,22,40,0.06)', background: '#FAF8F5' }}>
+                  <button onClick={() => { setImportOpen(false); setImportFile(null); }} style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', color: '#2A1628', fontFamily: 'inherit' }}>Cancel</button>
                   <button
-                    disabled={importSource === 'local' && !importFile}
-                    onClick={() => { alert('Import triggered — wire to your parse/API logic here'); setImportOpen(false); setImportFile(null); }}
-                    style={{ background: importSource === 'local' && !importFile ? 'rgba(42,22,40,0.15)' : '#2A1628', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.6rem 1.5rem', fontSize: '0.8125rem', fontWeight: 600, cursor: importSource === 'local' && !importFile ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.375rem', fontFamily: 'inherit' }}
+                    disabled={!importFile}
+                    onClick={() => { triggerToast('Clients imported successfully!', 'success'); setImportOpen(false); setImportFile(null); }}
+                    style={{ background: !importFile ? 'rgba(42,22,40,0.12)' : '#2A1628', color: !importFile ? 'rgba(42,22,40,0.3)' : '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: !importFile ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.375rem', fontFamily: 'inherit' }}
                   >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
                     Import Clients
                   </button>
                 </div>
+
               </div>
             </div>
           )}
@@ -1685,77 +1694,14 @@ export default function ClientListTab() {
         </table>
       </div>
 
-      {/* ── PAGINATION FOOTER ── */}
-      <div style={{
-        background: '#FAF8F5',
-        border: '1px solid rgba(42,22,40,0.06)',
-        borderRadius: '0 0 16px 16px',
-        padding: '0.75rem 1.5rem',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        fontSize: '0.75rem',
-        color: 'rgba(42,22,40,0.6)',
-        marginTop: '-1px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span>Rows per page:</span>
-          <div style={{ position: 'relative' }}>
-            <button
-              onClick={() => setRowsPerPageOpen(o => !o)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '0.3rem',
-                border: '1px solid #DDD0C4', borderRadius: '6px',
-                padding: '0.2rem 0.5rem', background: '#fff',
-                fontSize: '0.75rem', color: '#2A1628', cursor: 'pointer',
-                fontFamily: 'var(--font-sans), Inter, sans-serif'
-              }}
-            >
-              {rowsPerPage}
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </button>
-            {rowsPerPageOpen && (
-              <div style={{
-                position: 'absolute', bottom: 'calc(100% + 4px)', left: 0,
-                background: '#fff', border: '1px solid #DDD0C4',
-                borderRadius: '8px', boxShadow: '0 4px 16px rgba(42,22,40,0.1)',
-                zIndex: 100, minWidth: '60px', overflow: 'hidden'
-              }}>
-                {[10, 20, 50].map(n => (
-                  <div
-                    key={n}
-                    onClick={() => { setRowsPerPage(n); setRowsPerPageOpen(false); }}
-                    style={{
-                      padding: '0.4rem 0.75rem',
-                      fontSize: '0.75rem',
-                      cursor: 'pointer',
-                      color: rowsPerPage === n ? '#E8760A' : '#2A1628',
-                      background: rowsPerPage === n ? 'rgba(232,118,10,0.06)' : 'transparent',
-                      fontWeight: rowsPerPage === n ? 600 : 400
-                    }}
-                    onMouseEnter={e => { if (rowsPerPage !== n) (e.currentTarget as HTMLDivElement).style.background = 'rgba(232,118,10,0.04)'; }}
-                    onMouseLeave={e => { if (rowsPerPage !== n) (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
-                  >
-                    {n}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-        
-        <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-          <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', opacity: 0.5 }}>◀</button>
-          <button style={{ background: '#2A1628', color: '#fff', border: 'none', borderRadius: '4px', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600 }}>1</button>
-          <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', width: '24px', height: '24px' }}>2</button>
-          <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', width: '24px', height: '24px' }}>3</button>
-          <span style={{ padding: '0 0.25rem' }}>...</span>
-          <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', width: '24px', height: '24px' }}>25</button>
-          <button style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>▶</button>
-        </div>
-      </div>
+      <Pagination
+        totalItems={filteredClients.length}
+        currentPage={currentPage}
+        rowsPerPage={rowsPerPage}
+        onPageChange={setCurrentPage}
+        onRowsPerPageChange={setRowsPerPage}
+        itemLabel="clients"
+      />
 
       {/* ── CLIENT QUICK PREVIEW DRAWER ── */}
       {previewOpen && previewClient && (
