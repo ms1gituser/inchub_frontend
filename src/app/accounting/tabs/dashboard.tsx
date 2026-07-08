@@ -238,31 +238,7 @@ export default function DashboardTab() {
           </p>
         </div>
 
-        {/* Simulation Controls */}
-        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', background: 'rgba(42,22,40,0.03)', padding: '0.375rem 0.5rem', borderRadius: '8px', border: '1px dashed #DDD0C4' }}>
-          <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(42,22,40,0.6)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Simulate:</span>
-          {(['loaded', 'loading', 'empty', 'error', 'denied'] as const).map((st) => (
-            <button
-              key={st}
-              onClick={() => setDashboardState(st)}
-              style={{
-                fontSize: '0.6rem',
-                fontWeight: 700,
-                padding: '0.15rem 0.4rem',
-                borderRadius: '4px',
-                border: '1px solid',
-                borderColor: dashboardState === st ? '#E8760A' : '#DDD0C4',
-                background: dashboardState === st ? '#E8760A' : '#ffffff',
-                color: dashboardState === st ? '#ffffff' : '#2A1628',
-                cursor: 'pointer',
-                textTransform: 'uppercase',
-                transition: 'all 100ms ease'
-              }}
-            >
-              {st}
-            </button>
-          ))}
-        </div>
+
       </div>
 
       {/* ── GLOBAL DASHBOARD FILTER BAR ── */}
