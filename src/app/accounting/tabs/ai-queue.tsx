@@ -296,8 +296,8 @@ export default function AiQueueTab() {
   const [drawerTab, setDrawerTab] = useState<'overview' | 'document' | 'ocr' | 'ai' | 'ledger' | 'validation' | 'timeline' | 'activity'>('overview');
   
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [uploadSource, setUploadSource] = useState<'local' | 'drive'>('local');
-  const [hasFileSelected, setHasFileSelected] = useState(false);
+  // const [uploadSource, setUploadSource] = useState<'local' | 'drive'>('local');
+  // const [hasFileSelected, setHasFileSelected] = useState(false);
   const [batchOpen, setBatchOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [bulkModal, setBulkModal] = useState<{ type: 'reviewer' | 'notes' | null; title: string }>({ type: null, title: '' });
@@ -323,7 +323,7 @@ export default function AiQueueTab() {
   // Create Batch Modal States
   const [batchState, setBatchState] = useState<'form' | 'success'>('form');
   const [batchName, setBatchName] = useState('');
-  const [batchRefCode, setBatchRefCode] = useState('BAT-2026-Q3-0892');
+  const batchRefCode = 'BAT-2026-Q3-0892';
   const [batchDesc, setBatchDesc] = useState('');
   const [batchFinancialYear, setBatchFinancialYear] = useState('2026');
   const [batchPeriod, setBatchPeriod] = useState('Q3');
@@ -652,7 +652,7 @@ export default function AiQueueTab() {
         ].map(tab => (
           <button
             key={tab.id}
-            onClick={() => setCurrentTab(tab.id as any)}
+            onClick={() => setCurrentTab(tab.id as 'All Jobs' | 'Uploaded' | 'OCR Processing' | 'AI Extraction' | 'Ledger Mapping' | 'Review Required' | 'Approved' | 'Rejected' | 'Exceptions' | 'Ready For Reconciliation' | 'Completed')}
             style={{ padding: '0.375rem 0.875rem', borderRadius: '20px', border: currentTab === tab.id ? '1.5px solid #E8760A' : '1px solid #DDD0C4', background: currentTab === tab.id ? 'rgba(232,118,10,0.06)' : '#ffffff', color: currentTab === tab.id ? '#E8760A' : 'rgba(42,22,40,0.6)', fontWeight: currentTab === tab.id ? 700 : 500, fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.35rem', transition: 'all 150ms ease', fontFamily: 'Inter, sans-serif' }}
           >
             {tab.label}
@@ -2790,7 +2790,7 @@ export default function AiQueueTab() {
                           return (
                             <label
                               key={item.key}
-                              onClick={() => setExportScope(item.key as any)}
+                              onClick={() => setExportScope(item.key as 'entire' | 'filtered' | 'selected' | 'stage')}
                               style={{
                                 display: 'flex',
                                 alignItems: 'flex-start',
@@ -2957,7 +2957,7 @@ export default function AiQueueTab() {
                             <button
                               key={fmt.key}
                               type="button"
-                              onClick={() => setExportFormat(fmt.key as any)}
+                              onClick={() => setExportFormat(fmt.key as 'xlsx' | 'csv' | 'pdf' | 'print' | 'json')}
                               style={{
                                 background: isSel ? '#2A1628' : '#ffffff',
                                 border: '1px solid',
