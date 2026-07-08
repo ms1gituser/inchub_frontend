@@ -223,7 +223,7 @@ export default function ClientListTab() {
   const [selectedClients, setSelectedClients] = useState<string[]>([]);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [rowsPerPageOpen, setRowsPerPageOpen] = useState(false);
+  // const [rowsPerPageOpen, setRowsPerPageOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [addClientOpen, setAddClientOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
