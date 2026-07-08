@@ -1907,7 +1907,7 @@ export default function ClientListTab() {
                 <div style={{ background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '10px', padding: '1rem' }}>
                   <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(42,22,40,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>Client Notes Preview</div>
                   <div style={{ background: '#ffffff', borderRadius: '8px', border: '1px solid #DDD0C4', padding: '0.625rem', fontSize: '0.75rem', color: 'rgba(42,22,40,0.85)', minHeight: '60px', fontStyle: 'italic', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                    <span>"Onboarded tech division setup, client prefers weekly Slack checkpoints instead of email."</span>
+                    <span>&quot;Onboarded tech division setup, client prefers weekly Slack checkpoints instead of email.&quot;</span>
                     <span style={{ fontSize: '0.625rem', color: 'rgba(42,22,40,0.4)', marginTop: '0.5rem', alignSelf: 'flex-end', fontWeight: 600 }}>Last updated: 3d ago by Priya Nair</span>
                   </div>
                 </div>
@@ -2120,7 +2120,7 @@ export default function ClientListTab() {
                       if (selectedClients.includes(c.id)) {
                         if (bulkAction.type === 'manager') return { ...c, manager: bulkValue || c.manager };
                         if (bulkAction.type === 'bookkeeper') return { ...c, bookkeeper: bulkValue || c.bookkeeper };
-                        if (bulkAction.type === 'status') return { ...c, status: (bulkValue || c.status) as any };
+                        if (bulkAction.type === 'status') return { ...c, status: (bulkValue || c.status) as ClientItem['status'] };
                         if (bulkAction.type === 'tag') return { ...c, tags: Array.from(new Set([...(c.tags || []), bulkValue])) };
                       }
                       return c;
