@@ -2902,44 +2902,51 @@ function ImportBankStatementModal({ onClose, onImported }: ImportBankStatementMo
   );
 
   const renderCloudTab = (provider: 'Google Drive' | 'OneDrive') => {
-    const meta = CLOUD_META[provider];
     const isConnected = connected[provider];
     const isConnecting = connecting === provider;
+    const isGDrive = provider === 'Google Drive';
+
     return (
       <div
         style={{
           border: '1.5px dashed #DDD0C4',
           background: '#FAF8F5',
           borderRadius: '12px',
-          padding: '2rem 1.25rem',
+          padding: '2.5rem 1.25rem',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'center',
-          gap: '0.75rem',
+          gap: '1rem',
           textAlign: 'center',
         }}
       >
-        <div
-          style={{
-            width: '42px',
-            height: '42px',
-            borderRadius: '10px',
-            background: 'rgba(42,22,40,0.06)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#2A1628',
-          }}
-        >
-          {meta.icon}
-        </div>
-        <div>
-          <p style={{ margin: 0, fontSize: '0.8125rem', fontWeight: 700, color: '#2A1628' }}>{meta.label}</p>
-          <p style={{ margin: '0.2rem 0 0', fontSize: '0.7rem', color: 'rgba(42,22,40,0.5)', maxWidth: '340px' }}>{meta.hint}</p>
-        </div>
         {isConnected ? (
           <>
+            <div style={{
+              width: '56px',
+              height: '56px',
+              background: isGDrive ? 'rgba(66,133,244,0.05)' : 'rgba(0,120,212,0.05)',
+              borderRadius: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              {isGDrive ? (
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="3" width="8" height="8" rx="1.5" fill="#4285F4" />
+                  <rect x="13" y="3" width="8" height="8" rx="1.5" fill="#34A853" />
+                  <rect x="3" y="13" width="8" height="8" rx="1.5" fill="#FBBC05" />
+                  <rect x="13" y="13" width="8" height="8" rx="1.5" fill="#EA4335" />
+                </svg>
+              ) : (
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="3" width="8" height="8" rx="1.5" fill="#0078D4" />
+                  <rect x="13" y="3" width="8" height="8" rx="1.5" fill="#00B7C3" />
+                  <rect x="3" y="13" width="8" height="8" rx="1.5" fill="#0078D4" />
+                  <rect x="13" y="13" width="8" height="8" rx="1.5" fill="#0078D4" />
+                </svg>
+              )}
+            </div>
             <span
               style={{
                 display: 'inline-flex',
@@ -2958,29 +2965,73 @@ function ImportBankStatementModal({ onClose, onImported }: ImportBankStatementMo
             {renderDropzone()}
           </>
         ) : (
-          <button
-            type="button"
-            onClick={() => handleConnect(provider)}
-            disabled={isConnecting}
-            style={{
-              background: '#2A1628',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '0.55rem 1.1rem',
-              fontSize: '0.8125rem',
-              fontWeight: 600,
-              cursor: isConnecting ? 'default' : 'pointer',
-              display: 'inline-flex',
+          <>
+            <div style={{
+              width: '56px',
+              height: '56px',
+              background: isGDrive ? 'rgba(66,133,244,0.05)' : 'rgba(0,120,212,0.05)',
+              borderRadius: '14px',
+              display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem',
-              fontFamily: 'inherit',
-              opacity: isConnecting ? 0.85 : 1,
-            }}
-          >
-            {isConnecting && <ButtonSpinner />}
-            {isConnecting ? 'Connecting…' : 'Connect Account'}
-          </button>
+              justifyContent: 'center'
+            }}>
+              {isGDrive ? (
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="3" width="8" height="8" rx="1.5" fill="#4285F4" />
+                  <rect x="13" y="3" width="8" height="8" rx="1.5" fill="#34A853" />
+                  <rect x="3" y="13" width="8" height="8" rx="1.5" fill="#FBBC05" />
+                  <rect x="13" y="13" width="8" height="8" rx="1.5" fill="#EA4335" />
+                </svg>
+              ) : (
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="3" width="8" height="8" rx="1.5" fill="#0078D4" />
+                  <rect x="13" y="3" width="8" height="8" rx="1.5" fill="#00B7C3" />
+                  <rect x="3" y="13" width="8" height="8" rx="1.5" fill="#0078D4" />
+                  <rect x="13" y="13" width="8" height="8" rx="1.5" fill="#0078D4" />
+                </svg>
+              )}
+            </div>
+            <div>
+              <h4 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#2A1628' }}>
+                {isGDrive ? 'Connect Google Drive' : 'Connect OneDrive'}
+              </h4>
+              <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'rgba(42,22,40,0.5)', maxWidth: '300px' }}>
+                {isGDrive 
+                  ? 'Sign in with Google to browse and pick an Excel sheet from your Drive'
+                  : 'Sign in with Microsoft to browse and pick an Excel sheet from your OneDrive'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleConnect(provider)}
+              disabled={isConnecting}
+              style={{
+                background: isGDrive ? '#4285F4' : '#0078D4',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '0.625rem 1.5rem',
+                fontSize: '0.8125rem',
+                fontWeight: 700,
+                cursor: isConnecting ? 'default' : 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontFamily: 'inherit',
+                boxShadow: isGDrive ? '0 4px 12px rgba(66,133,244,0.2)' : '0 4px 12px rgba(0,120,212,0.2)',
+                opacity: isConnecting ? 0.85 : 1,
+              }}
+            >
+              {isConnecting && <ButtonSpinner />}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="3" width="8" height="8" rx="1" fill="#fff" fillOpacity="0.9" />
+                <rect x="13" y="3" width="8" height="8" rx="1" fill="#fff" fillOpacity="0.9" />
+                <rect x="3" y="13" width="8" height="8" rx="1" fill="#fff" fillOpacity="0.9" />
+                <rect x="13" y="13" width="8" height="8" rx="1" fill="#fff" fillOpacity="0.9" />
+              </svg>
+              {isConnecting ? 'Connecting…' : (isGDrive ? 'Sign in with Google' : 'Sign in with Microsoft')}
+            </button>
+          </>
         )}
       </div>
     );
