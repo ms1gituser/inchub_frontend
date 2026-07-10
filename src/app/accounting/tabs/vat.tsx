@@ -355,7 +355,6 @@ const REVIEWERS = ['Priya Nair', 'Omar Haddad', 'Lucia Ferreira', 'Ahmed Zaid', 
 const MANAGERS = ['John Doe', 'Mike Brown', 'Sneha Iyer'];
 const YEARS = ['2026', '2025'];
 const QUARTERS = ['Q1', 'Q2', 'Q3', 'Q4'];
-const COUNTRIES = ['UAE', 'Saudi Arabia', 'Oman'];
 
 // ============================================================================
 // Focus Trap Utility
@@ -609,412 +608,6 @@ function CustomSelect({ value, onChange, options, placeholder = 'Select...', ico
   );
 }
 
-interface CustomDatePickerProps {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-}
-
-function CustomDatePicker({ value, onChange, placeholder = 'Select date...' }: CustomDatePickerProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [currentDate, setCurrentDate] = useState(() => (value ? new Date(value) : new Date()));
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
-
-  const handlePrevMonth = () => {
-    setCurrentDate(new Date(year, month - 1, 1));
-  };
-
-  const handleNextMonth = () => {
-    setCurrentDate(new Date(year, month + 1, 1));
-  };
-
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const startDayIndex = new Date(year, month, 1).getDay();
-
-  const days = [];
-  for (let i = 0; i < startDayIndex; i++) {
-    days.push(null);
-  }
-  for (let d = 1; d <= daysInMonth; d++) {
-    days.push(d);
-  }
-
-  const formatSelectedDate = (dayNum: number) => {
-    const mm = String(month + 1).padStart(2, '0');
-    const dd = String(dayNum).padStart(2, '0');
-    return `${year}-${mm}-${dd}`;
-  };
-
-  const handleSelectDay = (dayNum: number) => {
-    onChange(formatSelectedDate(dayNum));
-    setIsOpen(false);
-  };
-
-  const handleToday = () => {
-    const today = new Date();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    onChange(`${today.getFullYear()}-${mm}-${dd}`);
-    setCurrentDate(today);
-    setIsOpen(false);
-  };
-
-  const handleClear = () => {
-    onChange('');
-    setIsOpen(false);
-  };
-
-  const displayValue = () => {
-    if (!value) return '';
-    const parts = value.split('-');
-    if (parts.length === 3) {
-      return `${parts[2]}/${parts[1]}/${parts[0]}`;
-    }
-    return value;
-  };
-
-  const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
-
-  return (
-    <div ref={containerRef} style={{ position: 'relative', width: '100%', fontFamily: 'var(--font-sans), Inter, sans-serif' }}>
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        style={{
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          padding: '0.625rem 0.75rem',
-          paddingLeft: '2.25rem',
-          borderRadius: '10px',
-          border: isOpen ? '1.5px solid #E8760A' : '1px solid #DDD0C4',
-          background: '#ffffff',
-          color: value ? '#2A1628' : 'rgba(42,22,40,0.4)',
-          fontSize: '0.8125rem',
-          fontFamily: 'inherit',
-          textAlign: 'left',
-          cursor: 'pointer',
-          outline: 'none',
-          boxSizing: 'border-box',
-          position: 'relative',
-        }}
-      >
-        <div style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(42,22,40,0.4)" strokeWidth="2">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-            <line x1="16" y1="2" x2="16" y2="6" />
-            <line x1="8" y1="2" x2="8" y2="6" />
-            <line x1="3" y1="10" x2="21" y2="10" />
-          </svg>
-        </div>
-        <span style={{ flex: 1, fontWeight: 500 }}>{displayValue() || placeholder}</span>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(42,22,40,0.4)" strokeWidth="2" style={{ flexShrink: 0, opacity: 0.6 }}>
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-          <line x1="16" y1="2" x2="16" y2="6" />
-          <line x1="8" y1="2" x2="8" y2="6" />
-          <line x1="3" y1="10" x2="21" y2="10" />
-        </svg>
-      </button>
-
-      {isOpen && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '100%',
-            left: 0,
-            marginBottom: '4px',
-            background: '#ffffff',
-            border: '1px solid #DDD0C4',
-            borderRadius: '12px',
-            boxShadow: '0 -12px 32px rgba(42,22,40,0.15)',
-            zIndex: 1000,
-            width: '270px',
-            padding: '12px',
-            boxSizing: 'border-box',
-          }}
-        >
-          {/* Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-            <button
-              type="button"
-              onClick={handlePrevMonth}
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#2A1628', padding: '4px' }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-            </button>
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#2A1628' }}>
-              {monthNames[month]}, {year}
-            </span>
-            <button
-              type="button"
-              onClick={handleNextMonth}
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#2A1628', padding: '4px' }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Week Days */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', textAlign: 'center', marginBottom: '6px' }}>
-            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d) => (
-              <span key={d} style={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.45)' }}>
-                {d}
-              </span>
-            ))}
-          </div>
-
-          {/* Days Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
-            {days.map((day, idx) => {
-              if (day === null) {
-                return <div key={`empty-${idx}`} />;
-              }
-              const isSelected = formatSelectedDate(day) === value;
-              const isToday = (() => {
-                const t = new Date();
-                return t.getDate() === day && t.getMonth() === month && t.getFullYear() === year;
-              })();
-
-              return (
-                <button
-                  key={`day-${day}`}
-                  type="button"
-                  onClick={() => handleSelectDay(day)}
-                  style={{
-                    border: 'none',
-                    background: isSelected ? '#E8760A' : 'transparent',
-                    color: isSelected ? '#ffffff' : '#2A1628',
-                    borderRadius: '8px',
-                    height: '28px',
-                    fontSize: '0.75rem',
-                    fontWeight: isSelected || isToday ? 700 : 500,
-                    cursor: 'pointer',
-                    outline: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: isToday && !isSelected ? 'inset 0 0 0 1.5px #2A1628' : 'none',
-                    transition: 'all 0.1s',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isSelected) e.currentTarget.style.background = 'rgba(232,118,10,0.06)';
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isSelected) e.currentTarget.style.background = 'transparent';
-                  }}
-                >
-                  {day}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Footer links */}
-          <div style={{ borderTop: '1px solid rgba(42,22,40,0.06)', marginTop: '10px', paddingTop: '8px', display: 'flex', justifyContent: 'space-between' }}>
-            <button
-              type="button"
-              onClick={handleClear}
-              style={{ background: 'transparent', border: 'none', color: 'rgba(42,22,40,0.5)', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer' }}
-            >
-              Clear
-            </button>
-            <button
-              type="button"
-              onClick={handleToday}
-              style={{ background: 'transparent', border: 'none', color: '#E8760A', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer' }}
-            >
-              Today
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-interface CustomMonthPickerProps {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-}
-
-function CustomMonthPicker({ value, onChange, placeholder = 'Select month...' }: CustomMonthPickerProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [year, setYear] = useState(() => (value ? Number(value.split('-')[0]) : new Date().getFullYear()));
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const months = [
-    { key: '01', label: 'Jan' }, { key: '02', label: 'Feb' }, { key: '03', label: 'Mar' }, { key: '04', label: 'Apr' },
-    { key: '05', label: 'May' }, { key: '06', label: 'Jun' }, { key: '07', label: 'Jul' }, { key: '08', label: 'Aug' },
-    { key: '09', label: 'Sep' }, { key: '10', label: 'Oct' }, { key: '11', label: 'Nov' }, { key: '12', label: 'Dec' }
-  ];
-
-  const handleSelectMonth = (monthKey: string) => {
-    onChange(`${year}-${monthKey}`);
-    setIsOpen(false);
-  };
-
-  const displayValue = () => {
-    if (!value) return '';
-    const parts = value.split('-');
-    if (parts.length === 2) {
-      const idx = Number(parts[1]) - 1;
-      return `${months[idx]?.label} ${parts[0]}`;
-    }
-    return value;
-  };
-
-  return (
-    <div ref={containerRef} style={{ position: 'relative', width: '100%', fontFamily: 'var(--font-sans), Inter, sans-serif' }}>
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        style={{
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          padding: '0.625rem 0.75rem',
-          paddingLeft: '2.25rem',
-          borderRadius: '10px',
-          border: isOpen ? '1.5px solid #E8760A' : '1px solid #DDD0C4',
-          background: '#ffffff',
-          color: value ? '#2A1628' : 'rgba(42,22,40,0.4)',
-          fontSize: '0.8125rem',
-          fontFamily: 'inherit',
-          textAlign: 'left',
-          cursor: 'pointer',
-          outline: 'none',
-          boxSizing: 'border-box',
-          position: 'relative',
-        }}
-      >
-        <div style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(42,22,40,0.4)" strokeWidth="2">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-            <line x1="16" y1="2" x2="16" y2="6" />
-            <line x1="8" y1="2" x2="8" y2="6" />
-            <line x1="3" y1="10" x2="21" y2="10" />
-          </svg>
-        </div>
-        <span style={{ flex: 1, fontWeight: 500 }}>{displayValue() || placeholder}</span>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(42,22,40,0.4)" strokeWidth="2" style={{ flexShrink: 0, opacity: 0.6 }}>
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-          <line x1="16" y1="2" x2="16" y2="6" />
-          <line x1="8" y1="2" x2="8" y2="6" />
-          <line x1="3" y1="10" x2="21" y2="10" />
-        </svg>
-      </button>
-
-      {isOpen && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '100%',
-            left: 0,
-            marginBottom: '4px',
-            background: '#ffffff',
-            border: '1px solid #DDD0C4',
-            borderRadius: '12px',
-            boxShadow: '0 -12px 32px rgba(42,22,40,0.15)',
-            zIndex: 1000,
-            width: '240px',
-            padding: '12px',
-            boxSizing: 'border-box',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <button
-              type="button"
-              onClick={() => setYear(year - 1)}
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#2A1628', padding: '4px' }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-            </button>
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#2A1628' }}>{year}</span>
-            <button
-              type="button"
-              onClick={() => setYear(year + 1)}
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#2A1628', padding: '4px' }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </button>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
-            {months.map((m) => {
-              const isSelected = `${year}-${m.key}` === value;
-              return (
-                <button
-                  key={m.key}
-                  type="button"
-                  onClick={() => handleSelectMonth(m.key)}
-                  style={{
-                    border: 'none',
-                    background: isSelected ? '#E8760A' : 'transparent',
-                    color: isSelected ? '#ffffff' : '#2A1628',
-                    borderRadius: '8px',
-                    height: '32px',
-                    fontSize: '0.75rem',
-                    fontWeight: isSelected ? 700 : 500,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'all 0.1s',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isSelected) e.currentTarget.style.background = 'rgba(232,118,10,0.06)';
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isSelected) e.currentTarget.style.background = 'transparent';
-                  }}
-                >
-                  {m.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ============================================================================
 // Core Dashboard Component
@@ -1070,7 +663,6 @@ export default function VatCenterTab() {
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [rowsPerPageOpen, setRowsPerPageOpen] = useState(false);
 
   // Popups State
   const [popup, setPopup] = useState<{
@@ -1110,7 +702,6 @@ export default function VatCenterTab() {
   const [importQuarter, setImportQuarter] = useState('Q1');
 
   // Notes state
-  const [noteText, setNoteText] = useState('');
   const [assignedReviewerSelection, setAssignedReviewerSelection] = useState(REVIEWERS[0]);
 
   // Toast utility helper
@@ -1171,7 +762,6 @@ export default function VatCenterTab() {
     return filteredData.slice(startIndex, startIndex + rowsPerPage);
   }, [filteredData, currentPage, rowsPerPage]);
 
-  const totalPages = Math.ceil(filteredData.length / rowsPerPage) || 1;
 
   // Active drawer transaction details object
   const activeTx = useMemo(() => {
@@ -1787,7 +1377,7 @@ export default function VatCenterTab() {
                     checked={selectedIds.length === filteredData.length && filteredData.length > 0}
                   />
                 </th>
-                {columns.map((col, idx) => {
+                {columns.map((col) => {
                   const isClient = col.key === 'client';
                   return (
                     <th
@@ -1816,7 +1406,7 @@ export default function VatCenterTab() {
                         borderRight: isClient ? '1px solid #DDD0C4' : undefined,
                         cursor: col.sortable ? 'pointer' : 'grab',
                         userSelect: 'none',
-                        textAlign: col.align as any,
+                        textAlign: col.align as 'left' | 'right' | 'center',
                       }}
                     >
                       {col.label} {sortCol === col.key ? (sortDir === 'asc' ? '↑' : '↓') : ''}
@@ -2252,22 +1842,22 @@ export default function VatCenterTab() {
             {/* Tab strip */}
             <div className="hide-scrollbar" style={{ display: 'flex', gap: '1rem', padding: '0.5rem 2rem', borderBottom: '1px solid rgba(42,22,40,0.06)', overflowX: 'auto', flexShrink: 0 }}>
               {[
-                { key: 'overview', label: 'Overview' },
-                { key: 'transactions', label: 'Transactions' },
-                { key: 'breakdown', label: 'Breakdown' },
-                { key: 'validation', label: 'Validation' },
-                { key: 'timeline', label: 'Timeline' },
-                { key: 'activity', label: 'Activity' },
-                { key: 'documents', label: 'Documents' },
-                { key: 'quickBooksSync', label: 'QuickBooks Sync' },
-                { key: 'notes', label: 'Notes' },
+                { key: 'overview' as const, label: 'Overview' },
+                { key: 'transactions' as const, label: 'Transactions' },
+                { key: 'breakdown' as const, label: 'Breakdown' },
+                { key: 'validation' as const, label: 'Validation' },
+                { key: 'timeline' as const, label: 'Timeline' },
+                { key: 'activity' as const, label: 'Activity' },
+                { key: 'documents' as const, label: 'Documents' },
+                { key: 'quickBooksSync' as const, label: 'QuickBooks Sync' },
+                { key: 'notes' as const, label: 'Notes' },
               ].map((t) => {
                 const isTab = drawerTab === t.key;
                 return (
                   <button
                     key={t.key}
                     type="button"
-                    onClick={() => setDrawerTab(t.key as any)}
+                    onClick={() => setDrawerTab(t.key)}
                     style={{
                       padding: '0.6rem 0',
                       border: 'none',
@@ -2478,7 +2068,7 @@ export default function VatCenterTab() {
                           <span style={{ color: 'rgba(42,22,40,0.45)' }}>{act.timestamp}</span>
                         </div>
                         <div style={{ marginTop: '0.35rem', color: 'rgba(42,22,40,0.6)' }}>
-                          User: {act.user} • Old: "{act.oldVal}" • New: "{act.newVal}"
+                          User: {act.user} • Old: &quot;{act.oldVal}&quot; • New: &quot;{act.newVal}&quot;
                         </div>
                       </div>
                     );
@@ -2685,14 +2275,14 @@ export default function VatCenterTab() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div style={{ display: 'flex', gap: '4px', background: 'rgba(42,22,40,0.04)', borderRadius: '12px', padding: '4px' }}>
               {[
-                { key: 'local', label: 'Local Upload' },
-                { key: 'gdrive', label: 'Google Drive' },
-                { key: 'onedrive', label: 'OneDrive' }
+                { key: 'local' as const, label: 'Local Upload' },
+                { key: 'gdrive' as const, label: 'Google Drive' },
+                { key: 'onedrive' as const, label: 'OneDrive' }
               ].map((tab) => (
                 <button
                   key={tab.key}
                   type="button"
-                  onClick={() => setImportTab(tab.key as any)}
+                  onClick={() => setImportTab(tab.key)}
                   style={{
                     flex: '1 1 auto',
                     border: 'none',
@@ -2974,7 +2564,7 @@ export default function VatCenterTab() {
                 <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.35rem' }}>VAT Type</label>
                 <CustomSelect
                   value={newFormType}
-                  onChange={(val) => setNewFormType(val as any)}
+                  onChange={(val) => setNewFormType(val as 'Mainland' | 'Free Zone')}
                   options={['Mainland', 'Free Zone']}
                 />
               </div>

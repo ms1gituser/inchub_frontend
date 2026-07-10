@@ -2190,30 +2190,6 @@ const TABS_ImportBankStatementModal: SourceTab[] = ['Local Upload', 'Google Driv
 
 const BANKS_ImportBankStatementModal = ['Emirates NBD', 'ADCB', 'Mashreq Bank', 'FAB', 'RAKBank', 'Dubai Islamic Bank'];
 
-const CLOUD_META: Record<string, { label: string; hint: string; icon: React.ReactNode }> = {
-  'Google Drive': {
-    label: 'Google Drive',
-    hint: 'Connect your Google Drive account to browse and import bank statement files directly.',
-    icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
-        <path d="M15.64 14.5H2.84L6.08 21H18.88L15.64 14.5Z" fill="#0F9D58" />
-        <path d="M9.16 3H14.84L21.32 14.5H15.64L9.16 3Z" fill="#FFC107" />
-        <path d="M6.08 21L2.84 14.5L9.16 3L12.4 9.5L6.08 21Z" fill="#2196F3" />
-      </svg>
-    ),
-  },
-  OneDrive: {
-    label: 'OneDrive',
-    hint: 'Connect your Microsoft OneDrive account to browse and import bank statement files directly.',
-    icon: (
-      <svg width="24" height="24" viewBox="0 0 32 32" fill="none" style={{ flexShrink: 0 }}>
-        <path d="M19 12a5.5 5.5 0 0 0-5.2 3.7 4.5 4.5 0 0 0-4.3-3.2 4.5 4.5 0 0 0-4.5 4.5 4.5 4.5 0 0 0 4.5 4.5h9.5a5.5 5.5 0 0 0 5.5-5.5 5.5 5.5 0 0 0-5.5-5.5z" fill="#0060B6" opacity="0.6" />
-        <path d="M23 15a5.5 5.5 0 0 0-5.2 3.7 4.5 4.5 0 0 0-4.3-3.2 4.5 4.5 0 0 0-4.5 4.5 4.5 4.5 0 0 0 4.5 4.5h9.5a5.5 5.5 0 0 0 5.5-5.5 5.5 5.5 0 0 0-5.5-5.5z" fill="#0078D4" />
-        <path d="M14.5 18.5a3.5 3.5 0 0 0-3.3 2.3 3 3 0 0 0-2.7-1.8 3 3 0 0 0-3 3 3 3 0 0 0 3 3h6a3.5 3.5 0 0 0 3.5-3.5 3.5 3.5 0 0 0-3.5-3.5z" fill="#50E6FF" />
-      </svg>
-    ),
-  },
-};
 
 interface CustomSelectProps {
   value: string;
@@ -2749,17 +2725,6 @@ function CustomMonthPicker({ value, onChange, placeholder = 'Select month...' }:
   );
 }
 
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '0.6rem 0.75rem',
-  borderRadius: '8px',
-  border: '1px solid #DDD0C4',
-  background: '#ffffff',
-  color: '#2A1628',
-  fontSize: '0.8125rem',
-  fontFamily: 'var(--font-sans), Inter, sans-serif',
-  outline: 'none',
-};
 
 const labelStyle: React.CSSProperties = {
   display: 'block',
@@ -7494,7 +7459,6 @@ interface ReconciliationTableProps {
   selectedIds: string[];
   onToggleSelect: (id: string, index: number, shiftKey: boolean) => void;
   onToggleSelectAll: () => void;
-  focusedRowId: string | null;
   onFocusRow: (id: string) => void;
   onRowAction: (action: RowActionKey, tx: ReconciliationTransaction) => void;
   onResetFilters: () => void;
@@ -7616,7 +7580,7 @@ function SortHeader({ column, sortKey, sortDir, onSort }: { column: ColumnDef; s
 function ReconciliationTable({
   transactions, loading, errorState, offline, columns, density, freezeFirstColumn,
   onColumnResize, onColumnReorder, sortKey, sortDir, onSort,
-  selectedIds, onToggleSelect, onToggleSelectAll, focusedRowId, onFocusRow, onRowAction, onResetFilters, hasAnyData,
+  selectedIds, onToggleSelect, onToggleSelectAll, onFocusRow, onRowAction, onResetFilters, hasAnyData,
 }: ReconciliationTableProps) {
   const resizeState = useRef<{ key: string; startX: number; startWidth: number } | null>(null);
   const dragKeyRef = useRef<string | null>(null);
@@ -7812,7 +7776,6 @@ function ReconciliationTable({
           <tbody>
             {transactions.map((tx, idx) => {
               const isSelected = selectedIds.includes(tx.id);
-              const isFocused = focusedRowId === tx.id;
               const rowBg = isSelected ? '#FAF4EE' : '#ffffff';
               return (
                 <tr
@@ -7861,54 +7824,6 @@ function ReconciliationTable({
 }
 
 
-// ============================================================================
-// EnterpriseFooter.tsx
-// ============================================================================
-
-
-interface EnterpriseFooterProps {
-  transactions: ReconciliationTransaction[];
-  selectedCount: number;
-}
-
-function Stat({ label, value, tone }: { label: string; value: string; tone?: string }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', minWidth: '90px' }}>
-      <span style={{ fontSize: '0.625rem', fontWeight: 700, color: 'rgba(42,22,40,0.45)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
-      <span style={{ fontSize: '0.9375rem', fontWeight: 700, color: tone || '#2A1628' }}>{value}</span>
-    </div>
-  );
-}
-
-function EnterpriseFooter({ transactions, selectedCount }: EnterpriseFooterProps) {
-  const stats = useMemo(() => {
-    const rows = transactions.length;
-    const matched = transactions.filter((t) => t.matchedEntry !== null).length;
-    const unmatched = rows - matched;
-    const differenceTotal = transactions.reduce((s, t) => s + t.difference, 0);
-    const avgProcessing = rows ? Math.round(transactions.reduce((s, t) => s + t.processingMinutes, 0) / rows) : 0;
-    const rating = rows ? Math.round((matched / rows) * 100) / 10 : 0;
-    return { rows, matched, unmatched, differenceTotal, avgProcessing, rating };
-  }, [transactions]);
-
-  return (
-    <div
-      style={{
-        background: '#ffffff', border: '1px solid rgba(42,22,40,0.06)', borderBottom: 'none', borderRadius: '16px 16px 0 0',
-        padding: '0.85rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1.75rem', overflowX: 'auto', flexWrap: 'wrap',
-      }}
-      className="hide-scrollbar"
-    >
-      <Stat label="Rows" value={String(stats.rows)} />
-      <Stat label="Selected" value={String(selectedCount)} tone={selectedCount > 0 ? '#E8760A' : undefined} />
-      <Stat label="Difference Total" value={`AED ${stats.differenceTotal.toLocaleString()}`} tone={stats.differenceTotal > 0 ? '#D32F2F' : undefined} />
-      <Stat label="Matched Total" value={String(stats.matched)} tone="#137333" />
-      <Stat label="Unmatched Total" value={String(stats.unmatched)} tone={stats.unmatched > 0 ? '#D97706' : undefined} />
-      <Stat label="Processing Time" value={`${stats.avgProcessing}m avg`} />
-      <Stat label="Overall Rating" value={`${stats.rating.toFixed(1)} / 10`} tone="#E8760A" />
-    </div>
-  );
-}
 
 
 // ============================================================================
@@ -8424,7 +8339,7 @@ function bumpMatchScore(t: ReconciliationTransaction): ReconciliationTransaction
 }
 
 function ReconciliationCenterInner() {
-  const { role, pushToast, requestConfirmation, closeConfirmation, confirmation, isOffline, setIsOffline } = useReconciliation();
+  const { role, pushToast, requestConfirmation, closeConfirmation, confirmation, isOffline } = useReconciliation();
 
   const [persisted] = useState(loadPersistedState);
 
@@ -8455,7 +8370,6 @@ function ReconciliationCenterInner() {
   const [popup, setPopup] = useState<PopupState>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
-  const [errorState, setErrorState] = useState(false);
 
   const idCounterRef = useRef(2000 + TRANSACTIONS.length);
   const generateId = () => `RC-${idCounterRef.current++}`;
@@ -8898,7 +8812,7 @@ function ReconciliationCenterInner() {
       <ReconciliationTable
         transactions={pagedTransactions}
         loading={initialLoading}
-        errorState={errorState}
+        errorState={false}
         offline={isOffline}
         columns={visibleColumns}
         density={density}
@@ -8911,7 +8825,6 @@ function ReconciliationCenterInner() {
         selectedIds={selectedIds}
         onToggleSelect={handleToggleSelect}
         onToggleSelectAll={handleToggleSelectAll}
-        focusedRowId={focusedRowId}
         onFocusRow={setFocusedRowId}
         onRowAction={handleRowAction}
         onResetFilters={handleResetFilters}
