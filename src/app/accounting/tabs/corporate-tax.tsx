@@ -1,481 +1,1098 @@
-/* eslint-disable */
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import Pagination from '@/components/ui/Pagination';
+
+// ============================================================================
+// Types
+// ============================================================================
 
 interface CtReturnItem {
   id: string;
-  initials: string;
-  avatarBg: string;
-  name: string;
-  type: 'Mainland' | 'Free Zone';
+  client: string;
   trn: string;
-  taxYear: string;
-  status: 'Filed On Time' | 'Overdue' | 'In Review' | 'Filed Late' | 'Not Required';
+  taxPeriod: string;
+  financialYear: string;
+  accountingProfit: number;
+  taxableProfit: number;
+  corporateTax: number;
+  status: 'Draft' | 'Pending' | 'Ready To File' | 'Filed' | 'Overdue' | 'Exception' | 'Amended' | 'Archived';
+  reviewer: string;
+  manager: string;
+  priority: 'Low' | 'Medium' | 'High' | 'Urgent';
   dueDate: string;
-  dueWarning: string;
-  isWarningRed: boolean;
-  taxableIncome: string;
-  taxPayable: string;
-  taxPaid: string;
-  isPaidGreen: boolean;
-  outstanding: string;
-  isOutRed: boolean;
-  lastActivity: string;
+  risk: 'Low' | 'Medium' | 'High';
+  lastUpdated: string;
+  taxRate: number;
+  entityType: 'Mainland' | 'Free Zone';
+  tags: string[];
 }
 
-const INITIAL_RETURNS: CtReturnItem[] = [
+interface ActivityLog {
+  timestamp: string;
+  user: string;
+  action: string;
+  oldVal: string;
+  newVal: string;
+  ip: string;
+  system: string;
+}
+
+interface CtDocument {
+  name: string;
+  size: string;
+  date: string;
+  type: string;
+}
+
+// ============================================================================
+// Mock Data
+// ============================================================================
+
+const MOCK_RETURNS: CtReturnItem[] = [
   {
-    id: '1',
-    initials: 'AB',
-    avatarBg: '#7C2D12',
-    name: 'ABC Trading LLC',
-    type: 'Mainland',
+    id: 'ct-1',
+    client: 'ABC Trading LLC',
     trn: '100556789600003',
-    taxYear: '2024',
-    status: 'Filed On Time',
-    dueDate: '28 May 2025',
-    dueWarning: '',
-    isWarningRed: false,
-    taxableIncome: '4,250,000',
-    taxPayable: '102,000',
-    taxPaid: '102,000',
-    isPaidGreen: true,
-    outstanding: '0',
-    isOutRed: false,
-    lastActivity: '28 Apr 2025'
+    taxPeriod: 'FY 2025',
+    financialYear: '2025',
+    accountingProfit: 4250000,
+    taxableProfit: 4500000,
+    corporateTax: 371250, // (4500000 - 375000) * 9%
+    status: 'Overdue',
+    reviewer: 'Priya Nair',
+    manager: 'John Doe',
+    priority: 'High',
+    dueDate: '2026-05-28',
+    risk: 'High',
+    lastUpdated: '2026-05-26',
+    taxRate: 9,
+    entityType: 'Mainland',
+    tags: ['Retail', 'Audit Required'],
   },
   {
-    id: '2',
-    initials: 'XY',
-    avatarBg: '#1E3A8A',
-    name: 'XYZ Holdings Limited',
-    type: 'Free Zone',
+    id: 'ct-2',
+    client: 'XYZ Holdings Limited',
     trn: '100556789600004',
-    taxYear: '2024',
+    taxPeriod: 'FY 2025',
+    financialYear: '2025',
+    accountingProfit: 2750000,
+    taxableProfit: 2600000,
+    corporateTax: 200250,
     status: 'Overdue',
-    dueDate: '28 May 2025',
-    dueWarning: 'Due in 2 Days',
-    isWarningRed: true,
-    taxableIncome: '2,750,000',
-    taxPayable: '66,000',
-    taxPaid: '0',
-    isPaidGreen: false,
-    outstanding: '66,600',
-    isOutRed: true,
-    lastActivity: '25 Apr 2025'
+    reviewer: 'Omar Haddad',
+    manager: 'Mike Brown',
+    priority: 'High',
+    dueDate: '2026-05-28',
+    risk: 'Medium',
+    lastUpdated: '2026-05-25',
+    taxRate: 9,
+    entityType: 'Free Zone',
+    tags: ['Consulting', 'Zero-Rated'],
   },
   {
-    id: '3',
-    initials: 'DP',
-    avatarBg: '#14532D',
-    name: 'Delta Properties FZCO',
-    type: 'Free Zone',
-    trn: '100556789600005',
-    taxYear: '2024',
-    status: 'In Review',
-    dueDate: '15 Jun 2025',
-    dueWarning: '',
-    isWarningRed: false,
-    taxableIncome: '3,980,000',
-    taxPayable: '95,520',
-    taxPaid: '-',
-    isPaidGreen: false,
-    outstanding: '95,520',
-    isOutRed: true,
-    lastActivity: '30 Apr 2025'
+    id: 'ct-3',
+    client: 'Delta Properties FZCO',
+    trn: '100987654300002',
+    taxPeriod: 'FY 2025',
+    financialYear: '2025',
+    accountingProfit: 3980000,
+    taxableProfit: 4100000,
+    corporateTax: 335250,
+    status: 'Filed',
+    reviewer: 'Lucia Ferreira',
+    manager: 'John Doe',
+    priority: 'Medium',
+    dueDate: '2026-04-28',
+    risk: 'Low',
+    lastUpdated: '2026-04-24',
+    taxRate: 9,
+    entityType: 'Free Zone',
+    tags: ['Real Estate', 'Exempt Sales'],
   },
   {
-    id: '4',
-    initials: 'AT',
-    avatarBg: '#3B0764',
-    name: 'Alpha Tech FZCO',
-    type: 'Free Zone',
-    trn: '100556789600006',
-    taxYear: '2024',
-    status: 'Filed Late',
-    dueDate: '28 Apr 2025',
-    dueWarning: '',
-    isWarningRed: false,
-    taxableIncome: '1,850,000',
-    taxPayable: '44,400',
-    taxPaid: '44,400',
-    isPaidGreen: true,
-    outstanding: '0',
-    isOutRed: false,
-    lastActivity: '15 Apr 2025'
+    id: 'ct-4',
+    client: 'Alpha Tech FZCO',
+    trn: '100778899000005',
+    taxPeriod: 'FY 2025',
+    financialYear: '2025',
+    accountingProfit: 1850000,
+    taxableProfit: 1750000,
+    corporateTax: 123750,
+    status: 'Filed',
+    reviewer: 'Kevin Park',
+    manager: 'Sneha Iyer',
+    priority: 'Low',
+    dueDate: '2026-04-28',
+    risk: 'Low',
+    lastUpdated: '2026-04-23',
+    taxRate: 9,
+    entityType: 'Free Zone',
+    tags: ['Software', 'Refund Pending'],
   },
   {
-    id: '5',
-    initials: 'BI',
-    avatarBg: '#052E16',
-    name: 'Beta Industries LLC',
-    type: 'Mainland',
-    trn: '100556789600007',
-    taxYear: '2024',
-    status: 'Filed On Time',
-    dueDate: '28 May 2025',
-    dueWarning: '',
-    isWarningRed: false,
-    taxableIncome: '5,600,000',
-    taxPayable: '134,400',
-    taxPaid: '134,400',
-    isPaidGreen: true,
-    outstanding: '0',
-    isOutRed: false,
-    lastActivity: '27 Apr 2025'
+    id: 'ct-5',
+    client: 'Beta Industries LLC',
+    trn: '100445566100008',
+    taxPeriod: 'FY 2025',
+    financialYear: '2025',
+    accountingProfit: 5600000,
+    taxableProfit: 5800000,
+    corporateTax: 488250,
+    status: 'Ready To File',
+    reviewer: 'Priya Nair',
+    manager: 'John Doe',
+    priority: 'Medium',
+    dueDate: '2026-05-28',
+    risk: 'Medium',
+    lastUpdated: '2026-05-27',
+    taxRate: 9,
+    entityType: 'Mainland',
+    tags: ['Manufacturing', 'R&D Credits'],
   },
   {
-    id: '6',
-    initials: 'GS',
-    avatarBg: '#1e1b4b',
-    name: 'Gamma Solutions FZCO',
-    type: 'Free Zone',
+    id: 'ct-6',
+    client: 'Gamma Solutions FZCO',
     trn: '100556789600008',
-    taxYear: '2024',
-    status: 'Overdue',
-    dueDate: '28 May 2025',
-    dueWarning: 'Due in 2 Days',
-    isWarningRed: true,
-    taxableIncome: '1,250,000',
-    taxPayable: '30,000',
-    taxPaid: '0',
-    isPaidGreen: false,
-    outstanding: '30,000',
-    isOutRed: true,
-    lastActivity: '22 Apr 2025'
+    taxPeriod: 'FY 2025',
+    financialYear: '2025',
+    accountingProfit: 1250000,
+    taxableProfit: 1100000,
+    corporateTax: 65250,
+    status: 'Pending',
+    reviewer: 'Lucia Ferreira',
+    manager: 'Mike Brown',
+    priority: 'Low',
+    dueDate: '2026-05-28',
+    risk: 'Medium',
+    lastUpdated: '2026-05-24',
+    taxRate: 9,
+    entityType: 'Free Zone',
+    tags: ['Tech Services'],
   },
   {
-    id: '7',
-    initials: 'NH',
-    avatarBg: '#7C2D12',
-    name: 'Nova Hospitality LLC',
-    type: 'Mainland',
+    id: 'ct-7',
+    client: 'Nova Hospitality LLC',
     trn: '100556789600009',
-    taxYear: '2024',
-    status: 'In Review',
-    dueDate: '15 Jun 2025',
-    dueWarning: '',
-    isWarningRed: false,
-    taxableIncome: '3,100,000',
-    taxPayable: '74,400',
-    taxPaid: '-',
-    isPaidGreen: false,
-    outstanding: '74,400',
-    isOutRed: true,
-    lastActivity: '29 Apr 2025'
+    taxPeriod: 'FY 2025',
+    financialYear: '2025',
+    accountingProfit: 3100000,
+    taxableProfit: 3250000,
+    corporateTax: 258750,
+    status: 'Draft',
+    reviewer: 'Omar Haddad',
+    manager: 'Sneha Iyer',
+    priority: 'Medium',
+    dueDate: '2026-06-15',
+    risk: 'High',
+    lastUpdated: '2026-05-26',
+    taxRate: 9,
+    entityType: 'Mainland',
+    tags: ['Hotel', 'Exemptions Applied'],
   },
   {
-    id: '8',
-    initials: 'PC',
-    avatarBg: '#1E3A8A',
-    name: 'Prime Consultants FZCO',
-    type: 'Free Zone',
+    id: 'ct-8',
+    client: 'Prime Consultants FZCO',
     trn: '100556789600010',
-    taxYear: '2024',
-    status: 'Not Required',
-    dueDate: '-',
-    dueWarning: '',
-    isWarningRed: false,
-    taxableIncome: '-',
-    taxPayable: '-',
-    taxPaid: '-',
-    isPaidGreen: false,
-    outstanding: '-',
-    isOutRed: false,
-    lastActivity: '10 Apr 2025'
+    taxPeriod: 'FY 2025',
+    financialYear: '2025',
+    accountingProfit: 350000,
+    taxableProfit: 320000,
+    corporateTax: 0, // Below AED 375,000 threshold
+    status: 'Archived',
+    reviewer: 'Kevin Park',
+    manager: 'John Doe',
+    priority: 'Low',
+    dueDate: '2026-06-30',
+    risk: 'Low',
+    lastUpdated: '2026-05-20',
+    taxRate: 9,
+    entityType: 'Free Zone',
+    tags: ['Consulting', 'Below Threshold'],
   },
   {
-    id: '9',
-    initials: 'SS',
-    avatarBg: '#14532D',
-    name: 'Sigma Services LLC',
-    type: 'Mainland',
+    id: 'ct-9',
+    client: 'Sigma Services LLC',
     trn: '100556789600011',
-    taxYear: '2024',
-    status: 'Filed Late',
-    dueDate: '20 Apr 2025',
-    dueWarning: '',
-    isWarningRed: false,
-    taxableIncome: '2,420,000',
-    taxPayable: '58,080',
-    taxPaid: '58,080',
-    isPaidGreen: true,
-    outstanding: '0',
-    isOutRed: false,
-    lastActivity: '18 Apr 2025'
+    taxPeriod: 'FY 2025',
+    financialYear: '2025',
+    accountingProfit: 2420000,
+    taxableProfit: 2500000,
+    corporateTax: 191250,
+    status: 'Exception',
+    reviewer: 'Priya Nair',
+    manager: 'Sneha Iyer',
+    priority: 'High',
+    dueDate: '2026-05-20',
+    risk: 'High',
+    lastUpdated: '2026-05-19',
+    taxRate: 9,
+    entityType: 'Mainland',
+    tags: ['Services', 'Discrepancy'],
   },
   {
-    id: '10',
-    initials: 'TE',
-    avatarBg: '#3B0764',
-    name: 'Vertex Enterprises LLC',
-    type: 'Mainland',
+    id: 'ct-10',
+    client: 'Vertex Enterprises LLC',
     trn: '100556789600012',
-    taxYear: '2024',
-    status: 'Overdue',
-    dueDate: '28 May 2025',
-    dueWarning: 'Due in 2 Days',
-    isWarningRed: true,
-    taxableIncome: '6,750,000',
-    taxPayable: '162,000',
-    taxPaid: '20,000',
-    isPaidGreen: false,
-    outstanding: '142,000',
-    isOutRed: true,
-    lastActivity: '26 Apr 2025'
+    taxPeriod: 'FY 2025',
+    financialYear: '2025',
+    accountingProfit: 6750000,
+    taxableProfit: 7100000,
+    corporateTax: 605250,
+    status: 'Amended',
+    reviewer: 'Lucia Ferreira',
+    manager: 'John Doe',
+    priority: 'Urgent',
+    dueDate: '2026-05-28',
+    risk: 'High',
+    lastUpdated: '2026-05-27',
+    taxRate: 9,
+    entityType: 'Mainland',
+    tags: ['Trading', 'Audit Completed'],
   }
 ];
 
-export default function CorporateTaxTab() {
-  const [search, setSearch] = useState('');
-  const [selectedRows, setSelectedRows] = useState<string[]>([]);
-  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [rowsPerPageOpen, setRowsPerPageOpen] = useState(false);
-  const [datePickerOpen, setDatePickerOpen] = useState(false);
-  
-  // Date states
-  const [startDate, setStartDate] = useState('2026-05-01');
-  const [endDate, setEndDate] = useState('2026-05-07');
-  const [tempStartDate, setTempStartDate] = useState('2026-05-01');
-  const [tempEndDate, setTempEndDate] = useState('2026-05-07');
+const MOCK_DOCS: CtDocument[] = [
+  { name: 'CT_Return_Draft_FY2025.pdf', size: '1.8 MB', date: '2026-06-08', type: 'PDF' },
+  { name: 'CT_Adjustment_Workbook_2025.xlsx', size: '5.2 MB', date: '2026-06-05', type: 'XLSX' },
+  { name: 'Trial_Balance_FY2025.pdf', size: '950 KB', date: '2026-06-01', type: 'PDF' },
+  { name: 'Audited_Financial_Statements_2025.pdf', size: '3.4 MB', date: '2026-05-28', type: 'PDF' }
+];
 
-  const [trendRange, setTrendRange] = useState('Last 6 Months');
-  const [trendRangeOpen, setTrendRangeOpen] = useState(false);
+const MOCK_ACTIVITY: ActivityLog[] = [
+  { timestamp: '2026-06-09 14:23', user: 'Priya Nair', action: 'Approved Return', oldVal: 'Pending', newVal: 'Ready To File', ip: '192.168.1.104', system: 'Chrome/macOS' },
+  { timestamp: '2026-06-08 09:12', user: 'System Agent', action: 'Auto-Audited Ledger', oldVal: 'Draft', newVal: 'Pending', ip: '127.0.0.1', system: 'Auditbot v4.2' },
+  { timestamp: '2026-06-01 16:30', user: 'Sneha Iyer', action: 'Created Return', oldVal: 'None', newVal: 'Draft', ip: '192.168.2.14', system: 'Firefox/Windows' }
+];
 
-  const [calendarOpen, setCalendarOpen] = useState(false);
-  const [reportsOpen, setReportsOpen] = useState(false);
-  const [newReturnOpen, setNewReturnOpen] = useState(false);
+const REVIEWERS = ['Priya Nair', 'Omar Haddad', 'Lucia Ferreira', 'Ahmed Zaid', 'Kevin Park', 'Unassigned'];
+const MANAGERS = ['John Doe', 'Mike Brown', 'Sneha Iyer'];
+const YEARS = ['2025', '2024', '2026'];
+const PERIODS = ['FY 2025', 'FY 2024', 'Q1-Q4 2025'];
 
-  // New return form state
-  const [newReturnForm, setNewReturnForm] = useState({
-    client: 'ABC Trading LLC',
-    trn: '100556789600003',
-    taxYear: '2024',
-    dueDate: '28 May 2025',
-    status: 'Draft',
-    payable: '',
-    paid: '',
-    taxableIncome: ''
-  });
-  const [modalClientOpen, setModalClientOpen] = useState(false);
-  const [modalYearOpen, setModalYearOpen] = useState(false);
-  const [modalStatusOpen, setModalStatusOpen] = useState(false);
+// ============================================================================
+// Focus Trap Utility
+// ============================================================================
 
-  // Reports form state
-  const [reportType, setReportType] = useState('Filing Summary');
-  const [reportFormat, setReportFormat] = useState('xlsx');
-  const [reportDateRange, setReportDateRange] = useState('Last 6 Months');
-  const [modalReportTypeOpen, setModalReportTypeOpen] = useState(false);
-  const [modalReportRangeOpen, setModalReportRangeOpen] = useState(false);
+interface FocusTrapProps {
+  children: React.ReactNode;
+  onEscape: () => void;
+}
 
-  const [filters, setFilters] = useState({
-    status: 'All',
-    taxYear: 'All',
-    type: 'All',
-    manager: 'All'
-  });
+function FocusTrap({ children, onEscape }: FocusTrapProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const filterOptions = {
-    status: ['All', 'Overdue', 'Filed On Time', 'Filed Late', 'In Review', 'Not Required'],
-    taxYear: ['All', '2024', '2023'],
-    type: ['All', 'Mainland', 'Free Zone'],
-    manager: ['All', 'John Doe', 'Priya Nair', 'Mike Brown', 'Sneha Iyer']
-  };
-
-  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) {
-      setSelectedRows(INITIAL_RETURNS.map(r => r.id));
-    } else {
-      setSelectedRows([]);
-    }
-  };
-
-  const handleSelectOne = (id: string) => {
-    if (selectedRows.includes(id)) {
-      setSelectedRows(selectedRows.filter(x => x !== id));
-    } else {
-      setSelectedRows([...selectedRows, id]);
-    }
-  };
-
-  const formatDate = (dStr: string) => {
-    try {
-      const parts = dStr.split('-');
-      if (parts.length === 3) {
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const day = parseInt(parts[2], 10);
-        const month = months[parseInt(parts[1], 10) - 1];
-        const year = parts[0];
-        return `${day} ${month} ${year}`;
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onEscape();
       }
-    } catch (e) {}
-    return dStr;
-  };
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onEscape]);
 
-  // Filter returns based on search and parameters
-  const filteredReturns = INITIAL_RETURNS.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase()) || item.trn.includes(search);
-    const matchesStatus = filters.status === 'All' || item.status === filters.status;
-    const matchesYear = filters.taxYear === 'All' || item.taxYear === filters.taxYear;
-    const matchesType = filters.type === 'All' || item.type === filters.type;
-    return matchesSearch && matchesStatus && matchesYear && matchesType;
-  });
+  return <div ref={containerRef} style={{ display: 'contents' }}>{children}</div>;
+}
+
+// ============================================================================
+// Custom Select / Pickers (Open Upwards)
+// ============================================================================
+
+interface CustomSelectProps {
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+  placeholder?: string;
+  icon?: React.ReactNode;
+}
+
+function CustomSelect({ value, onChange, options, placeholder = 'Select...', icon }: CustomSelectProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
-    <div style={{
-      color: '#2A1628',
-      fontFamily: 'var(--font-sans), Inter, sans-serif',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '1.5rem',
-      background: 'transparent',
-    }}>
-      
-      {/* ── HEADER SECTION ── */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'flex-end',
-        paddingBottom: '1rem',
-        borderBottom: '1px solid #DDD0C4',
-      }}>
+    <div ref={containerRef} style={{ position: 'relative', width: '100%', fontFamily: 'var(--font-sans), Inter, sans-serif' }}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          padding: '0.625rem 0.75rem',
+          paddingLeft: icon ? '2.25rem' : '0.75rem',
+          borderRadius: '10px',
+          border: isOpen ? '1.5px solid #E8760A' : '1px solid #DDD0C4',
+          background: '#ffffff',
+          color: value ? '#2A1628' : 'rgba(42,22,40,0.4)',
+          fontSize: '0.8125rem',
+          fontFamily: 'inherit',
+          textAlign: 'left',
+          cursor: 'pointer',
+          outline: 'none',
+          boxSizing: 'border-box',
+          position: 'relative',
+        }}
+      >
+        {icon && (
+          <div style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
+            {icon}
+          </div>
+        )}
+        <span style={{ flex: 1, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <span style={{ color: 'rgba(42,22,40,0.45)', marginRight: '0.25rem' }}>{placeholder}:</span>
+          <span style={{ color: '#2A1628', fontWeight: 600 }}>{value || 'All'}</span>
+        </span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(42,22,40,0.4)" strokeWidth="2.5" style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '100%',
+            left: 0,
+            width: '100%',
+            marginBottom: '4px',
+            background: '#ffffff',
+            border: '1px solid #DDD0C4',
+            borderRadius: '10px',
+            boxShadow: '0 -8px 24px rgba(42,22,40,0.1)',
+            zIndex: 1000,
+            maxHeight: '180px',
+            overflowY: 'auto',
+            boxSizing: 'border-box',
+            padding: '4px 0',
+          }}
+        >
+          {options.map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => {
+                onChange(opt);
+                setIsOpen(false);
+              }}
+              style={{
+                width: '100%',
+                padding: '0.5rem 0.75rem',
+                border: 'none',
+                background: opt === value ? 'rgba(232,118,10,0.06)' : 'transparent',
+                color: opt === value ? '#E8760A' : '#2A1628',
+                fontSize: '0.8125rem',
+                fontWeight: opt === value ? 700 : 500,
+                textAlign: 'left',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// Modal Shell Component
+// ============================================================================
+
+interface ModalShellProps {
+  onClose: () => void;
+  eyebrow: string;
+  titlePlain: string;
+  titleAccent: string;
+  maxWidth?: string;
+  footer?: React.ReactNode;
+  children: React.ReactNode;
+  bodyStyle?: React.CSSProperties;
+}
+
+function ModalShell({ onClose, eyebrow, titlePlain, titleAccent, maxWidth = '540px', footer, children, bodyStyle }: ModalShellProps) {
+  return (
+    <div
+      role="presentation"
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(42,22,40,0.45)', backdropFilter: 'blur(4px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+    >
+      <FocusTrap onEscape={onClose}>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${titlePlain} ${titleAccent}`}
+          onClick={(e) => e.stopPropagation()}
+          style={{ background: '#ffffff', borderRadius: '24px', width: '100%', maxWidth, maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(42,22,40,0.2)', overflow: 'hidden', fontFamily: 'var(--font-sans), Inter, sans-serif' }}
+        >
+          {/* Header */}
+          <div style={{ padding: '2rem 2rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexShrink: 0 }}>
+            <div>
+              <p style={{ margin: 0, fontSize: '0.75rem', color: 'rgba(42,22,40,0.4)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{eyebrow}</p>
+              <h2 style={{ margin: '0.2rem 0 0', fontSize: '1.625rem', fontWeight: 300, color: '#2A1628', fontFamily: 'var(--font-serif), Georgia, serif' }}>
+                {titlePlain} <span style={{ fontStyle: 'italic', color: '#E8760A' }}>{titleAccent}</span>
+              </h2>
+            </div>
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              style={{ background: 'rgba(42,22,40,0.04)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2A1628', flexShrink: 0 }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+            </button>
+          </div>
+          
+          <div style={{ width: '100%', height: '1px', background: 'rgba(42,22,40,0.06)' }} />
+
+          {/* Body */}
+          <div className="hide-scrollbar" style={{ padding: '1.5rem 2rem', overflowY: 'auto', flex: 1, ...bodyStyle }}>
+            {children}
+          </div>
+
+          {/* Footer */}
+          {footer && (
+            <div style={{ padding: '1rem 2rem 1.5rem', borderTop: '1px solid rgba(42,22,40,0.06)', background: '#FAF8F5', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', flexShrink: 0 }}>
+              {footer}
+            </div>
+          )}
+        </div>
+      </FocusTrap>
+    </div>
+  );
+}
+
+// ============================================================================
+// Core Dashboard Component
+// ============================================================================
+
+export default function CorporateTaxTab() {
+  // Local state datasets
+  const [data, setData] = useState<CtReturnItem[]>(MOCK_RETURNS);
+  const [isLoading, setIsLoading] = useState(false);
+  const [toasts, setToasts] = useState<{ id: string; message: string; tone: 'success' | 'danger' | 'info' | 'warning' }[]>([]);
+  const nextIdRef = useRef(1);
+
+  // Export Modal Configuration states
+  const [exportScope, setExportScope] = useState<'all' | 'filtered' | 'selected'>('filtered');
+  const [exportFormat, setExportFormat] = useState<'excel' | 'csv' | 'pdf' | 'print'>('excel');
+
+  // Popups State
+  const [popup, setPopup] = useState<{
+    type: 'import' | 'create' | 'export' | 'assign' | 'validation' | 'submit' | 'delete' | 'notes' | 'confirmDelete' | 'confirmArchive' | 'confirmSubmit' | null;
+    tx?: CtReturnItem;
+  }>({ type: null });
+
+  // Drawer details state
+  const [drawerTxId, setDrawerTxId] = useState<string | null>(null);
+  const [drawerTab, setDrawerTab] = useState<'overview' | 'financials' | 'adjustments' | 'computation' | 'validation' | 'timeline' | 'activity' | 'documents' | 'quickBooksSync' | 'notes'>('overview');
+
+  // Filter bar states
+  const [filterManager, setFilterManager] = useState('All');
+  const [filterReviewer, setFilterReviewer] = useState('All');
+  const [filterPeriod, setFilterPeriod] = useState('All');
+  const [filterYear, setFilterYear] = useState('All');
+  const [filterEntityType, setFilterEntityType] = useState('All');
+  const [filterPriority, setFilterPriority] = useState('All');
+  const [filterRisk, setFilterRisk] = useState('All');
+  const [activeStatusTab, setActiveStatusTab] = useState<string>('All');
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  // Search input query
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Row selection checkbox IDs list
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  // Table columns definition list with order
+  const [columns, setColumns] = useState<
+    { key: keyof CtReturnItem | 'actions'; label: string; width: string; sortable: boolean; align?: 'left' | 'right' | 'center' }[]
+  >([
+    { key: 'client', label: 'CLIENT', width: '220px', sortable: true },
+    { key: 'trn', label: 'TRN', width: '130px', sortable: true },
+    { key: 'taxPeriod', label: 'TAX PERIOD', width: '110px', sortable: true },
+    { key: 'financialYear', label: 'FINANCIAL YEAR', width: '110px', sortable: true },
+    { key: 'accountingProfit', label: 'ACCOUNTING PROFIT', width: '140px', sortable: true, align: 'right' },
+    { key: 'taxableProfit', label: 'TAXABLE PROFIT', width: '140px', sortable: true, align: 'right' },
+    { key: 'corporateTax', label: 'CORPORATE TAX', width: '130px', sortable: true, align: 'right' },
+    { key: 'status', label: 'FILING STATUS', width: '130px', sortable: true },
+    { key: 'reviewer', label: 'REVIEWER', width: '120px', sortable: true },
+    { key: 'dueDate', label: 'DUE DATE', width: '110px', sortable: true },
+    { key: 'risk', label: 'RISK', width: '90px', sortable: true },
+  ]);
+
+  // Context Actions Menu state
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const [menuItem, setMenuItem] = useState<CtReturnItem | null>(null);
+  const [sortCol, setSortCol] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  // New return form state
+  const [newFormClient, setNewFormClient] = useState('');
+  const [newFormTrn, setNewFormTrn] = useState('');
+  const [newFormPeriod, setNewFormPeriod] = useState(PERIODS[0]);
+  const [newFormYear, setNewFormYear] = useState(YEARS[0]);
+  const [newFormType, setNewFormType] = useState<'Mainland' | 'Free Zone'>('Mainland');
+  const [newFormAccountingProfit, setNewFormAccountingProfit] = useState('');
+  const [newFormTaxableProfit, setNewFormTaxableProfit] = useState('');
+  const [newFormReviewer, setNewFormReviewer] = useState(REVIEWERS[0]);
+
+  // Import form state
+  const [importTab, setImportTab] = useState<'local' | 'gdrive' | 'onedrive'>('local');
+  const [importFile, setImportFile] = useState('');
+  const [importTrn, setImportTrn] = useState('');
+  const [importPeriod, setImportPeriod] = useState('FY 2025');
+
+  // Notes selection / assign selections
+  const [assignedReviewerSelection, setAssignedReviewerSelection] = useState(REVIEWERS[0]);
+
+  // Toast utility helper
+  const pushToast = (message: string, tone: 'success' | 'danger' | 'info' | 'warning') => {
+    const id = String(nextIdRef.current++);
+    setToasts((prev) => [...prev, { id, message, tone }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4000);
+  };
+
+  const handleRefresh = () => {
+    pushToast('Re-fetching Corporate Tax registry from FTA gateway...', 'info');
+  };
+
+  const dragKeyRef = useRef<string | null>(null);
+
+  // Column reordering drag handler
+  const handleColumnReorder = (draggedKey: string, targetKey: string) => {
+    const fromIndex = columns.findIndex((c) => c.key === draggedKey);
+    const toIndex = columns.findIndex((c) => c.key === targetKey);
+    if (fromIndex !== -1 && toIndex !== -1) {
+      const nextCols = [...columns];
+      const [moved] = nextCols.splice(fromIndex, 1);
+      nextCols.splice(toIndex, 0, moved);
+      setColumns(nextCols);
+      pushToast('Table column layout updated.', 'info');
+    }
+  };
+
+  // Metrics dashboard summary calculations
+  const stats = useMemo(() => {
+    const mainlandCount = data.filter((x) => x.entityType === 'Mainland').length;
+    const freezoneCount = data.filter((x) => x.entityType === 'Free Zone').length;
+    const pending = data.filter((x) => x.status === 'Pending').length;
+    const ready = data.filter((x) => x.status === 'Ready To File').length;
+    const filed = data.filter((x) => x.status === 'Filed').length;
+    const highRisk = data.filter((x) => x.risk === 'High').length;
+
+    const totalPayable = data.reduce((s, x) => s + (x.corporateTax || 0), 0);
+    const totalTaxable = data.reduce((s, x) => s + (x.taxableProfit || 0), 0);
+    const totalAccounting = data.reduce((s, x) => s + (x.accountingProfit || 0), 0);
+
+    return {
+      mainlandCount,
+      freezoneCount,
+      pending,
+      ready,
+      filed,
+      highRisk,
+      payable: totalPayable,
+      taxable: totalTaxable,
+      accounting: totalAccounting,
+    };
+  }, [data]);
+
+  // Tab count indicators
+  const tabCounts = useMemo(() => {
+    const map: Record<string, number> = { All: data.length };
+    data.forEach((r) => {
+      map[r.status] = (map[r.status] || 0) + 1;
+    });
+    return map;
+  }, [data]);
+
+  // Filter returns based on search and parameters
+  const filteredData = useMemo(() => {
+    return data
+      .filter((r) => {
+        if (activeStatusTab !== 'All' && r.status !== activeStatusTab) return false;
+        if (filterManager !== 'All' && r.manager !== filterManager) return false;
+        if (filterReviewer !== 'All' && r.reviewer !== filterReviewer) return false;
+        if (filterPeriod !== 'All' && r.taxPeriod !== filterPeriod) return false;
+        if (filterYear !== 'All' && r.financialYear !== filterYear) return false;
+        if (filterEntityType !== 'All' && r.entityType !== filterEntityType) return false;
+        if (filterPriority !== 'All' && r.priority !== filterPriority) return false;
+        if (filterRisk !== 'All' && r.risk !== filterRisk) return false;
+
+        if (searchQuery.trim() !== '') {
+          const s = searchQuery.toLowerCase();
+          const matchClient = r.client.toLowerCase().includes(s);
+          const matchTrn = r.trn.includes(s);
+          const matchReviewer = r.reviewer.toLowerCase().includes(s);
+          const matchManager = r.manager.toLowerCase().includes(s);
+          return matchClient || matchTrn || matchReviewer || matchManager;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        if (!sortCol) return 0;
+        const v1 = a[sortCol as keyof CtReturnItem];
+        const v2 = b[sortCol as keyof CtReturnItem];
+
+        if (typeof v1 === 'string') {
+          return sortDir === 'asc'
+            ? (v1 as string).localeCompare(v2 as string)
+            : (v2 as string).localeCompare(v1 as string);
+        }
+        if (typeof v1 === 'number') {
+          return sortDir === 'asc' ? (v1 as number) - (v2 as number) : (v2 as number) - (v1 as number);
+        }
+        return 0;
+      });
+  }, [
+    data,
+    activeStatusTab,
+    filterManager,
+    filterReviewer,
+    filterPeriod,
+    filterYear,
+    filterEntityType,
+    filterPriority,
+    filterRisk,
+    searchQuery,
+    sortCol,
+    sortDir,
+  ]);
+
+  // Simulate loading skeleton on filter and search state changes
+  useEffect(() => {
+    let active = true;
+    const rafId = requestAnimationFrame(() => {
+      if (active) setIsLoading(true);
+    });
+    const timer = setTimeout(() => {
+      if (active) setIsLoading(false);
+    }, 250);
+    return () => {
+      active = false;
+      cancelAnimationFrame(rafId);
+      clearTimeout(timer);
+    };
+  }, [
+    activeStatusTab,
+    filterManager,
+    filterReviewer,
+    filterPeriod,
+    filterYear,
+    filterEntityType,
+    filterPriority,
+    filterRisk,
+    searchQuery,
+  ]);
+
+  // Page split calculation
+  const pagedData = useMemo(() => {
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    return filteredData.slice(startIndex, startIndex + rowsPerPage);
+  }, [filteredData, currentPage, rowsPerPage]);
+
+  // Active drawer transaction details object
+  const activeTx = useMemo(() => {
+    return data.find((x) => x.id === drawerTxId) || null;
+  }, [data, drawerTxId]);
+
+  // Row selection handlers
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedIds(filteredData.map((r) => r.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectRow = (id: string) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  // Submit Action Form
+  const handleCreateReturnSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newFormClient || !newFormTrn) {
+      pushToast('Please fill in required fields.', 'warning');
+      return;
+    }
+    const accP = Number(newFormAccountingProfit) || 0;
+    const taxP = Number(newFormTaxableProfit) || 0;
+    const ctPay = taxP > 375000 ? Math.round((taxP - 375000) * 0.09) : 0;
+
+    const newObj: CtReturnItem = {
+      id: `ct-${nextIdRef.current++}`,
+      client: newFormClient,
+      trn: newFormTrn,
+      taxPeriod: newFormPeriod,
+      financialYear: newFormYear,
+      accountingProfit: accP,
+      taxableProfit: taxP,
+      corporateTax: ctPay,
+      status: 'Draft',
+      reviewer: newFormReviewer,
+      manager: 'John Doe',
+      priority: 'Medium',
+      dueDate: `${Number(newFormYear) + 1}-05-28`,
+      risk: 'Low',
+      lastUpdated: new Date().toISOString().split('T')[0],
+      taxRate: 9,
+      entityType: newFormType,
+      tags: [newFormType],
+    };
+
+    setData((prev) => [newObj, ...prev]);
+    setPopup({ type: null });
+    pushToast(`Corporate Tax filing created for ${newFormClient}.`, 'success');
+
+    // Reset fields
+    setNewFormClient('');
+    setNewFormTrn('');
+    setNewFormAccountingProfit('');
+    setNewFormTaxableProfit('');
+  };
+
+  const handleImportSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (importTab === 'local' && !importFile) {
+      pushToast('Please select a ledger report to upload.', 'warning');
+      return;
+    }
+    if (importTab !== 'local' && !importTrn) {
+      pushToast('Please verify target connection parameters.', 'warning');
+      return;
+    }
+
+    pushToast(`System initiated background mapping for ${importPeriod} Corporate Tax data.`, 'success');
+    setPopup({ type: null });
+  };
+
+  // Bulk actions triggers
+  const triggerBulkAction = (action: string) => {
+    if (selectedIds.length === 0) {
+      pushToast('No items selected.', 'warning');
+      return;
+    }
+
+    if (action === 'reviewer') {
+      setPopup({ type: 'assign' });
+      return;
+    }
+
+    setData((prev) =>
+      prev.map((x) => {
+        if (!selectedIds.includes(x.id)) return x;
+        if (action === 'ready') return { ...x, status: 'Ready To File' };
+        if (action === 'filed') return { ...x, status: 'Filed' };
+        return x;
+      })
+    );
+
+    if (action === 'generate') {
+      pushToast(`Generated UAE Corporate Tax Returns (Form CT-1) for ${selectedIds.length} companies.`, 'success');
+    } else if (action === 'export') {
+      setPopup({ type: 'export' });
+    } else {
+      pushToast(`Bulk action applied to ${selectedIds.length} records.`, 'success');
+    }
+    setSelectedIds([]);
+  };
+
+  // Assign Reviewer execution
+  const applyAssignReviewer = () => {
+    setData((prev) =>
+      prev.map((x) => {
+        if (selectedIds.includes(x.id)) {
+          return { ...x, reviewer: assignedReviewerSelection };
+        }
+        return x;
+      })
+    );
+    setPopup({ type: null });
+    pushToast(`Assigned ${assignedReviewerSelection} as reviewer for ${selectedIds.length} records.`, 'success');
+    setSelectedIds([]);
+  };
+
+  const handleMenuAction = (key: string) => {
+    if (!menuItem) return;
+    if (key === 'openDrawer') {
+      setDrawerTxId(menuItem.id);
+    } else if (key === 'viewSummary') {
+      setDrawerTxId(menuItem.id);
+      setDrawerTab('financials');
+    } else if (key === 'validate') {
+      pushToast(`Pre-filing validation passed with 98% completeness.`, 'success');
+    } else if (key === 'generate') {
+      pushToast(`Form CT-1 XML structure compiled successfully.`, 'success');
+    } else if (key === 'submit') {
+      pushToast(`Submitted return to FTA portal.`, 'success');
+    } else if (key === 'downloadPdf') {
+      pushToast(`Corporate Tax Return PDF download started.`, 'info');
+    } else if (key === 'downloadExcel') {
+      pushToast(`Accounting Ledger Excel workbook exported.`, 'info');
+    } else if (key === 'exportXml') {
+      pushToast(`Form CT-1 XML file package compiled.`, 'info');
+    } else if (key === 'viewTransactions') {
+      setDrawerTxId(menuItem.id);
+      setDrawerTab('computation');
+    } else if (key === 'auditLog') {
+      setDrawerTxId(menuItem.id);
+      setDrawerTab('activity');
+    } else if (key === 'notes') {
+      setDrawerTxId(menuItem.id);
+      setDrawerTab('notes');
+    } else if (key === 'openClient') {
+      pushToast(`Navigating to Client profile: ${menuItem.client}...`, 'info');
+    } else if (key === 'archive') {
+      setPopup({ type: 'confirmArchive', tx: menuItem });
+    } else if (key === 'delete') {
+      setPopup({ type: 'confirmDelete', tx: menuItem });
+    } else if (key === 'submit') {
+      setPopup({ type: 'confirmSubmit', tx: menuItem });
+    }
+  };
+
+  // Close context menu handler
+  useEffect(() => {
+    const closeMenu = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('.action-btn-trigger')) {
+        return;
+      }
+      setMenuPos(null);
+    };
+    document.addEventListener('click', closeMenu);
+    return () => document.removeEventListener('click', closeMenu);
+  }, []);
+
+  return (
+    <div style={{ color: '#2A1628', fontFamily: 'var(--font-sans), Inter, sans-serif', display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0 0.5rem' }}>
+      {/* Toast notifications */}
+      <div style={{ position: 'fixed', top: '1.5rem', right: '1.5rem', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '0.5rem', pointerEvents: 'none' }}>
+        {toasts.map((t) => {
+          const bg = t.tone === 'success' ? '#E6F4EA' : t.tone === 'danger' ? '#FCE8E6' : t.tone === 'warning' ? '#FEF7E0' : '#E8F0FE';
+          const color = t.tone === 'success' ? '#137333' : t.tone === 'danger' ? '#C5221F' : t.tone === 'warning' ? '#B06000' : '#1A73E8';
+          const stroke = color;
+          return (
+            <div
+              key={t.id}
+              style={{
+                pointerEvents: 'auto',
+                background: bg,
+                color: color,
+                padding: '0.75rem 1.25rem',
+                borderRadius: '8px',
+                boxShadow: '0 4px 16px rgba(42,22,40,0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                fontSize: '0.8125rem',
+                fontWeight: 600,
+                border: `1px solid ${color}20`,
+                animation: 'slideIn 0.2s ease',
+              }}
+            >
+              {t.tone === 'success' && (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="3">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              )}
+              {t.tone === 'danger' && (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="3">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="15" y1="9" x2="9" y2="15" />
+                  <line x1="9" y1="9" x2="15" y2="15" />
+                </svg>
+              )}
+              <span>{t.message}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── 1. BREADCRUMBS & HEADER ── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid rgba(42,22,40,0.06)', paddingBottom: '1rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#E8760A', display: 'inline-block' }} />
-            <p style={{ margin: 0, fontSize: '0.75rem', color: 'rgba(42,22,40,0.5)', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', fontFamily: 'Inter, sans-serif' }}>
-              Accounting &gt; Corporate Tax
-            </p>
+            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#E8760A' }} />
+            <span style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.45)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+              Accounting &gt; Corporate Tax Center
+            </span>
           </div>
-          <h1 style={{
-            margin: 0,
-            fontSize: '2.5rem',
-            fontWeight: 300,
-            color: '#2A1628',
-            letterSpacing: '-0.02em',
-            fontFamily: 'var(--font-serif), Georgia, serif'
-          }}>
-            Corporate <span style={{ fontStyle: 'italic', color: '#E8760A' }}>Tax</span>
+          <h1 style={{ margin: 0, fontSize: '2.5rem', fontWeight: 300, color: '#2A1628', letterSpacing: '-0.02em', fontFamily: 'var(--font-serif), Georgia, serif' }}>
+            Corporate <span style={{ fontStyle: 'italic', color: '#E8760A' }}>Tax Center</span>
           </h1>
-          <p style={{ margin: '0.5rem 0 0', fontSize: '0.875rem', color: 'rgba(42,22,40,0.6)' }}>
-            Track corporate tax obligations, filings, payments and compliance for all clients.
+          <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'rgba(42,22,40,0.5)' }}>
+            Manage corporate tax provisions, taxable income calculations, deductions, adjustments, and electronic filings for your registered client entities.
           </p>
         </div>
-        
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+
+        {/* Action Header Buttons */}
+        <div style={{ display: 'flex', gap: '0.625rem' }}>
           <button
-            onClick={() => setCalendarOpen(true)}
+            type="button"
+            onClick={() => setPopup({ type: 'import' })}
             style={{
               background: '#ffffff',
               border: '1px solid #DDD0C4',
-              padding: '0.625rem 1.25rem',
+              color: '#2A1628',
               borderRadius: '8px',
+              padding: '0.625rem 1.25rem',
               fontSize: '0.8125rem',
               fontWeight: 600,
               cursor: 'pointer',
-              color: '#2A1628',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem'
+              gap: '0.375rem',
+              whiteSpace: 'nowrap',
+              fontFamily: 'inherit',
             }}
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5">
-              <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
             </svg>
-            CT Calendar
+            Import CT Data
           </button>
-          
           <button
-            onClick={() => setReportsOpen(true)}
+            type="button"
+            onClick={() => setPopup({ type: 'create' })}
             style={{
               background: '#ffffff',
               border: '1px solid #DDD0C4',
-              padding: '0.625rem 1.25rem',
+              color: '#2A1628',
               borderRadius: '8px',
+              padding: '0.625rem 1.25rem',
               fontSize: '0.8125rem',
               fontWeight: 600,
               cursor: 'pointer',
-              color: '#2A1628',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem'
+              gap: '0.375rem',
+              whiteSpace: 'nowrap',
+              fontFamily: 'inherit',
             }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="17 8 12 3 7 8" />
-              <line x1="12" y1="3" x2="12" y2="15" />
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5">
+              <path d="M12 5v14M5 12h14" />
             </svg>
-            CT Reports
+            Create CT Return
           </button>
-
           <button
-            onClick={() => setNewReturnOpen(true)}
+            type="button"
+            onClick={() => setPopup({ type: 'export' })}
+            style={{
+              background: '#ffffff',
+              border: '1px solid #DDD0C4',
+              color: '#2A1628',
+              borderRadius: '8px',
+              padding: '0.625rem 1.25rem',
+              fontSize: '0.8125rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.375rem',
+              whiteSpace: 'nowrap',
+              fontFamily: 'inherit',
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5">
+              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13" />
+            </svg>
+            Export Center
+          </button>
+          <button
+            type="button"
+            onClick={handleRefresh}
             style={{
               background: '#2A1628',
               color: '#ffffff',
               border: 'none',
-              padding: '0.625rem 1.25rem',
               borderRadius: '8px',
+              padding: '0.625rem 1.25rem',
               fontSize: '0.8125rem',
               fontWeight: 600,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem',
-              boxShadow: '0 4px 12px rgba(42,22,40,0.15)'
+              gap: '0.375rem',
+              whiteSpace: 'nowrap',
+              boxShadow: '0 4px 12px rgba(42,22,40,0.15)',
+              fontFamily: 'inherit',
             }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
             </svg>
-            New CT Filing
+            Refresh
           </button>
         </div>
       </div>
 
-      {/* ── METRICS GRID (7 CARDS ROW) ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.75rem' }}>
+      {/* ── 2. KPI CARDS CONTAINER (10 CARDS) ── */}
+      <div className="no-scrollbar" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.75rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
         {[
-          { label: 'CT Filings Due', value: '4', sub: '+1 this week', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>, bg: '#FAF2EC', border: '#F3DEC9' },
-          { label: 'Returns Overdue', value: '2', sub: '-1 vs last week', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>, bg: '#FAF2EC', border: '#F3DEC9' },
-          { label: 'Filed This Year', value: '18', sub: '+4 vs last year', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg>, bg: '#FAF2EC', border: '#F3DEC9' },
-          { label: 'In Review', value: '6', sub: '6 active', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" /></svg>, bg: '#FAF2EC', border: '#F3DEC9' },
-          { label: 'Total Tax Payable', value: 'AED 2.14M', sub: 'This Year', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg>, bg: '#FAF2EC', border: '#F3DEC9' },
-          { label: 'Total Tax Paid', value: 'AED 1.28M', sub: 'This Year', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="4" width="20" height="16" rx="2" ry="2" /><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>, bg: '#FAF2EC', border: '#F3DEC9' },
-          { label: 'Potential Exposure', value: 'AED 312K', sub: 'Estimated', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>, bg: '#FAF2EC', border: '#F3DEC9' },
-        ].map((card, i) => (
-          <div key={i} style={{
-            background: '#ffffff',
-            border: '1px solid rgba(42,22,40,0.06)',
-            borderRadius: '12px',
-            padding: '1rem',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            boxShadow: '0 4px 10px rgba(42,22,40,0.02)',
-            minHeight: '105px'
-          }}>
+          { label: 'Corporate Tax Payable', value: `AED ${stats.payable.toLocaleString()}`, sub: 'Unfiled Provisions', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
+          { label: 'Taxable Profit', value: `AED ${stats.taxable.toLocaleString()}`, sub: 'Adjusted CT Base', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
+          { label: 'Accounting Profit', value: `AED ${stats.accounting.toLocaleString()}`, sub: 'FY2025 Book Earnings', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5z"/></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
+          { label: 'Tax Adjustments', value: `AED ${(stats.taxable - stats.accounting).toLocaleString()}`, sub: 'Net Non-Deductibles', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z"/></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
+          { label: 'Deferred Tax Asset', value: 'AED 184,200', sub: 'Timing Differences', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
+          { label: 'Returns Pending', value: `${stats.pending} returns`, sub: 'Needs Internal Review', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
+          { label: 'Returns Filed', value: `${stats.filed} returns`, sub: 'FTA Gateway Approved', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
+          { label: 'Compliance Score', value: '98.4%', sub: 'Audit matching rate', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
+          { label: 'High Risk Returns', value: `${stats.highRisk} items`, sub: 'Requires Director Sign-off', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
+          { label: 'Filing Deadline', value: '28 May 2026', sub: 'FY2025 Submission Limit', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' }
+        ].map((card, idx) => (
+          <div
+            key={idx}
+            style={{
+              background: '#ffffff',
+              border: '1px solid #DDD0C4',
+              borderRadius: '12px',
+              padding: '1rem',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              boxShadow: '0 4px 10px rgba(42,22,40,0.02)',
+              minHeight: '105px',
+            }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'rgba(42,22,40,0.6)', lineHeight: 1.2, flex: 1, marginRight: '0.5rem' }}>{card.label}</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'rgba(42,22,40,0.6)', lineHeight: 1.2 }}>
+                {card.label}
+              </span>
               <div style={{
-                width: '28px',
-                height: '28px',
-                borderRadius: '6px',
-                background: card.bg,
-                border: `1px solid ${card.border}`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#E8760A',
-                flexShrink: 0
+                width: '28px', height: '28px', borderRadius: '6px',
+                background: card.bg, color: card.color,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0, fontSize: '0.9rem'
               }}>
                 {card.icon}
               </div>
             </div>
             <div>
-              <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#2A1628', lineHeight: 1.1 }}>{card.value}</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 300, color: '#2A1628', lineHeight: 1.1, fontFamily: 'var(--font-serif), Georgia, serif' }}>
+                {card.value}
+              </div>
               <div style={{ fontSize: '0.6875rem', color: 'rgba(42,22,40,0.45)', marginTop: '0.125rem', fontWeight: 500 }}>
                 {card.sub}
               </div>
@@ -484,1195 +1101,1689 @@ export default function CorporateTaxTab() {
         ))}
       </div>
 
-      {/* ── CHARTS ROW ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.3fr 1fr', gap: '1.25rem' }}>
-        
-        {/* Filing Status Overview Donut */}
-        <div style={{ background: '#ffffff', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 12px rgba(42,22,40,0.02)' }}>
-          <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#2A1628', margin: '0 0 1.25rem', fontFamily: 'var(--font-sans), Inter, sans-serif' }}>Filing Status Overview</h3>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '150px' }}>
-            <div style={{ position: 'relative', width: '100px', height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <svg width="100" height="100" viewBox="0 0 36 36" style={{ transform: 'rotate(-90deg)' }}>
-                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#FAF8F5" strokeWidth="3.2" strokeDasharray="100 0" />
-                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#A1829A" strokeWidth="3" strokeDasharray="8 92" strokeDashoffset="-92" />
-                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#8B6D83" strokeWidth="3" strokeDasharray="11 89" strokeDashoffset="-81" />
-                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#2A1628" strokeWidth="3.2" strokeDasharray="15 85" strokeDashoffset="-66" />
-                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#E0A370" strokeWidth="3.4" strokeDasharray="18 82" strokeDashoffset="-48" />
-                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#E8760A" strokeWidth="3.6" strokeDasharray="48 52" />
-              </svg>
-              <div style={{ position: 'absolute', textAlign: 'center' }}>
-                <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#2A1628', lineHeight: 1 }}>248</div>
-                <div style={{ fontSize: '0.625rem', color: 'rgba(42,22,40,0.5)', marginTop: '2px' }}>Total Clients</div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1, marginLeft: '1.5rem' }}>
-              {[
-                { name: 'Filed On Time', val: '120', pct: '48%', color: '#E8760A' },
-                { name: 'Filed Late', val: '45', pct: '18%', color: '#E0A370' },
-                { name: 'Overdue', val: '36', pct: '15%', color: '#2A1628' },
-                { name: 'In Review', val: '28', pct: '11%', color: '#8B6D83' },
-                { name: 'Not Required', val: '19', pct: '8%', color: '#A1829A' }
-              ].map((leg, idx) => (
-                <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.7rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: leg.color }} />
-                    <span style={{ color: 'rgba(42,22,40,0.7)', fontWeight: 500 }}>{leg.name}</span>
-                  </div>
-                  <span style={{ fontWeight: 600, color: '#2A1628' }}>{leg.val} <span style={{ color: 'rgba(42,22,40,0.4)', fontWeight: 400 }}>({leg.pct})</span></span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Corporate Tax Payable Trend Line Chart */}
-        <div style={{ background: '#ffffff', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 12px rgba(42,22,40,0.02)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-            <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#2A1628', margin: 0, fontFamily: 'var(--font-sans), Inter, sans-serif' }}>Corporate Tax Payable Trend</h3>
-            
-            <div style={{ position: 'relative' }}>
-              <button
-                onClick={() => setTrendRangeOpen(o => !o)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.3rem',
-                  padding: '0.35rem 0.65rem',
-                  fontSize: '0.75rem',
-                  border: '1px solid #DDD0C4',
-                  borderRadius: '6px',
-                  background: '#ffffff',
-                  color: '#2A1628',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                  fontFamily: 'inherit'
-                }}
-              >
-                {trendRange}
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
-              </button>
-              {trendRangeOpen && (
-                <div style={{
-                  position: 'absolute', top: '100%', right: 0, marginTop: '4px',
-                  background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: '6px',
-                  boxShadow: '0 4px 12px rgba(42,22,40,0.08)', zIndex: 10, minWidth: '120px'
-                }}>
-                  {['Last 3 Months', 'Last 6 Months', 'Year to Date'].map((t) => (
-                    <div
-                      key={t}
-                      onClick={() => { setTrendRange(t); setTrendRangeOpen(false); }}
-                      style={{
-                        padding: '0.4rem 0.625rem', fontSize: '0.75rem', color: '#2A1628',
-                        cursor: 'pointer', background: trendRange === t ? '#FAF8F5' : 'transparent',
-                        fontWeight: trendRange === t ? 600 : 400
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = '#FAF8F5'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = trendRange === t ? '#FAF8F5' : 'transparent'; }}
-                    >
-                      {t}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', height: '150px', justifyContent: 'space-between', position: 'relative' }}>
-            <div style={{ position: 'relative', flex: 1, width: '100%', borderBottom: '1px solid rgba(42,22,40,0.05)', marginTop: '0.5rem' }}>
-              <svg width="100%" height="110px" viewBox="0 0 300 100" preserveAspectRatio="none">
-                <path d="M10,65 L60,40 L120,55 L180,35 L240,48 L290,20" fill="none" stroke="#E8760A" strokeWidth="2" />
-                <circle cx="10" cy="65" r="3" fill="#E8760A" stroke="#fff" strokeWidth="1" />
-                <circle cx="60" cy="40" r="3" fill="#E8760A" stroke="#fff" strokeWidth="1" />
-                <circle cx="120" cy="55" r="3" fill="#E0A370" stroke="#fff" strokeWidth="1" />
-                <circle cx="180" cy="35" r="3" fill="#2A1628" stroke="#fff" strokeWidth="1" />
-                <circle cx="240" cy="48" r="3" fill="#E8760A" stroke="#fff" strokeWidth="1" />
-                <circle cx="290" cy="20" r="3" fill="#E8760A" stroke="#fff" strokeWidth="1" />
-              </svg>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'rgba(42,22,40,0.4)', marginTop: '0.25rem' }}>
-              <span>Dec 2024</span>
-              <span>Jan 2025</span>
-              <span>Feb 2025</span>
-              <span>Mar 2025</span>
-              <span>Apr 2025</span>
-              <span>May 2025</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Tax Year Summary */}
-        <div style={{ background: '#ffffff', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 12px rgba(42,22,40,0.02)' }}>
-          <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#2A1628', margin: '0 0 1.25rem', fontFamily: 'var(--font-sans), Inter, sans-serif' }}>Tax Year 2024 Summary</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.75rem' }}>
-            {[
-              { name: 'Total Tax Payable', val: 'AED 2,145,300', color: '#2A1628' },
-              { name: 'Total Tax Paid', val: 'AED 1,286,750', color: '#2A1628' },
-              { name: 'Outstanding Tax', val: 'AED 858,550', color: '#E8760A', isBold: true },
-              { name: 'Overpayments', val: 'AED 42,000', color: '#E0A370', isBold: true },
-              { name: 'Potential Exposure', val: 'AED 312,450', color: '#2A1628', isBold: true }
-            ].map((item, idx) => (
-              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: idx < 4 ? '1px solid rgba(42,22,40,0.04)' : 'none', paddingBottom: '0.4rem' }}>
-                <span style={{ fontWeight: 600, color: 'rgba(42,22,40,0.8)' }}>{item.name}</span>
-                <span style={{ fontWeight: item.isBold ? 700 : 500, color: item.color }}>{item.val}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-      </div>
-
-      {/* ── FILTER BAR ── */}
-      <div style={{
-        background: '#ffffff',
-        border: '1px solid rgba(42,22,40,0.06)',
-        borderRadius: '12px',
-        padding: '0.75rem 1rem',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '0.75rem',
-        boxShadow: '0 4px 12px rgba(42,22,40,0.01)'
-      }}>
-        {/* Search box */}
-        <div style={{ position: 'relative', flex: 1, minWidth: '180px' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'rgba(42,22,40,0.35)' }}>
-            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Search client or TRN..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ width: '100%', padding: '0.55rem 1rem 0.55rem 2.25rem', fontSize: '0.8125rem', border: '1px solid #DDD0C4', borderRadius: '8px', background: '#FAF8F5', outline: 'none', color: '#2A1628', boxSizing: 'border-box' }}
-          />
-        </div>
-
-        {/* Custom filter dropdowns */}
-        {['status', 'taxYear', 'type', 'manager'].map((key) => {
-          const isOpen = activeDropdown === key;
-          const selectedVal = filters[key as keyof typeof filters];
-          const options = filterOptions[key as keyof typeof filterOptions];
-          const label = key === 'status' ? 'Status' : key === 'taxYear' ? 'Tax Year' : key === 'type' ? 'Zone' : 'Manager';
+      {/* ── 3. STATUS CHIPS TAB STRIP ── */}
+      <div style={{ display: 'flex', justifyContent: 'center', width: '100%', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.25rem', borderBottom: '1px solid rgba(42,22,40,0.04)' }} className="hide-scrollbar">
+        {[
+          { label: 'All', count: tabCounts.All },
+          { label: 'Draft', count: tabCounts.Draft || 0 },
+          { label: 'Pending', count: tabCounts.Pending || 0 },
+          { label: 'Ready To File', count: tabCounts.ReadyToFile || tabCounts['Ready To File'] || 0 },
+          { label: 'Filed', count: tabCounts.Filed || 0 },
+          { label: 'Overdue', count: tabCounts.Overdue || 0 },
+          { label: 'Amended', count: tabCounts.Amended || 0 },
+          { label: 'Exception', count: tabCounts.Exception || 0 },
+          { label: 'Archived', count: tabCounts.Archived || 0 }
+        ].map((tab) => {
+          const isActive = activeStatusTab === tab.label;
+          const tabColors = {
+            border: isActive ? '1.5px solid #E8760A' : '1px solid #DDD0C4',
+            bg: isActive ? 'rgba(232,118,10,0.06)' : '#ffffff',
+            color: isActive ? '#E8760A' : 'rgba(42,22,40,0.6)',
+            badgeBg: isActive ? '#E8760A' : 'rgba(42,22,40,0.08)',
+            badgeColor: isActive ? '#fff' : 'rgba(42,22,40,0.5)'
+          };
 
           return (
-            <div key={key} style={{ position: 'relative' }}>
-              <button
-                onClick={() => setActiveDropdown(isOpen ? null : key)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  padding: '0.55rem 0.85rem',
-                  fontSize: '0.8125rem',
-                  border: '1px solid #DDD0C4',
-                  borderRadius: '8px',
-                  background: '#FAF8F5',
-                  color: '#2A1628',
-                  cursor: 'pointer',
-                  fontWeight: 500,
-                  whiteSpace: 'nowrap',
-                  fontFamily: 'inherit',
-                  justifyContent: 'space-between',
-                  minWidth: key === 'status' ? '120px' : key === 'taxYear' ? '110px' : key === 'type' ? '110px' : '120px'
-                }}
-              >
-                <span>{label}: {selectedVal}</span>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 150ms ease' }}>
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
-              </button>
-
-              {isOpen && (
-                <div 
-                  className="hide-scrollbar"
-                  style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    marginTop: '4px',
-                    background: '#ffffff',
-                    border: '1px solid #DDD0C4',
-                    borderRadius: '8px',
-                    boxShadow: '0 4px 12px rgba(42,22,40,0.08)',
-                    zIndex: 30,
-                    minWidth: '100%',
-                    padding: '4px',
-                    maxHeight: '200px',
-                    overflowY: 'auto'
-                  }}>
-                  {options.map((option) => (
-                    <div
-                      key={option}
-                      onClick={() => {
-                        setFilters({ ...filters, [key]: option });
-                        setActiveDropdown(null);
-                      }}
-                      style={{
-                        padding: '0.4rem 0.625rem',
-                        fontSize: '0.75rem',
-                        color: '#2A1628',
-                        cursor: 'pointer',
-                        borderRadius: '6px',
-                        background: selectedVal === option ? 'rgba(232, 118, 10, 0.06)' : 'transparent',
-                        fontWeight: selectedVal === option ? 600 : 400,
-                        transition: 'all 100ms ease',
-                        whiteSpace: 'nowrap'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'rgba(232, 118, 10, 0.06)';
-                        e.currentTarget.style.color = '#E8760A';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = selectedVal === option ? 'rgba(232, 118, 10, 0.06)' : 'transparent';
-                        e.currentTarget.style.color = '#2A1628';
-                      }}
-                    >
-                      {option}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <button
+              key={tab.label}
+              type="button"
+              onClick={() => {
+                setActiveStatusTab(tab.label);
+                setCurrentPage(1);
+              }}
+              style={{
+                padding: '0.375rem 0.875rem',
+                borderRadius: '20px',
+                border: tabColors.border,
+                background: tabColors.bg,
+                color: tabColors.color,
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              {tab.label}
+              <span style={{ fontSize: '0.675rem', padding: '0.1rem 0.35rem', borderRadius: '10px', background: tabColors.badgeBg, color: tabColors.badgeColor, fontWeight: 700 }}>
+                {tab.count}
+              </span>
+            </button>
           );
         })}
-
-        {/* Date range picker */}
-        <div style={{ position: 'relative' }}>
-          <button
-            onClick={() => setDatePickerOpen(o => !o)}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#FAF8F5', border: '1px solid #DDD0C4', padding: '0.55rem 0.85rem', borderRadius: '8px', fontSize: '0.8125rem', color: '#2A1628', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
-          >
-            {formatDate(startDate)} – {formatDate(endDate)}
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'rgba(42,22,40,0.4)' }}>
-              <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
-            </svg>
-          </button>
-          
-          {datePickerOpen && (
-            <div style={{
-              position: 'absolute',
-              top: '100%',
-              right: 0,
-              marginTop: '4px',
-              background: '#ffffff',
-              border: '1px solid #DDD0C4',
-              borderRadius: '12px',
-              boxShadow: '0 8px 24px rgba(42,22,40,0.12)',
-              zIndex: 30,
-              padding: '1rem',
-              width: '260px',
-              fontFamily: 'inherit',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.75rem'
-            }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.3rem' }}>Start Date</label>
-                <input
-                  type="text"
-                  placeholder="YYYY-MM-DD"
-                  value={tempStartDate}
-                  onChange={e => setTempStartDate(e.target.value)}
-                  style={{ width: '100%', border: '1px solid #DDD0C4', borderRadius: '6px', padding: '0.4rem 0.5rem', fontSize: '0.8125rem', color: '#2A1628', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.3rem' }}>End Date</label>
-                <input
-                  type="text"
-                  placeholder="YYYY-MM-DD"
-                  value={tempEndDate}
-                  onChange={e => setTempEndDate(e.target.value)}
-                  style={{ width: '100%', border: '1px solid #DDD0C4', borderRadius: '6px', padding: '0.4rem 0.5rem', fontSize: '0.8125rem', color: '#2A1628', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
-                />
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
-                <button
-                  onClick={() => { setTempStartDate(startDate); setTempEndDate(endDate); setDatePickerOpen(false); }}
-                  style={{ flex: 1, padding: '0.45rem', border: '1px solid #DDD0C4', borderRadius: '6px', background: '#fff', color: '#2A1628', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => { setStartDate(tempStartDate); setEndDate(tempEndDate); setDatePickerOpen(false); }}
-                  style={{ flex: 1, padding: '0.45rem', border: 'none', borderRadius: '6px', background: '#E8760A', color: '#fff', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 2px 6px rgba(232,118,10,0.2)' }}
-                >
-                  Apply
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <button
-          onClick={() => setFilters({ status: 'All', taxYear: 'All', type: 'All', manager: 'All' })}
-          style={{
-            padding: '0.55rem 1.25rem',
-            fontSize: '0.8125rem',
-            border: '1px solid #DDD0C4',
-            borderRadius: '8px',
-            background: '#FAF8F5',
-            color: 'rgba(42,22,40,0.6)',
-            cursor: 'pointer',
-            fontWeight: 600,
-            transition: 'all 150ms ease',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            outline: 'none',
-            fontFamily: 'inherit'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#ffffff';
-            e.currentTarget.style.color = '#E8760A';
-            e.currentTarget.style.borderColor = '#E8760A';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = '#FAF8F5';
-            e.currentTarget.style.color = 'rgba(42,22,40,0.6)';
-            e.currentTarget.style.borderColor = '#DDD0C4';
-          }}
-        >
-          Reset
-        </button>
       </div>
 
-      {/* ── TABLE SECTION ── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.8125rem', color: 'rgba(42,22,40,0.6)' }}>Showing 1 to 10 of {filteredReturns.length} CT returns</span>
+      {/* ── 4. BULK ACTION BAR ── */}
+      {selectedIds.length > 0 && (
+        <div
+          className="no-scrollbar"
+          style={{
+            background: '#2A1628',
+            borderRadius: '12px',
+            padding: '0.5rem 1rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            overflowX: 'auto',
+            width: '100%',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <span style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.75rem', fontWeight: 700, marginRight: '0.25rem', flexShrink: 0 }}>
+            {selectedIds.length} records selected
+          </span>
+          <div style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.12)', flexShrink: 0 }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
+            {[
+              { label: 'Assign Reviewer', ic: '👤', actionKey: 'reviewer' },
+              { label: 'Mark Ready', ic: '⏳', actionKey: 'ready' },
+              { label: 'Mark Filed', ic: '✅', actionKey: 'filed' },
+              { label: 'Generate CT Return', ic: '⚡', actionKey: 'generate' },
+              { label: 'Export Selected', ic: '📤', actionKey: 'export' },
+            ].map((btn, i) => (
+              <button
+                key={i}
+                onClick={() => triggerBulkAction(btn.actionKey)}
+                style={{
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '6px',
+                  padding: '0.3rem 0.6rem',
+                  color: '#ffffff',
+                  fontSize: '0.6875rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  fontFamily: 'Inter, sans-serif',
+                  transition: 'background 120ms',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.12)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+              >
+                <span style={{ fontSize: '0.6rem' }}>{btn.ic}</span>
+                {btn.label}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => setSelectedIds([])}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'rgba(255,255,255,0.4)',
+              cursor: 'pointer',
+              fontSize: '0.75rem',
+              fontFamily: 'Inter, sans-serif',
+              flexShrink: 0,
+              paddingLeft: '0.5rem',
+            }}
+          >
+            ✕ Clear Selection
+          </button>
+        </div>
+      )}
+
+      {/* ── 5. FILTERS BAR ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr', gap: '0.5rem', background: '#ffffff', border: '1px solid #DDD0C4', padding: '0.625rem', borderRadius: '12px' }}>
+        <div style={{ position: 'relative' }}>
+          <input
+            type="text"
+            placeholder="Search company, TRN, reviewer..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
+            style={{
+              width: '100%',
+              padding: '0.625rem 0.75rem',
+              paddingLeft: '2.25rem',
+              borderRadius: '10px',
+              border: '1px solid #DDD0C4',
+              fontSize: '0.8125rem',
+              boxSizing: 'border-box',
+              outline: 'none',
+              fontFamily: 'inherit',
+              color: '#2A1628',
+            }}
+          />
+          <div style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(42,22,40,0.4)" strokeWidth="2.5">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+          </div>
         </div>
 
-        <div className="client-table-scroll" style={{
-          background: '#ffffff',
-          border: '1px solid rgba(42,22,40,0.06)',
-          borderRadius: '16px',
-          overflowX: 'auto',
-          boxShadow: '0 4px 12px rgba(42,22,40,0.01)'
-        }}>
-          <style>{`
-            .client-table-scroll::-webkit-scrollbar { height: 6px; }
-            .client-table-scroll::-webkit-scrollbar-track { background: rgba(42,22,40,0.03); border-radius: 4px; }
-            .client-table-scroll::-webkit-scrollbar-thumb { background: rgba(42,22,40,0.15); border-radius: 4px; }
-            .client-table-scroll::-webkit-scrollbar-thumb:hover { background: rgba(42,22,40,0.25); }
-          `}</style>
+        <CustomSelect value={filterManager} onChange={setFilterManager} options={['All', ...MANAGERS]} placeholder="Manager" />
+        <CustomSelect value={filterYear} onChange={setFilterYear} options={['All', ...YEARS]} placeholder="Year" />
+        <CustomSelect value={filterPeriod} onChange={setFilterPeriod} options={['All', ...PERIODS]} placeholder="Period" />
+        <CustomSelect value={filterReviewer} onChange={setFilterReviewer} options={['All', ...REVIEWERS]} placeholder="Reviewer" />
+        <CustomSelect value={filterRisk} onChange={setFilterRisk} options={['All', 'Low', 'Medium', 'High']} placeholder="Risk" />
+        <CustomSelect value={filterEntityType} onChange={setFilterEntityType} options={['All', 'Mainland', 'Free Zone']} placeholder="Type" />
+        <CustomSelect value={filterPriority} onChange={setFilterPriority} options={['All', 'Low', 'Medium', 'High', 'Urgent']} placeholder="Priority" />
+      </div>
+
+      {/* ── 6. MAIN CORPORATE TAX TABLE ── */}
+      <div style={{ border: '1px solid rgba(42,22,40,0.06)', borderRadius: '16px', overflow: 'hidden', background: '#ffffff', boxShadow: '0 4px 12px rgba(42,22,40,0.01)' }}>
+        <div style={{ overflowX: 'auto', position: 'relative' }} className="hide-scrollbar">
           <table style={{ width: '100%', minWidth: '1350px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8125rem' }}>
             <thead>
               <tr style={{ background: '#FAF8F5', borderBottom: '1px solid rgba(42,22,40,0.06)', color: 'rgba(42,22,40,0.5)', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                <th style={{ 
-                  padding: '1rem 0.75rem', 
-                  width: '48px', 
-                  textAlign: 'center', 
-                  position: 'sticky', 
-                  left: 0, 
-                  background: '#FAF8F5', 
-                  zIndex: 10 
-                }}>
-                  <input type="checkbox" onChange={handleSelectAll} checked={selectedRows.length === INITIAL_RETURNS.length} />
+                <th style={{ padding: '1rem 0.75rem', width: '48px', textAlign: 'center', position: 'sticky', left: 0, background: '#FAF8F5', zIndex: 10 }}>
+                  <input
+                    type="checkbox"
+                    onChange={handleSelectAll}
+                    checked={selectedIds.length === filteredData.length && filteredData.length > 0}
+                  />
                 </th>
-                <th style={{ 
-                  padding: '1rem', 
-                  position: 'sticky', 
-                  left: '48px', 
-                  background: '#FAF8F5', 
-                  zIndex: 10, 
-                  borderRight: '1px solid #DDD0C4' 
-                }}>CLIENT / COMPANY</th>
-                <th style={{ padding: '1rem' }}>TRN / VAT NO.</th>
-                <th style={{ padding: '1rem' }}>TAX YEAR</th>
-                <th style={{ padding: '1rem' }}>STATUS</th>
-                <th style={{ padding: '1rem' }}>FILING DUE DATE</th>
-                <th style={{ padding: '1rem', textAlign: 'right' }}>TAXABLE INCOME (AED)</th>
-                <th style={{ padding: '1rem', textAlign: 'right' }}>TAX PAYABLE (AED)</th>
-                <th style={{ padding: '1rem', textAlign: 'right' }}>TAX PAID (AED)</th>
-                <th style={{ padding: '1rem', textAlign: 'right' }}>OUTSTANDING (AED)</th>
-                <th style={{ padding: '1rem' }}>LAST ACTIVITY</th>
+                {columns.map((col) => {
+                  const isClient = col.key === 'client';
+                  return (
+                    <th
+                      key={col.key}
+                      draggable
+                      onDragStart={() => { dragKeyRef.current = col.key; }}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => {
+                        if (dragKeyRef.current && dragKeyRef.current !== col.key) {
+                          handleColumnReorder(dragKeyRef.current, col.key);
+                        }
+                        dragKeyRef.current = null;
+                      }}
+                      onClick={() => {
+                        if (col.sortable) {
+                          setSortCol(col.key);
+                          setSortDir(sortCol === col.key && sortDir === 'asc' ? 'desc' : 'asc');
+                        }
+                      }}
+                      style={{
+                        padding: '1rem',
+                        position: isClient ? 'sticky' : undefined,
+                        left: isClient ? '48px' : undefined,
+                        background: '#FAF8F5',
+                        zIndex: isClient ? 10 : undefined,
+                        borderRight: isClient ? '1px solid #DDD0C4' : undefined,
+                        cursor: col.sortable ? 'pointer' : 'grab',
+                        userSelect: 'none',
+                        textAlign: col.align,
+                      }}
+                    >
+                      {col.label} {sortCol === col.key ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                    </th>
+                  );
+                })}
                 <th style={{ padding: '1rem', textAlign: 'center' }}>ACTIONS</th>
               </tr>
             </thead>
             <tbody>
-              {filteredReturns.map((item, idx) => (
-                <tr key={item.id} style={{
-                  borderBottom: idx < filteredReturns.length - 1 ? '1px solid rgba(42,22,40,0.04)' : 'none',
-                  background: selectedRows.includes(item.id) ? 'rgba(232,118,10,0.02)' : 'transparent'
-                }}>
-                  <td style={{ 
-                    padding: '1rem 0.75rem', 
-                    textAlign: 'center',
-                    position: 'sticky',
-                    left: 0,
-                    background: selectedRows.includes(item.id) ? '#FAF4EE' : '#ffffff',
-                    zIndex: 9
-                  }}>
-                    <input type="checkbox" checked={selectedRows.includes(item.id)} onChange={() => handleSelectOne(item.id)} />
-                  </td>
-                  
-                  {/* Client company info */}
-                  <td style={{ 
-                    padding: '1rem',
-                    position: 'sticky',
-                    left: '48px',
-                    background: selectedRows.includes(item.id) ? '#FAF4EE' : '#ffffff',
-                    zIndex: 9,
-                    borderRight: '1px solid #DDD0C4',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <div style={{
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '8px',
-                        background: 'rgba(232, 118, 10, 0.08)',
-                        color: '#E8760A',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '0.75rem',
-                        fontWeight: 700
-                      }}>
-                        {item.initials}
-                      </div>
-                      <div>
-                        <div style={{ fontWeight: 600, color: '#2A1628' }}>{item.name}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.45)' }}>{item.type}</div>
-                      </div>
-                    </div>
-                  </td>
-
-                  {/* TRN */}
-                  <td style={{ padding: '1rem', whiteSpace: 'nowrap', color: '#2A1628', fontWeight: 500 }}>
-                    {item.trn}
-                  </td>
-
-                  {/* Tax Year */}
-                  <td style={{ padding: '1rem', whiteSpace: 'nowrap', color: '#2A1628', fontWeight: 500 }}>
-                    {item.taxYear}
-                  </td>
-
-                  {/* Status */}
-                  <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
-                    <span style={{
-                      fontSize: '0.7rem',
-                      fontWeight: 700,
-                      padding: '0.25rem 0.5rem',
-                      borderRadius: '4px',
-                      background: item.status === 'Filed On Time' ? 'rgba(4, 120, 87, 0.08)' : item.status === 'Overdue' ? 'rgba(196, 105, 90, 0.08)' : 'rgba(184, 137, 42, 0.08)',
-                      color: item.status === 'Filed On Time' ? '#047857' : item.status === 'Overdue' ? '#C4695A' : '#B8892A'
-                    }}>{item.status}</span>
-                  </td>
-
-                  {/* Filing Due Date */}
-                  <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
-                    <div style={{ fontWeight: 600, color: item.isWarningRed ? '#C4695A' : '#2A1628' }}>{item.dueDate}</div>
-                    {item.dueWarning && (
-                      <div style={{ fontSize: '0.65rem', color: '#C4695A', fontWeight: 700, marginTop: '0.125rem' }}>{item.dueWarning}</div>
-                    )}
-                  </td>
-
-                  {/* Taxable Income */}
-                  <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 600, color: '#2A1628', whiteSpace: 'nowrap' }}>
-                    {item.taxableIncome}
-                  </td>
-
-                  {/* Tax Payable */}
-                  <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 600, color: '#2A1628', whiteSpace: 'nowrap' }}>
-                    {item.taxPayable}
-                  </td>
-
-                  {/* Tax Paid */}
-                  <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 600, color: item.isPaidGreen ? '#047857' : '#2A1628', whiteSpace: 'nowrap' }}>
-                    {item.taxPaid}
-                  </td>
-
-                  {/* Outstanding */}
-                  <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 600, color: item.isOutRed ? '#C4695A' : '#2A1628', whiteSpace: 'nowrap' }}>
-                    {item.outstanding}
-                  </td>
-
-                  {/* Last Activity */}
-                  <td style={{ padding: '1rem', color: 'rgba(42,22,40,0.7)', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                    {item.lastActivity}
-                  </td>
-
-                  {/* Actions */}
-                  <td style={{ padding: '1rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', alignItems: 'center' }}>
-                      <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#2A1628', opacity: 0.6, display: 'flex', padding: 0 }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid rgba(42,22,40,0.04)' }}>
+                    <td style={{ padding: '1rem' }}><div style={{ width: '16px', height: '16px', background: '#F3F4F6', borderRadius: '4px' }} /></td>
+                    {columns.map((col, idx) => (
+                      <td key={idx} style={{ padding: '1rem' }}><div style={{ width: col.key === 'client' ? '120px' : '60px', height: '12px', background: '#F3F4F6', borderRadius: '4px' }} /></td>
+                    ))}
+                    <td />
+                  </tr>
+                ))
+              ) : pagedData.length === 0 ? (
+                <tr>
+                  <td colSpan={columns.length + 2} style={{ padding: '3rem', textAlign: 'center', color: 'rgba(42,22,40,0.4)' }}>
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ marginBottom: '0.75rem', opacity: 0.3 }}>
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                    </svg>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#2A1628' }}>No Corporate Tax Returns</div>
+                    <p style={{ margin: '0.25rem 0 1rem', fontSize: '0.75rem' }}>Create your first CT return or import ledger report to get started.</p>
+                    <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => setPopup({ type: 'create' })}
+                        style={{ padding: '0.5rem 1rem', background: '#2A1628', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                      >
+                        Create CT Return
                       </button>
-                      <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#2A1628', opacity: 0.6, display: 'flex', padding: 0 }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                          <circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" />
-                        </svg>
+                      <button
+                        type="button"
+                        onClick={() => setPopup({ type: 'import' })}
+                        style={{ padding: '0.5rem 1rem', background: '#fff', border: '1px solid #DDD0C4', color: '#2A1628', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                      >
+                        Import Ledger
                       </button>
                     </div>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                pagedData.map((item, idx) => {
+                  const isSelected = selectedIds.includes(item.id);
+                  return (
+                    <tr
+                      key={item.id}
+                      style={{
+                        borderBottom: idx < pagedData.length - 1 ? '1px solid rgba(42,22,40,0.04)' : 'none',
+                        background: isSelected ? 'rgba(232,118,10,0.02)' : 'transparent',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(42,22,40,0.01)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = isSelected ? 'rgba(232,118,10,0.02)' : 'transparent')}
+                    >
+                      <td
+                        style={{ padding: '0.625rem 0.75rem', textAlign: 'center', position: 'sticky', left: 0, background: isSelected ? '#FAF4EE' : '#ffffff', zIndex: 9 }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <input type="checkbox" checked={isSelected} onChange={() => handleSelectRow(item.id)} />
+                      </td>
+
+                      {columns.map((col) => {
+                        const isClient = col.key === 'client';
+                        const cellVal = item[col.key as keyof CtReturnItem];
+                        let tdContent: React.ReactNode = String(cellVal ?? '');
+                        let tdStyle: React.CSSProperties = {
+                          padding: '0.625rem 1rem',
+                          whiteSpace: 'nowrap',
+                        };
+
+                        if (col.key === 'client') {
+                          tdStyle = {
+                            padding: '0.625rem 1rem',
+                            position: 'sticky',
+                            left: '48px',
+                            background: isSelected ? '#FAF4EE' : '#ffffff',
+                            zIndex: 9,
+                            borderRight: '1px solid rgba(42,22,40,0.06)',
+                          };
+                          tdContent = (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', whiteSpace: 'nowrap' }}>
+                              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(232, 118, 10, 0.08)', color: '#E8760A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, flexShrink: 0 }}>
+                                {item.client.split(' ').map((x) => x[0]).join('').substr(0, 2)}
+                              </div>
+                              <div style={{ overflow: 'hidden' }}>
+                                <div style={{ fontWeight: 700, color: '#2A1628', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{item.client}</div>
+                                <div style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.45)', marginTop: '0.1rem', whiteSpace: 'nowrap' }}>{item.entityType}</div>
+                              </div>
+                            </div>
+                          );
+                        } else if (col.key === 'trn') {
+                          tdStyle = { ...tdStyle, color: 'rgba(42,22,40,0.75)', fontWeight: 500 };
+                        } else if (col.key === 'taxPeriod' || col.key === 'financialYear') {
+                          tdStyle = { ...tdStyle, color: '#2A1628', fontWeight: 600, textAlign: 'center' };
+                        } else if (col.key === 'accountingProfit' || col.key === 'taxableProfit' || col.key === 'corporateTax') {
+                          tdStyle = { ...tdStyle, fontWeight: 600, color: '#2A1628' };
+                          tdContent = typeof cellVal === 'number' ? `AED ${cellVal.toLocaleString()}` : 'AED 0';
+                        } else if (col.key === 'status') {
+                          tdStyle = { ...tdStyle, fontWeight: 700 };
+                          tdContent = (
+                            <span
+                              style={{
+                                fontSize: '0.6875rem',
+                                padding: '0.15rem 0.5rem',
+                                borderRadius: '4px',
+                                background:
+                                  item.status === 'Filed'
+                                    ? 'rgba(19,115,51,0.1)'
+                                    : item.status === 'Overdue'
+                                    ? 'rgba(197,34,31,0.1)'
+                                    : item.status === 'Ready To File'
+                                    ? 'rgba(26,115,232,0.1)'
+                                    : 'rgba(42,22,40,0.08)',
+                                color:
+                                  item.status === 'Filed'
+                                    ? '#137333'
+                                    : item.status === 'Overdue'
+                                    ? '#C5221F'
+                                    : item.status === 'Ready To File'
+                                    ? '#1A73E8'
+                                    : '#2A1628',
+                              }}
+                            >
+                              {item.status}
+                            </span>
+                          );
+                        } else if (col.key === 'reviewer') {
+                          tdStyle = { ...tdStyle, color: '#2A1628', fontWeight: 600 };
+                        } else if (col.key === 'risk') {
+                          tdStyle = { ...tdStyle, fontWeight: 700 };
+                          tdContent = (
+                            <span
+                              style={{
+                                fontSize: '0.65rem',
+                                padding: '0.15rem 0.4rem',
+                                borderRadius: '4px',
+                                background:
+                                  item.risk === 'High'
+                                    ? 'rgba(185,28,28,0.1)'
+                                    : item.risk === 'Medium'
+                                    ? 'rgba(180,83,9,0.1)'
+                                    : 'rgba(4,120,87,0.1)',
+                                color:
+                                  item.risk === 'High'
+                                    ? '#b91c1c'
+                                    : item.risk === 'Medium'
+                                    ? '#b45309'
+                                    : '#047857',
+                              }}
+                            >
+                              {item.risk}
+                            </span>
+                          );
+                        } else if (col.key === 'dueDate') {
+                          const isPast = new Date(item.dueDate) < new Date() && item.status !== 'Filed';
+                          tdStyle = { ...tdStyle, color: isPast ? '#C5221F' : 'inherit', fontWeight: isPast ? 700 : 500 };
+                        }
+
+                        return (
+                          <td
+                            key={col.key}
+                            onClick={() => {
+                              setDrawerTxId(item.id);
+                              setDrawerTab('overview');
+                            }}
+                            style={{
+                              ...tdStyle,
+                              position: isClient ? 'sticky' : tdStyle.position,
+                              left: isClient ? '48px' : tdStyle.left,
+                              background: isClient ? (isSelected ? '#FAF4EE' : '#ffffff') : (isSelected ? 'rgba(232,118,10,0.02)' : undefined),
+                              zIndex: isClient ? 8 : tdStyle.zIndex,
+                              cursor: 'pointer',
+                              textAlign: col.align || tdStyle.textAlign,
+                            }}
+                          >
+                            {tdContent}
+                          </td>
+                        );
+                      })}
+
+                      {/* Actions context menu trigger */}
+                      <td style={{ padding: '0.625rem 1rem', textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          className="action-btn-trigger"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setMenuPos({ top: rect.bottom + 6, left: rect.right });
+                            setMenuItem(item);
+                          }}
+                          style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '4px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(42,22,40,0.6)" strokeWidth="2.5">
+                            <circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/>
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
+        <div style={{ margin: '0 -1px -1px -1px' }}>
+          <Pagination
+            totalItems={filteredData.length}
+            currentPage={currentPage}
+            rowsPerPage={rowsPerPage}
+            onPageChange={setCurrentPage}
+            onRowsPerPageChange={setRowsPerPage}
+            itemLabel="entities"
+          />
+        </div>
+      </div>
 
-        {/* ── PAGINATION FOOTER ── */}
-        <div style={{
-          background: '#FAF8F5',
-          border: '1px solid rgba(42,22,40,0.06)',
-          borderRadius: '0 0 16px 16px',
-          padding: '0.75rem 1.5rem',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          fontSize: '0.75rem',
-          color: 'rgba(42,22,40,0.6)',
-          marginTop: '-1px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span>Rows per page:</span>
-            <div style={{ position: 'relative' }}>
-              <button
-                onClick={() => setRowsPerPageOpen(o => !o)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '0.3rem',
-                  border: '1px solid #DDD0C4', borderRadius: '6px',
-                  padding: '0.2rem 0.5rem', background: '#fff',
-                  fontSize: '0.75rem', color: '#2A1628', cursor: 'pointer',
-                  fontFamily: 'var(--font-sans), Inter, sans-serif'
+      {/* ── 6.5. SVG ANALYTICS DASHBOARD ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '1.25rem', marginTop: '1.5rem' }}>
+        {/* Trend Area Chart */}
+        <div style={{ background: '#ffffff', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 12px rgba(42,22,40,0.01)' }}>
+          <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#2A1628', margin: '0 0 1.25rem' }}>Tax Liability Position & Trends</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', height: '220px', justifyContent: 'space-between', position: 'relative' }}>
+            <svg width="100%" height="180px" viewBox="0 0 500 100" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="ct-gold-grad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#E8760A" stopOpacity="0.25" />
+                  <stop offset="100%" stopColor="#E8760A" stopOpacity="0.0" />
+                </linearGradient>
+              </defs>
+              <path d="M 0 100 L 0 80 L 80 65 L 160 55 L 245 40 L 330 30 L 415 15 L 500 5 Z" fill="url(#ct-gold-grad)" />
+              <path d="M 0 80 L 80 65 L 160 55 L 245 40 L 330 30 L 415 15 L 500 5" fill="none" stroke="#E8760A" strokeWidth="2.5" />
+              <circle cx="80" cy="65" r="3.5" fill="#E8760A" stroke="#ffffff" strokeWidth="1" />
+              <circle cx="160" cy="55" r="3.5" fill="#E8760A" stroke="#ffffff" strokeWidth="1" />
+              <circle cx="245" cy="40" r="3.5" fill="#E8760A" stroke="#ffffff" strokeWidth="1" />
+              <circle cx="330" cy="30" r="3.5" fill="#E8760A" stroke="#ffffff" strokeWidth="1" />
+              <circle cx="415" cy="15" r="3.5" fill="#E8760A" stroke="#ffffff" strokeWidth="1" />
+              <circle cx="500" cy="5" r="3.5" fill="#E8760A" stroke="#ffffff" strokeWidth="1" />
+            </svg>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'rgba(42,22,40,0.5)' }}>
+              <span>Dec 2025</span>
+              <span>Jan 2026</span>
+              <span>Feb 2026</span>
+              <span>Mar 2026</span>
+              <span>Apr 2026</span>
+              <span>May 2026</span>
+              <span>Jun 2026</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Donut Chart */}
+        <div style={{ background: '#ffffff', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 12px rgba(42,22,40,0.01)' }}>
+          <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#2A1628', margin: '0 0 1.25rem' }}>Compliance & Risk Score</h3>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '180px' }}>
+            <div style={{ position: 'relative', width: '130px', height: '130px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="130" height="130" viewBox="0 0 36 36" style={{ transform: 'rotate(-90deg)' }}>
+                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#FAF4EE" strokeWidth="3" />
+                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#E8760A" strokeWidth="3" strokeDasharray="98 2" />
+              </svg>
+              <div style={{ position: 'absolute', textAlign: 'center' }}>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#2A1628', lineHeight: 1 }}>98.0%</div>
+                <div style={{ fontSize: '0.6rem', color: 'rgba(42,22,40,0.45)', marginTop: '4px' }}>Clean Audits</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, marginLeft: '1.5rem', fontSize: '0.75rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Passed Audits</span>
+                <strong>98.0%</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Warning Flags</span>
+                <strong>1.5%</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Filing Errors</span>
+                <strong>0.5%</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 7. ACTIONS POPUP CONTEXT MENU ── */}
+      {menuPos && menuItem && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={() => setMenuPos(null)} />
+          <div
+            style={{
+              position: 'fixed',
+              top: Math.min(menuPos.top, window.innerHeight - 320),
+              left: Math.min(menuPos.left - 210, window.innerWidth - 220),
+              background: '#ffffff',
+              border: '1px solid #DDD0C4',
+              boxShadow: '0 8px 24px rgba(42,22,40,0.15)',
+              borderRadius: '12px',
+              padding: '4px',
+              zIndex: 1000,
+              minWidth: '200px',
+              maxHeight: '300px',
+              overflowY: 'auto',
+              fontFamily: 'var(--font-sans), Inter, sans-serif',
+            }}
+          >
+            {[
+              { key: 'openDrawer', label: 'Open CT Drawer', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg> },
+              { key: 'viewSummary', label: 'View Tax Summary', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> },
+              { key: 'validate', label: 'Validate Return', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
+              { key: 'generate', label: 'Generate CT Return', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> },
+              { key: 'submit', label: 'Submit Return', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg> },
+              { key: 'downloadPdf', label: 'Download PDF', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> },
+              { key: 'downloadExcel', label: 'Download Excel', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> },
+              { key: 'exportXml', label: 'Export XML', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg> },
+              { key: 'viewTransactions', label: 'View Transactions', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg> },
+              { key: 'auditLog', label: 'Audit Log', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
+              { key: 'notes', label: 'Notes', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> },
+              { key: 'openClient', label: 'Open Client', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg> },
+              { key: 'archive', label: 'Archive', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 8v13H3V8M1 3h22v5H1z"/><line x1="10" y1="12" x2="14" y2="12"/></svg> },
+              { key: 'delete', label: 'Delete Return', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>, danger: true }
+            ].map((mi, idx) => (
+              <div
+                key={idx}
+                onClick={() => {
+                  handleMenuAction(mi.key);
+                  setMenuPos(null);
                 }}
+                style={{
+                  padding: '0.45rem 0.75rem',
+                  fontSize: '0.775rem',
+                  cursor: 'pointer',
+                  borderRadius: '8px',
+                  color: mi.danger ? '#EF4444' : '#2A1628',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  fontWeight: 550,
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = mi.danger ? 'rgba(239,68,68,0.06)' : 'rgba(232,118,10,0.06)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
-                {rowsPerPage}
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <polyline points="6 9 12 15 18 9" />
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px', color: mi.danger ? '#EF4444' : '#E8760A' }}>{mi.icon}</span>
+                {mi.label}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* ── 8. RIGHT DETAILS DRAWER ── */}
+      {activeTx && (
+        <div
+          role="presentation"
+          onClick={() => setDrawerTxId(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(42,22,40,0.2)',
+            backdropFilter: 'blur(3px)',
+            zIndex: 9999,
+            display: 'flex',
+            justifyContent: 'flex-end',
+            fontFamily: 'var(--font-sans), Inter, sans-serif',
+          }}
+        >
+          <div
+            role="presentation"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '580px',
+              height: '100%',
+              background: '#ffffff',
+              boxShadow: '-8px 0 32px rgba(42,22,40,0.15)',
+              display: 'flex',
+              flexDirection: 'column',
+              animation: 'drawerSlide 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+            }}
+          >
+            {/* Drawer Header */}
+            <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid rgba(42,22,40,0.06)', background: '#FAF8F5', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexShrink: 0 }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#2A1628' }}>{activeTx.client}</h2>
+                <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.5)', marginTop: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>TRN: {activeTx.trn}</span>
+                  <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'rgba(42,22,40,0.3)' }} />
+                  <span style={{ fontWeight: 700, color: '#E8760A' }}>Corporate Tax Return {activeTx.taxPeriod}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDrawerTxId(null)}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px', color: 'rgba(42,22,40,0.4)' }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                 </svg>
               </button>
-              {rowsPerPageOpen && (
-                <div style={{
-                  position: 'absolute', bottom: 'calc(100% + 4px)', left: 0,
-                  background: '#fff', border: '1px solid #DDD0C4',
-                  borderRadius: '8px', boxShadow: '0 4px 16px rgba(42,22,40,0.1)',
-                  zIndex: 100, minWidth: '60px', overflow: 'hidden'
-                }}>
-                  {[10, 20, 50].map(n => (
-                    <div
-                      key={n}
-                      onClick={() => { setRowsPerPage(n); setRowsPerPageOpen(false); }}
-                      style={{
-                        padding: '0.4rem 0.75rem',
-                        fontSize: '0.75rem',
-                        cursor: 'pointer',
-                        color: rowsPerPage === n ? '#E8760A' : '#2A1628',
-                        background: rowsPerPage === n ? 'rgba(232,118,10,0.06)' : 'transparent',
-                        fontWeight: rowsPerPage === n ? 600 : 400
-                      }}
-                      onMouseEnter={e => { if (rowsPerPage !== n) (e.currentTarget as HTMLDivElement).style.background = 'rgba(232,118,10,0.04)'; }}
-                      onMouseLeave={e => { if (rowsPerPage !== n) (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
-                    >
-                      {n}
+            </div>
+
+            {/* Tab strip */}
+            <div className="hide-scrollbar" style={{ display: 'flex', gap: '1rem', padding: '0.5rem 2rem', borderBottom: '1px solid rgba(42,22,40,0.06)', overflowX: 'auto', flexShrink: 0 }}>
+              {[
+                { key: 'overview' as const, label: 'Overview' },
+                { key: 'financials' as const, label: 'Financial Statements' },
+                { key: 'adjustments' as const, label: 'Tax Adjustments' },
+                { key: 'computation' as const, label: 'Tax Computation' },
+                { key: 'validation' as const, label: 'Validation' },
+                { key: 'timeline' as const, label: 'Timeline' },
+                { key: 'activity' as const, label: 'Activity' },
+                { key: 'documents' as const, label: 'Documents' },
+                { key: 'quickBooksSync' as const, label: 'QuickBooks Sync' },
+                { key: 'notes' as const, label: 'Notes' },
+              ].map((t) => {
+                const isTab = drawerTab === t.key;
+                return (
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={() => setDrawerTab(t.key)}
+                    style={{
+                      padding: '0.6rem 0',
+                      border: 'none',
+                      background: 'transparent',
+                      color: isTab ? '#E8760A' : 'rgba(42,22,40,0.5)',
+                      fontSize: '0.8125rem',
+                      fontWeight: isTab ? 700 : 600,
+                      cursor: 'pointer',
+                      borderBottom: isTab ? '2px solid #E8760A' : 'none',
+                      whiteSpace: 'nowrap',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    {t.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Drawer Body Scroll */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '2rem' }} className="hide-scrollbar">
+              {drawerTab === 'overview' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: '#FAF8F5', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(42,22,40,0.04)' }}>
+                    {[
+                      { label: 'Company', val: activeTx.client },
+                      { label: 'TRN', val: activeTx.trn },
+                      { label: 'Tax Period', val: activeTx.taxPeriod },
+                      { label: 'Reviewer', val: activeTx.reviewer },
+                      { label: 'Filing Status', val: activeTx.status },
+                      { label: 'Due Date', val: activeTx.dueDate },
+                      { label: 'Last Modified', val: activeTx.lastUpdated }
+                    ].map((itm, idx) => (
+                      <div key={idx}>
+                        <span style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.45)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.04em' }}>{itm.label}</span>
+                        <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#2A1628', marginTop: '0.15rem' }}>{itm.val}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Summary Card */}
+                  <div style={{ padding: '1.25rem', border: '1px solid #F3DEC9', background: '#FAF2EC', borderRadius: '12px' }}>
+                    <h3 style={{ margin: '0 0 1rem', fontSize: '0.875rem', fontWeight: 700, color: '#2A1628', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Filing Position Summary</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {[
+                        { label: 'Accounting Profit', val: activeTx.accountingProfit },
+                        { label: 'Taxable Profit (Adjusted)', val: activeTx.taxableProfit },
+                        { label: 'Corporate Tax Liability', val: activeTx.corporateTax, highlight: true }
+                      ].map((item, idx) => (
+                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: idx < 2 ? '1px dashed rgba(42,22,40,0.1)' : 'none', paddingBottom: '0.5rem' }}>
+                          <span style={{ fontSize: '0.8125rem', color: 'rgba(42,22,40,0.6)', fontWeight: 500 }}>{item.label}</span>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 700, color: item.highlight ? '#E8760A' : '#2A1628' }}>
+                            AED {item.val.toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {drawerTab === 'financials' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', fontWeight: 700, color: '#2A1628' }}>Profit &amp; Loss Statement</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '10px', padding: '1rem' }}>
+                    {[
+                      { label: 'Revenue', val: activeTx.accountingProfit * 2.5 },
+                      { label: 'Cost of Sales', val: activeTx.accountingProfit * 1.0 },
+                      { label: 'Gross Profit', val: activeTx.accountingProfit * 1.5, bold: true },
+                      { label: 'Operating Expenses', val: activeTx.accountingProfit * 0.4 },
+                      { label: 'EBITDA', val: activeTx.accountingProfit * 1.1, bold: true },
+                      { label: 'Net Profit', val: activeTx.accountingProfit, bold: true, highlight: true }
+                    ].map((item, idx) => (
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(42,22,40,0.04)', paddingBottom: '0.4rem', paddingLeft: item.bold ? 0 : '1rem' }}>
+                        <span style={{ fontSize: '0.8125rem', color: item.bold ? '#2A1628' : 'rgba(42,22,40,0.6)', fontWeight: item.bold ? 700 : 500 }}>{item.label}</span>
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: item.highlight ? '#E8760A' : '#2A1628' }}>
+                          AED {Math.round(item.val).toLocaleString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {drawerTab === 'adjustments' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', fontWeight: 700, color: '#2A1628' }}>Corporate Tax Adjustments</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '10px', padding: '1rem' }}>
+                    {[
+                      { label: 'Non-deductible Expenses', val: activeTx.accountingProfit * 0.05, type: 'Addback' },
+                      { label: 'Depreciation Adjustments', val: activeTx.accountingProfit * 0.03, type: 'Addback' },
+                      { label: 'Entertainment Expenses (50% limit)', val: activeTx.accountingProfit * 0.01, type: 'Addback' },
+                      { label: 'Donations to Non-Approved Entities', val: activeTx.accountingProfit * 0.005, type: 'Addback' },
+                      { label: 'Related Party Adjustments (Transfer Pricing)', val: activeTx.accountingProfit * 0.02, type: 'Addback' },
+                      { label: 'Loss Relief Utilized', val: -activeTx.accountingProfit * 0.04, type: 'Deduction' },
+                      { label: 'Exempt Income', val: -activeTx.accountingProfit * 0.015, type: 'Deduction' }
+                    ].map((item, idx) => (
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(42,22,40,0.04)', paddingBottom: '0.4rem' }}>
+                        <div>
+                          <div style={{ fontSize: '0.8125rem', color: '#2A1628', fontWeight: 600 }}>{item.label}</div>
+                          <span style={{ fontSize: '0.6rem', color: item.type === 'Addback' ? '#C5221F' : '#137333', fontWeight: 700, textTransform: 'uppercase' }}>{item.type}</span>
+                        </div>
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: item.val > 0 ? '#C5221F' : '#137333' }}>
+                          {item.val > 0 ? '+' : ''}AED {Math.round(item.val).toLocaleString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {drawerTab === 'computation' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', fontWeight: 700, color: '#2A1628' }}>Tax Liability Computation</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '10px', padding: '1rem' }}>
+                    {[
+                      { label: 'Accounting Profit', val: activeTx.accountingProfit },
+                      { label: 'Total Adjustments (Net Addbacks)', val: activeTx.taxableProfit - activeTx.accountingProfit },
+                      { label: 'Adjusted Taxable Profit', val: activeTx.taxableProfit, bold: true },
+                      { label: 'Basic Tax-Free Threshold', val: -375000, type: 'Deduction' },
+                      { label: 'Taxable Income Above Threshold', val: Math.max(0, activeTx.taxableProfit - 375000), bold: true },
+                      { label: 'Corporate Tax Rate', val: '9.0%', rawVal: true },
+                      { label: 'Corporate Tax Liability', val: activeTx.corporateTax, bold: true, highlight: true }
+                    ].map((item, idx) => (
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(42,22,40,0.04)', paddingBottom: '0.4rem' }}>
+                        <span style={{ fontSize: '0.8125rem', color: item.bold ? '#2A1628' : 'rgba(42,22,40,0.6)', fontWeight: item.bold ? 700 : 500 }}>{item.label}</span>
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: item.highlight ? '#E8760A' : '#2A1628' }}>
+                          {item.rawVal ? item.val : `AED ${Math.round(Number(item.val)).toLocaleString()}`}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {drawerTab === 'validation' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <div style={{ background: '#E6F4EA', padding: '0.75rem 1rem', borderRadius: '8px', color: '#137333', fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                    Compliance Validation Summary: 100% Passed
+                  </div>
+                  {[
+                    { title: 'Financial Statement Validation', desc: 'Trial balance agrees with general ledger balances and financial statements.', status: 'PASSED' },
+                    { title: 'Tax Adjustment Validation', desc: 'All non-deductible expense addbacks are mapped to correct accounting codes.', status: 'PASSED' },
+                    { title: 'Related Party Verification', desc: 'Intercompany transaction documentation matches Arm\'s Length standards.', status: 'PASSED' },
+                    { title: 'UAE CT Compliance', desc: 'Basic CT exemption thresholds and Free Zone Qualification criteria confirmed.', status: 'PASSED' },
+                    { title: 'Filing Completeness', desc: 'All required disclosures, balance sheets and disclosures are compiled.', status: 'PASSED' }
+                  ].map((chk, idx) => (
+                    <div key={idx} style={{ padding: '0.75rem 1rem', border: '1px solid rgba(42,22,40,0.05)', borderRadius: '10px', background: '#FAF8F5' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <strong style={{ fontSize: '0.8125rem' }}>{chk.title}</strong>
+                        <span style={{ fontSize: '0.65rem', background: '#E6F4EA', color: '#137333', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 700 }}>
+                          {chk.status}
+                        </span>
+                      </div>
+                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.7rem', color: 'rgba(42,22,40,0.5)' }}>{chk.desc}</p>
                     </div>
                   ))}
                 </div>
               )}
+
+              {drawerTab === 'timeline' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', paddingLeft: '0.5rem' }}>
+                  {[
+                    { label: 'Filing logged', user: 'Priya Nair', time: '2026-06-09 14:23', icon: <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg> },
+                    { label: 'Compliance Audited', user: 'System Agent', time: '2026-06-08 09:12', icon: <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> },
+                    { label: 'Filing Created', user: 'Sneha Iyer', time: '2026-06-01 16:30', icon: <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><path d="M12 5v14M5 12h14"/></svg> },
+                  ].map((step, idx) => (
+                    <div key={idx} style={{ display: 'flex', gap: '1rem', position: 'relative' }}>
+                      {idx < 2 && <div style={{ position: 'absolute', left: '11px', top: '24px', bottom: '-20px', width: '1px', background: 'rgba(42,22,40,0.1)' }} />}
+                      <div style={{ width: '23px', height: '23px', borderRadius: '50%', background: '#E8760A', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, marginTop: '2px', flexShrink: 0 }}>
+                        {step.icon}
+                      </div>
+                      <div>
+                        <strong style={{ fontSize: '0.8125rem', display: 'block' }}>{step.label}</strong>
+                        <span style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.45)' }}>by {step.user} • {step.time}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {drawerTab === 'activity' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {MOCK_ACTIVITY.map((act, idx) => {
+                    const isApproved = act.action.includes('Approved');
+                    const isCreated = act.action.includes('Created');
+                    const isRejected = act.action.includes('Rejected');
+                    const badgeBg = isApproved ? '#E6F4EA' : isCreated ? '#E8F0FE' : isRejected ? '#FCE8E6' : '#FFF0E2';
+                    const badgeColor = isApproved ? '#137333' : isCreated ? '#1A73E8' : isRejected ? '#C5221F' : '#E8760A';
+                    return (
+                      <div key={idx} style={{ padding: '0.6rem 0.75rem', background: '#FAF8F5', borderRadius: '8px', border: '1px solid rgba(42,22,40,0.03)', fontSize: '0.75rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 600 }}>
+                          <span style={{ background: badgeBg, color: badgeColor, padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 700 }}>
+                            {act.action}
+                          </span>
+                          <span style={{ color: 'rgba(42,22,40,0.45)' }}>{act.timestamp}</span>
+                        </div>
+                        <div style={{ marginTop: '0.35rem', color: 'rgba(42,22,40,0.6)' }}>
+                          User: {act.user} • Old: &quot;{act.oldVal}&quot; • New: &quot;{act.newVal}&quot;
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {drawerTab === 'documents' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {MOCK_DOCS.map((doc, idx) => (
+                    <div key={idx} style={{ padding: '0.75rem', border: '1px solid #DDD0C4', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, fontSize: '0.8125rem' }}>{doc.name}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.45)', marginTop: '0.15rem' }}>Size: {doc.size} • Uploaded: {doc.date}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.35rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => pushToast(`Previewing ${doc.name}`, 'info')}
+                          style={{ padding: '0.4rem 0.6rem', border: '1px solid #DDD0C4', borderRadius: '6px', background: '#fff', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', color: '#2A1628', fontFamily: 'inherit' }}
+                        >
+                          Preview
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => pushToast(`${doc.name} download started.`, 'info')}
+                          style={{ padding: '0.4rem 0.6rem', border: '1px solid #DDD0C4', borderRadius: '6px', background: '#fff', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', color: '#2A1628', fontFamily: 'inherit' }}
+                        >
+                          Download
+                        </button>
+                        {(() => {
+                          const isSystemGenerated = doc.name.includes('CT_Return_Draft') || doc.name.includes('Audited_Financial_Statements');
+                          return (
+                            <button
+                              type="button"
+                              disabled={isSystemGenerated}
+                              onClick={() => pushToast(`${doc.name} deleted.`, 'warning')}
+                              style={{
+                                padding: '0.4rem 0.6rem',
+                                border: isSystemGenerated ? '1px solid rgba(42,22,40,0.06)' : '1px solid #FCE8E6',
+                                borderRadius: '6px',
+                                background: '#fff',
+                                fontSize: '0.7rem',
+                                fontWeight: 700,
+                                cursor: isSystemGenerated ? 'not-allowed' : 'pointer',
+                                color: isSystemGenerated ? 'rgba(42,22,40,0.3)' : '#C5221F',
+                                fontFamily: 'inherit',
+                                opacity: isSystemGenerated ? 0.6 : 1
+                              }}
+                              title={isSystemGenerated ? 'System generated documents cannot be deleted' : 'Delete document'}
+                            >
+                              Delete
+                            </button>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {drawerTab === 'quickBooksSync' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ padding: '1rem', background: '#F0FDF4', border: '1px solid #DCFCE7', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#166534' }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#166534' }}>QuickBooks Status: Connected</div>
+                      <div style={{ fontSize: '0.7rem', color: '#15803d', marginTop: '0.1rem' }}>Last synced: 2026-06-09 14:23 by Priya Nair</div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => pushToast('Corporate Tax data sync to QuickBooks started.', 'success')}
+                    style={{ background: '#2A1628', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    Sync to QuickBooks Online
+                  </button>
+                  <div style={{ borderTop: '1px solid rgba(42,22,40,0.06)', paddingTop: '1rem' }}>
+                    <p style={{ margin: '0 0 0.5rem', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Auto-sync configuration</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      {[
+                        'Automatically sync on return approval',
+                        'Sync attached documents and adjustments journal entries',
+                        'Map non-deductible items to specific tax accounts'
+                      ].map((cfg, idx) => (
+                        <label key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: 'rgba(42,22,40,0.7)', cursor: 'pointer' }}>
+                          <input type="checkbox" defaultChecked style={{ accentColor: '#E8760A' }} />
+                          {cfg}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {drawerTab === 'notes' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <textarea
+                      placeholder="Type a new internal corporate tax audit note..."
+                      style={{ width: '100%', minHeight: '80px', padding: '0.625rem', borderRadius: '10px', border: '1px solid #DDD0C4', outline: 'none', fontSize: '0.8125rem', boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => pushToast('Note added successfully.', 'success')}
+                      style={{ background: '#E8760A', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.5rem 1rem', width: 'fit-content', alignSelf: 'flex-end', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                    >
+                      Add Note
+                    </button>
+                  </div>
+                  <div style={{ borderTop: '1px solid rgba(42,22,40,0.06)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {[
+                      { user: 'Priya Nair', role: 'Reviewer', date: '2026-06-08', text: 'Verified non-deductible addbacks. Transfer Pricing audit documentation for related parties matches safe harbor thresholds.' },
+                      { user: 'System Agent', role: 'Auditbot', date: '2026-06-08', text: 'Corporate tax compliance check passed. Below AED 375,000 threshold status logic validated.' }
+                    ].map((note, idx) => (
+                      <div key={idx} style={{ padding: '0.75rem', background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.03)', borderRadius: '8px', fontSize: '0.75rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'rgba(42,22,40,0.5)', marginBottom: '0.25rem', fontSize: '0.7rem' }}>
+                          <span style={{ fontWeight: 600 }}>{note.user} ({note.role})</span>
+                          <span>{note.date}</span>
+                        </div>
+                        <div style={{ color: '#2A1628', lineHeight: 1.3 }}>{note.text}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-          
-          <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-            <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', opacity: 0.5 }}>◀</button>
-            <button style={{ background: '#2A1628', color: '#fff', border: 'none', borderRadius: '4px', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600 }}>1</button>
-            <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', width: '24px', height: '24px' }}>2</button>
-            <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', width: '24px', height: '24px' }}>3</button>
-            <span style={{ padding: '0 0.25rem' }}>...</span>
-            <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', width: '24px', height: '24px' }}>25</button>
-            <button style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>▶</button>
-          </div>
-        </div>
-      </div>
 
-      {/* ── FOOTER WIDGETS ROW (BELOW TABLE) ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginTop: '0.5rem' }}>
-        
-        {/* Upcoming Deadlines */}
-        <div style={{ background: '#ffffff', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '16px', padding: '1.25rem', boxShadow: '0 4px 12px rgba(42,22,40,0.02)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#2A1628', margin: 0, fontFamily: 'var(--font-sans), Inter, sans-serif' }}>Upcoming Deadlines</h4>
-            <a href="#" style={{ fontSize: '0.7rem', color: '#E8760A', textDecoration: 'none', fontWeight: 600 }}>View All</a>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.75rem' }}>
-            {[
-              { name: 'ABC Trading LLC', returnPeriod: '28 May 2025', date: 'Due in 2 Days', overdue: true },
-              { name: 'XYZ Holdings Limited', returnPeriod: '28 May 2025', date: 'Due in 2 Days', overdue: true },
-              { name: 'Gamma Solutions FZCO', returnPeriod: '28 May 2025', date: 'Due in 2 Days', overdue: true },
-              { name: 'Vertex Enterprises LLC', returnPeriod: '28 May 2025', date: 'Due in 2 Days', overdue: true },
-              { name: 'Delta Properties FZCO', returnPeriod: '15 Jun 2025', date: 'Due in 20 Days', overdue: false }
-            ].map((item, idx) => (
-              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: idx < 4 ? '1px solid rgba(42,22,40,0.04)' : 'none', paddingBottom: '0.4rem' }}>
-                <div>
-                  <div style={{ fontWeight: 600, color: '#2A1628' }}>{item.name}</div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontWeight: 600, color: '#2A1628', fontSize: '0.7rem' }}>{item.returnPeriod}</div>
-                  <div style={{ fontSize: '0.65rem', color: item.overdue ? '#C4695A' : '#E8760A', fontWeight: 700, marginTop: '0.125rem' }}>{item.date}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+            <div style={{ width: '100%', height: '1px', background: 'rgba(42,22,40,0.06)' }} />
 
-        {/* Corporate Tax Compliance Health Gauge */}
-        <div style={{ background: '#ffffff', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '16px', padding: '1.25rem', boxShadow: '0 4px 12px rgba(42,22,40,0.02)' }}>
-          <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#2A1628', margin: '0 0 1rem', fontFamily: 'var(--font-sans), Inter, sans-serif' }}>CT Compliance Health</h4>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <div style={{ position: 'relative', width: '200px', height: '110px', overflow: 'hidden', display: 'flex', justifyContent: 'center' }}>
-                <svg width="200" height="200" viewBox="0 0 36 36" style={{ transform: 'rotate(-180deg)', position: 'absolute', top: 0 }}>
-                  <circle cx="18" cy="18" r="15.915" fill="none" stroke="#2A1628" strokeWidth="3" strokeDasharray="50 50" />
-                  <circle cx="18" cy="18" r="15.915" fill="none" stroke="#E0A370" strokeWidth="3.2" strokeDasharray="44 56" />
-                  <circle cx="18" cy="18" r="15.915" fill="none" stroke="#E8760A" strokeWidth="3.5" strokeDasharray="38 62" />
-                </svg>
-                <div style={{ position: 'absolute', bottom: 0, textAlign: 'center' }}>
-                  <div style={{ fontSize: '2.5rem', fontWeight: 700, color: '#2A1628', lineHeight: 1 }}>76%</div>
-                  <div style={{ fontSize: '0.85rem', color: 'rgba(42,22,40,0.5)', marginTop: '4px', fontWeight: 500 }}>Compliant</div>
-                </div>
-              </div>
-              <div style={{ fontSize: '0.875rem', color: '#E8760A', fontWeight: 600, marginTop: '0.75rem', textAlign: 'center' }}>
-                +8% vs last month
-              </div>
-            </div>
-            <div style={{ width: '100%', maxWidth: '320px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '0.85rem', fontSize: '0.9rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px dashed rgba(42,22,40,0.08)', paddingBottom: '0.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                  <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#E8760A' }} />
-                  <span style={{ color: '#2A1628', fontWeight: 500 }}>Compliant</span>
-                </div>
-                <strong style={{ color: '#2A1628', fontWeight: 600 }}>156 <span style={{ color: 'rgba(42,22,40,0.4)', fontWeight: 400 }}>(63%)</span></strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px dashed rgba(42,22,40,0.08)', paddingBottom: '0.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                  <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#E0A370' }} />
-                  <span style={{ color: '#2A1628', fontWeight: 500 }}>At Risk</span>
-                </div>
-                <strong style={{ color: '#2A1628', fontWeight: 600 }}>62 <span style={{ color: 'rgba(42,22,40,0.4)', fontWeight: 400 }}>(25%)</span></strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.2rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                  <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#2A1628' }} />
-                  <span style={{ color: '#2A1628', fontWeight: 500 }}>Non Compliant</span>
-                </div>
-                <strong style={{ color: '#2A1628', fontWeight: 600 }}>40 <span style={{ color: 'rgba(42,22,40,0.4)', fontWeight: 400 }}>(16%)</span></strong>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      {/* ── 1. CT CALENDAR MODAL ── */}
-      {calendarOpen && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(42,22,40,0.3)', backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 1000, padding: '1rem'
-        }}>
-          <div style={{
-            background: '#ffffff', borderRadius: '18px', border: '1px solid rgba(42,22,40,0.08)',
-            boxShadow: '0 24px 50px rgba(42,22,40,0.12)', width: '100%', maxWidth: '580px',
-            padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.25rem',
-            fontFamily: 'var(--font-sans), Inter, sans-serif'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5">
-                  <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
-                </svg>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#2A1628' }}>Corporate Tax Calendar</h3>
-              </div>
+            {/* Drawer Footer */}
+            <div style={{ padding: '1.25rem 2rem 1.75rem', background: '#FAF8F5', display: 'flex', gap: '0.75rem', flexShrink: 0 }}>
               <button
-                onClick={() => setCalendarOpen(false)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'rgba(42,22,40,0.4)', padding: 0 }}
+                type="button"
+                onClick={() => {
+                  if (activeTx.status === 'Filed') {
+                    pushToast('Corporate Tax Return PDF download started.', 'info');
+                  } else {
+                    setData((prev) =>
+                      prev.map((x) => (x.id === activeTx.id ? { ...x, status: 'Filed' } : x))
+                    );
+                    setDrawerTxId(null);
+                    pushToast(`Return marked as Filed.`, 'success');
+                  }
+                }}
+                style={{ flex: 1, padding: '0.6rem', background: activeTx.status === 'Filed' ? '#137333' : '#E8760A', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}
               >
-                ✕
+                {activeTx.status === 'Filed' ? 'Download Filed Return' : 'Approve & File Return'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setDrawerTxId(null)}
+                style={{ padding: '0.6rem 1.25rem', background: '#fff', border: '1px solid #DDD0C4', borderRadius: '10px', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', color: '#2A1628' }}
+              >
+                Close Drawer
               </button>
             </div>
-            
-            <p style={{ margin: 0, fontSize: '0.8125rem', color: 'rgba(42,22,40,0.6)' }}>
-              Next filing dates and upcoming compliance deadlines for active entities.
-            </p>
+          </div>
+        </div>
+      )}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '350px', overflowY: 'auto', paddingRight: '4px' }}>
+      {/* ── 9. MODALS ── */}
+      {/* Import Modal */}
+      {popup.type === 'import' && (
+        <ModalShell
+          onClose={() => setPopup({ type: null })}
+          eyebrow="Corporate Tax Center"
+          titlePlain="Import CT"
+          titleAccent="Data"
+          maxWidth="680px"
+          footer={
+            <>
+              <button
+                type="button"
+                onClick={() => setPopup({ type: null })}
+                style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', color: '#2A1628', fontFamily: 'inherit' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleImportSubmit as unknown as React.MouseEventHandler}
+                disabled={importTab === 'local' && !importFile}
+                style={{
+                  background: (importTab === 'local' && !importFile) ? 'rgba(42,22,40,0.12)' : '#2A1628',
+                  color: (importTab === 'local' && !importFile) ? 'rgba(42,22,40,0.3)' : '#fff',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '0.625rem 1.5rem',
+                  fontSize: '0.8125rem',
+                  fontWeight: 700,
+                  cursor: (importTab === 'local' && !importFile) ? 'not-allowed' : 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                Process Import
+              </button>
+            </>
+          }
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ display: 'flex', gap: '4px', background: 'rgba(42,22,40,0.04)', borderRadius: '12px', padding: '4px' }}>
               {[
-                { name: 'ABC Trading LLC', trn: '100556789600003', period: 'Tax Year 2024', due: '28 May 2025', status: 'Pending', color: '#E8760A' },
-                { name: 'XYZ Holdings Limited', trn: '100556789600004', period: 'Tax Year 2024', due: '28 May 2025', status: 'Overdue', color: '#C4695A' },
-                { name: 'Delta Properties FZCO', trn: '100556789600005', period: 'Tax Year 2024', due: '15 Jun 2025', status: 'In Review', color: 'rgba(42,22,40,0.5)' },
-                { name: 'Alpha Tech FZCO', trn: '100556789600006', period: 'Tax Year 2024', due: '28 Apr 2025', status: 'Filed', color: '#047857' }
-              ].map((item, idx) => (
-                <div key={idx} style={{
-                  padding: '0.9rem', borderRadius: '10px',
-                  background: item.status === 'Overdue' ? 'rgba(196, 105, 90, 0.04)' : '#FAF8F5',
-                  border: `1px solid ${item.status === 'Overdue' ? 'rgba(196, 105, 90, 0.15)' : 'rgba(42,22,40,0.04)'}`,
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-                }}>
-                  <div>
-                    <div style={{ fontWeight: 600, color: '#2A1628', fontSize: '0.85rem' }}>{item.name}</div>
-                    <div style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.45)', marginTop: '0.15rem' }}>TRN: {item.trn} • {item.period}</div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#2A1628' }}>Due: {item.due}</div>
-                    <span style={{
-                      display: 'inline-block', fontSize: '0.625rem', fontWeight: 700,
-                      padding: '0.15rem 0.4rem', borderRadius: '4px', marginTop: '0.25rem',
-                      background: item.status === 'Filed' ? 'rgba(4, 120, 87, 0.08)' : item.status === 'Overdue' ? 'rgba(196, 105, 90, 0.08)' : 'rgba(232, 118, 10, 0.08)',
-                      color: item.color
-                    }}>
-                      {item.status}
-                    </span>
-                  </div>
-                </div>
+                { key: 'local' as const, label: 'Local Upload' },
+                { key: 'gdrive' as const, label: 'Google Drive' },
+                { key: 'onedrive' as const, label: 'OneDrive' }
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setImportTab(tab.key)}
+                  style={{
+                    flex: '1 1 auto',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '0.625rem',
+                    fontSize: '0.8125rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    background: importTab === tab.key ? '#ffffff' : 'transparent',
+                    color: importTab === tab.key ? '#2A1628' : 'rgba(42,22,40,0.5)',
+                    boxShadow: importTab === tab.key ? '0 2px 8px rgba(42,22,40,0.05)' : 'none',
+                    transition: 'all 0.15s ease',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  {tab.label}
+                </button>
               ))}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-              <button
-                onClick={() => setCalendarOpen(false)}
+            {importTab === 'local' ? (
+              <div
                 style={{
-                  padding: '0.55rem 1.25rem', border: '1px solid #DDD0C4', borderRadius: '8px',
-                  background: '#ffffff', color: '#2A1628', fontSize: '0.8125rem', fontWeight: 600,
-                  cursor: 'pointer', fontFamily: 'inherit'
+                  border: importFile ? '1.5px solid #047857' : '1.5px dashed #DDD0C4',
+                  borderRadius: '12px',
+                  minHeight: '240px',
+                  width: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.6rem',
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  padding: '1.5rem',
+                  background: importFile ? 'rgba(4,120,87,0.02)' : '#FAF8F5',
+                  transition: 'all 0.15s ease',
+                  boxSizing: 'border-box',
                 }}
+                onClick={() => setImportFile('CT_Ledger_Extract_FY2025.xlsx')}
               >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── 2. CT REPORTS MODAL ── */}
-      {reportsOpen && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(42,22,40,0.3)', backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 1000, padding: '1rem'
-        }}>
-          <div style={{
-            background: '#ffffff', borderRadius: '18px', border: '1px solid rgba(42,22,40,0.08)',
-            boxShadow: '0 24px 50px rgba(42,22,40,0.12)', width: '100%', maxWidth: '480px',
-            padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.25rem',
-            fontFamily: 'var(--font-sans), Inter, sans-serif'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="17 8 12 3 7 8" />
-                  <line x1="12" y1="3" x2="12" y2="15" />
-                </svg>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#2A1628' }}>Generate Corporate Tax Reports</h3>
-              </div>
-              <button
-                onClick={() => setReportsOpen(false)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'rgba(42,22,40,0.4)', padding: 0 }}
-              >
-                ✕
-              </button>
-            </div>
-
-            <p style={{ margin: 0, fontSize: '0.8125rem', color: 'rgba(42,22,40,0.6)' }}>
-              Select report parameters to export formatted summaries.
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {/* Report Type */}
-              <div style={{ position: 'relative' }}>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Report Type</label>
-                <button
-                  onClick={() => setModalReportTypeOpen(o => !o)}
-                  style={{
-                    width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '0.6rem 0.85rem', border: '1px solid #DDD0C4', borderRadius: '8px',
-                    background: '#FAF8F5', color: '#2A1628', fontSize: '0.8125rem', cursor: 'pointer',
-                    fontFamily: 'inherit', fontWeight: 500
-                  }}
-                >
-                  {reportType}
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
-                </button>
-                {modalReportTypeOpen && (
-                  <div style={{
-                    position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px',
-                    background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px',
-                    boxShadow: '0 4px 16px rgba(42,22,40,0.1)', zIndex: 110, padding: '4px'
-                  }}>
-                    {['Filing Summary', 'Liabilities & Refunds', 'Payment History', 'Audit Logs'].map(t => (
-                      <div
-                        key={t}
-                        onClick={() => { setReportType(t); setModalReportTypeOpen(false); }}
-                        style={{
-                          padding: '0.45rem 0.65rem', fontSize: '0.75rem', color: '#2A1628',
-                          cursor: 'pointer', borderRadius: '6px',
-                          background: reportType === t ? 'rgba(232, 118, 10, 0.06)' : 'transparent',
-                          fontWeight: reportType === t ? 600 : 400
-                        }}
-                      >
-                        {t}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Date Range */}
-              <div style={{ position: 'relative' }}>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Filing Period</label>
-                <button
-                  onClick={() => setModalReportRangeOpen(o => !o)}
-                  style={{
-                    width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '0.6rem 0.85rem', border: '1px solid #DDD0C4', borderRadius: '8px',
-                    background: '#FAF8F5', color: '#2A1628', fontSize: '0.8125rem', cursor: 'pointer',
-                    fontFamily: 'inherit', fontWeight: 500
-                  }}
-                >
-                  {reportDateRange}
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
-                </button>
-                {modalReportRangeOpen && (
-                  <div style={{
-                    position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px',
-                    background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px',
-                    boxShadow: '0 4px 16px rgba(42,22,40,0.1)', zIndex: 110, padding: '4px'
-                  }}>
-                    {['Last 3 Months', 'Last 6 Months', 'Year to Date', 'Custom Range'].map(t => (
-                      <div
-                        key={t}
-                        onClick={() => { setReportDateRange(t); setModalReportRangeOpen(false); }}
-                        style={{
-                          padding: '0.45rem 0.65rem', fontSize: '0.75rem', color: '#2A1628',
-                          cursor: 'pointer', borderRadius: '6px',
-                          background: reportDateRange === t ? 'rgba(232, 118, 10, 0.06)' : 'transparent',
-                          fontWeight: reportDateRange === t ? 600 : 400
-                        }}
-                      >
-                        {t}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Format selection buttons */}
-              <div>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Output Format</label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
-                  {['xlsx', 'pdf', 'csv'].map(fmt => (
-                    <button
-                      key={fmt}
-                      onClick={() => setReportFormat(fmt)}
-                      style={{
-                        padding: '0.55rem', borderRadius: '8px', border: `1px solid ${reportFormat === fmt ? '#E8760A' : '#DDD0C4'}`,
-                        background: reportFormat === fmt ? 'rgba(232,118,10,0.04)' : '#ffffff',
-                        color: reportFormat === fmt ? '#E8760A' : '#2A1628', fontWeight: 600,
-                        fontSize: '0.8125rem', cursor: 'pointer', textTransform: 'uppercase',
-                        fontFamily: 'inherit', transition: 'all 150ms ease'
-                      }}
-                    >
-                      {fmt}
-                    </button>
-                  ))}
+                <div style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '10px',
+                  background: importFile ? 'rgba(4,120,87,0.1)' : 'rgba(42,22,40,0.06)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: importFile ? '#047857' : '#2A1628'
+                }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <path d="M12 16V4M12 4l-4 4M12 4l4 4" />
+                    <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+                  </svg>
                 </div>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-              <button
-                onClick={() => setReportsOpen(false)}
-                style={{
-                  padding: '0.55rem 1.25rem', border: '1px solid #DDD0C4', borderRadius: '8px',
-                  background: '#ffffff', color: '#2A1628', fontSize: '0.8125rem', fontWeight: 600,
-                  cursor: 'pointer', fontFamily: 'inherit'
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => { alert('Export started successfully!'); setReportsOpen(false); }}
-                style={{
-                  padding: '0.55rem 1.25rem', border: 'none', borderRadius: '8px',
-                  background: '#2A1628', color: '#ffffff', fontSize: '0.8125rem', fontWeight: 600,
-                  cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 12px rgba(42,22,40,0.15)'
-                }}
-              >
-                Export Report
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── 3. NEW CT FILING MODAL ── */}
-      {newReturnOpen && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(42,22,40,0.3)', backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 1000, padding: '1rem'
-        }}>
-          <div style={{
-            background: '#ffffff', borderRadius: '18px', border: '1px solid rgba(42,22,40,0.08)',
-            boxShadow: '0 24px 50px rgba(42,22,40,0.12)', width: '100%', maxWidth: '500px',
-            padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.25rem',
-            fontFamily: 'var(--font-sans), Inter, sans-serif'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5">
-                  <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#2A1628' }}>Add New Corporate Tax Return</h3>
-              </div>
-              <button
-                onClick={() => setNewReturnOpen(false)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'rgba(42,22,40,0.4)', padding: 0 }}
-              >
-                ✕
-              </button>
-            </div>
-
-            <p style={{ margin: 0, fontSize: '0.8125rem', color: 'rgba(42,22,40,0.6)' }}>
-              Log a new corporate tax filing cycle details for compliance tracking.
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
-              
-              {/* Client Selection */}
-              <div style={{ position: 'relative' }}>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.3rem' }}>Client / Company</label>
-                <button
-                  onClick={() => setModalClientOpen(o => !o)}
-                  style={{
-                    width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '0.6rem 0.85rem', border: '1px solid #DDD0C4', borderRadius: '8px',
-                    background: '#FAF8F5', color: '#2A1628', fontSize: '0.8125rem', cursor: 'pointer',
-                    fontFamily: 'inherit', fontWeight: 500
-                  }}
-                >
-                  {newReturnForm.client}
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
-                </button>
-                {modalClientOpen && (
-                  <div style={{
-                    position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px',
-                    background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px',
-                    boxShadow: '0 4px 16px rgba(42,22,40,0.1)', zIndex: 110, padding: '4px',
-                    maxHeight: '160px', overflowY: 'auto'
-                  }}>
-                    {['ABC Trading LLC', 'XYZ Holdings Limited', 'Delta Properties FZCO', 'Alpha Tech FZCO', 'Beta Industries LLC'].map(c => (
-                      <div
-                        key={c}
-                        onClick={() => {
-                          let nextTrn = '100556789600003';
-                          if (c.includes('XYZ')) nextTrn = '100556789600004';
-                          if (c.includes('Delta')) nextTrn = '100556789600005';
-                          if (c.includes('Alpha')) nextTrn = '100556789600006';
-                          if (c.includes('Beta')) nextTrn = '100556789600007';
-                          setNewReturnForm({ ...newReturnForm, client: c, trn: nextTrn });
-                          setModalClientOpen(false);
-                        }}
-                        style={{
-                          padding: '0.45rem 0.65rem', fontSize: '0.75rem', color: '#2A1628',
-                          cursor: 'pointer', borderRadius: '6px',
-                          background: newReturnForm.client === c ? 'rgba(232, 118, 10, 0.06)' : 'transparent',
-                          fontWeight: newReturnForm.client === c ? 600 : 400
-                        }}
-                      >
-                        {c}
-                      </div>
-                    ))}
-                  </div>
+                {importFile ? (
+                  <>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: '0.875rem', color: '#047857' }}>{importFile}</p>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'rgba(42,22,40,0.4)' }}>Click to change file</p>
+                  </>
+                ) : (
+                  <>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: '0.875rem', color: '#2A1628' }}>Click to upload ledger file</p>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'rgba(42,22,40,0.4)' }}>.xlsx, .csv · up to 50 MB</p>
+                  </>
                 )}
               </div>
-
-              {/* TRN Display */}
-              <div>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.3rem' }}>TRN / VAT No.</label>
-                <input
-                  type="text"
-                  readOnly
-                  value={newReturnForm.trn}
-                  style={{ width: '100%', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.6rem 0.85rem', fontSize: '0.8125rem', background: '#FAF8F5', color: 'rgba(42,22,40,0.55)', outline: 'none', boxSizing: 'border-box' }}
-                />
-              </div>
-
-              {/* Flex row for Tax Year and Due Date */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                {/* Year */}
-                <div style={{ position: 'relative' }}>
-                  <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.3rem' }}>Tax Year</label>
-                  <button
-                    onClick={() => setModalYearOpen(o => !o)}
-                    style={{
-                      width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      padding: '0.6rem 0.85rem', border: '1px solid #DDD0C4', borderRadius: '8px',
-                      background: '#FAF8F5', color: '#2A1628', fontSize: '0.8125rem', cursor: 'pointer',
-                      fontFamily: 'inherit', fontWeight: 500
-                    }}
-                  >
-                    {newReturnForm.taxYear}
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
-                  </button>
-                  {modalYearOpen && (
-                    <div style={{
-                      position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px',
-                      background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px',
-                      boxShadow: '0 4px 16px rgba(42,22,40,0.1)', zIndex: 110, padding: '4px'
-                    }}>
-                      {['2024', '2023'].map(y => (
-                        <div
-                          key={y}
-                          onClick={() => {
-                            let nextDue = '28 May 2025';
-                            if (y === '2023') nextDue = '28 May 2024';
-                            setNewReturnForm({ ...newReturnForm, taxYear: y, dueDate: nextDue });
-                            setModalYearOpen(false);
-                          }}
-                          style={{
-                            padding: '0.45rem 0.65rem', fontSize: '0.75rem', color: '#2A1628',
-                            cursor: 'pointer', borderRadius: '6px',
-                            background: newReturnForm.taxYear === y ? 'rgba(232, 118, 10, 0.06)' : 'transparent',
-                            fontWeight: newReturnForm.taxYear === y ? 600 : 400
-                          }}
-                        >
-                          {y}
-                        </div>
-                      ))}
-                    </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                <div
+                  style={{
+                    border: '1.5px dashed #DDD0C4',
+                    borderRadius: '12px',
+                    padding: '2.5rem 1.25rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '1rem',
+                    textAlign: 'center',
+                    background: '#FAF8F5',
+                    minHeight: '240px',
+                    justifyContent: 'center',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  {importFile && (importTab === 'gdrive' || importTab === 'onedrive') ? (
+                    <>
+                      <div style={{
+                        width: '56px',
+                        height: '56px',
+                        background: importTab === 'gdrive' ? 'rgba(66,133,244,0.05)' : 'rgba(0,120,212,0.05)',
+                        borderRadius: '14px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}>
+                        {importTab === 'gdrive' ? (
+                          <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                            <rect x="3" y="3" width="8" height="8" rx="1.5" fill="#4285F4" />
+                            <rect x="13" y="3" width="8" height="8" rx="1.5" fill="#34A853" />
+                            <rect x="3" y="13" width="8" height="8" rx="1.5" fill="#FBBC05" />
+                            <rect x="13" y="13" width="8" height="8" rx="1.5" fill="#EA4335" />
+                          </svg>
+                        ) : (
+                          <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                            <rect x="3" y="3" width="8" height="8" rx="1.5" fill="#0078D4" />
+                            <rect x="13" y="3" width="8" height="8" rx="1.5" fill="#00B7C3" />
+                            <rect x="3" y="13" width="8" height="8" rx="1.5" fill="#0078D4" />
+                            <rect x="13" y="13" width="8" height="8" rx="1.5" fill="#0078D4" />
+                          </svg>
+                        )}
+                      </div>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.7rem', fontWeight: 700, color: '#137333', background: '#E6F4EA', borderRadius: '999px', padding: '0.25rem 0.6rem' }}>
+                        Account connected
+                      </span>
+                      <p style={{ margin: 0, fontSize: '0.8125rem', fontWeight: 700, color: '#047857' }}>✓ {importFile}</p>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{
+                        width: '56px',
+                        height: '56px',
+                        background: importTab === 'gdrive' ? 'rgba(66,133,244,0.05)' : 'rgba(0,120,212,0.05)',
+                        borderRadius: '14px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}>
+                        {importTab === 'gdrive' ? (
+                          <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                            <rect x="3" y="3" width="8" height="8" rx="1.5" fill="#4285F4" />
+                            <rect x="13" y="3" width="8" height="8" rx="1.5" fill="#34A853" />
+                            <rect x="3" y="13" width="8" height="8" rx="1.5" fill="#FBBC05" />
+                            <rect x="13" y="13" width="8" height="8" rx="1.5" fill="#EA4335" />
+                          </svg>
+                        ) : (
+                          <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                            <rect x="3" y="3" width="8" height="8" rx="1.5" fill="#0078D4" />
+                            <rect x="13" y="3" width="8" height="8" rx="1.5" fill="#00B7C3" />
+                            <rect x="3" y="13" width="8" height="8" rx="1.5" fill="#0078D4" />
+                            <rect x="13" y="13" width="8" height="8" rx="1.5" fill="#0078D4" />
+                          </svg>
+                        )}
+                      </div>
+                      <div>
+                        <h4 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#2A1628' }}>
+                          {importTab === 'gdrive' ? 'Connect Google Drive' : 'Connect OneDrive'}
+                        </h4>
+                        <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'rgba(42,22,40,0.5)', maxWidth: '300px', marginInline: 'auto' }}>
+                          {importTab === 'gdrive'
+                            ? 'Sign in with Google to browse and pick an Excel sheet from your Drive'
+                            : 'Sign in with Microsoft to browse and pick an Excel sheet from your OneDrive'}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImportFile(importTab === 'gdrive' ? 'Google_Drive_Import_2026.xlsx' : 'OneDrive_Import_2026.xlsx');
+                          setImportTrn('100556789600999');
+                          pushToast(importTab === 'gdrive' ? 'Google Drive connected.' : 'OneDrive connected.', 'success');
+                        }}
+                        style={{
+                          background: importTab === 'gdrive' ? '#4285F4' : '#0078D4',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '0.625rem 1.5rem',
+                          fontSize: '0.8125rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          fontFamily: 'inherit',
+                          boxShadow: importTab === 'gdrive' ? '0 4px 12px rgba(66,133,244,0.2)' : '0 4px 12px rgba(0,120,212,0.2)'
+                        }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                          <rect x="3" y="3" width="8" height="8" rx="1" fill="#fff" fillOpacity="0.9" />
+                          <rect x="13" y="3" width="8" height="8" rx="1" fill="#fff" fillOpacity="0.9" />
+                          <rect x="3" y="13" width="8" height="8" rx="1" fill="#fff" fillOpacity="0.9" />
+                          <rect x="13" y="13" width="8" height="8" rx="1" fill="#fff" fillOpacity="0.9" />
+                        </svg>
+                        {importTab === 'gdrive' ? 'Sign in with Google' : 'Sign in with Microsoft'}
+                      </button>
+                    </>
                   )}
                 </div>
-
-                {/* Due Date */}
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.3rem' }}>Filing Due Date</label>
-                  <input
-                    type="text"
-                    value={newReturnForm.dueDate}
-                    onChange={e => setNewReturnForm({ ...newReturnForm, dueDate: e.target.value })}
-                    placeholder="YYYY-MM-DD"
-                    style={{ width: '100%', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.6rem 0.85rem', fontSize: '0.8125rem', background: '#FAF8F5', color: '#2A1628', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
-                  />
-                </div>
               </div>
+            )}
 
-              {/* Taxable Income */}
+            {/* TRN + Period — always shown for all tabs, side by side */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.3rem' }}>Taxable Income (AED)</label>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Select Target TRN</label>
                 <input
                   type="text"
-                  value={newReturnForm.taxableIncome}
-                  onChange={e => {
-                    const cleanVal = e.target.value.replace(/,/g, '');
-                    let payableCalculated = '';
-                    if (!isNaN(Number(cleanVal)) && cleanVal !== '') {
-                      payableCalculated = String(Math.max(0, Math.floor(Number(cleanVal) * 0.09)));
-                    }
-                    setNewReturnForm({ ...newReturnForm, taxableIncome: e.target.value, payable: payableCalculated });
-                  }}
-                  placeholder="0.00"
-                  style={{ width: '100%', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.6rem 0.85rem', fontSize: '0.8125rem', background: '#FAF8F5', color: '#2A1628', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                  placeholder="e.g. 100556789600003"
+                  value={importTrn}
+                  onChange={(e) => setImportTrn(e.target.value)}
+                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', outline: 'none', boxSizing: 'border-box' }}
                 />
               </div>
-
-              {/* Flex row for Payable and Paid */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.3rem' }}>Tax Payable (AED)</label>
-                  <input
-                    type="text"
-                    value={newReturnForm.payable}
-                    onChange={e => setNewReturnForm({ ...newReturnForm, payable: e.target.value })}
-                    placeholder="0.00"
-                    style={{ width: '100%', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.6rem 0.85rem', fontSize: '0.8125rem', background: '#FAF8F5', color: '#2A1628', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.3rem' }}>Tax Paid (AED)</label>
-                  <input
-                    type="text"
-                    value={newReturnForm.paid}
-                    onChange={e => setNewReturnForm({ ...newReturnForm, paid: e.target.value })}
-                    placeholder="0.00"
-                    style={{ width: '100%', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.6rem 0.85rem', fontSize: '0.8125rem', background: '#FAF8F5', color: '#2A1628', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
-                  />
-                </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Filing Target Period</label>
+                <CustomSelect
+                  value={importPeriod}
+                  onChange={setImportPeriod}
+                  options={PERIODS}
+                />
               </div>
-
-              {/* Status */}
-              <div style={{ position: 'relative' }}>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.3rem' }}>Filing Status</label>
-                <button
-                  onClick={() => setModalStatusOpen(o => !o)}
-                  style={{
-                    width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '0.6rem 0.85rem', border: '1px solid #DDD0C4', borderRadius: '8px',
-                    background: '#FAF8F5', color: '#2A1628', fontSize: '0.8125rem', cursor: 'pointer',
-                    fontFamily: 'inherit', fontWeight: 500
-                  }}
-                >
-                  {newReturnForm.status}
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
-                </button>
-                {modalStatusOpen && (
-                  <div style={{
-                    position: 'absolute', bottom: 'calc(100% + 4px)', left: 0, right: 0,
-                    background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px',
-                    boxShadow: '0 -4px 16px rgba(42,22,40,0.1)', zIndex: 110, padding: '4px'
-                  }}>
-                    {['Draft', 'Filed On Time', 'Filed Late', 'Overdue'].map(s => (
-                      <div
-                        key={s}
-                        onClick={() => { setNewReturnForm({ ...newReturnForm, status: s }); setModalStatusOpen(false); }}
-                        style={{
-                          padding: '0.45rem 0.65rem', fontSize: '0.75rem', color: '#2A1628',
-                          cursor: 'pointer', borderRadius: '6px',
-                          background: newReturnForm.status === s ? 'rgba(232, 118, 10, 0.06)' : 'transparent',
-                          fontWeight: newReturnForm.status === s ? 600 : 400
-                        }}
-                      >
-                        {s}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
             </div>
+          </div>
+        </ModalShell>
+      )}
 
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+      {/* Create CT Return Modal */}
+      {popup.type === 'create' && (
+        <ModalShell
+          onClose={() => setPopup({ type: null })}
+          eyebrow="Corporate Tax Center"
+          titlePlain="Create CT"
+          titleAccent="Return"
+          maxWidth="580px"
+          footer={
+            <>
               <button
-                onClick={() => setNewReturnOpen(false)}
-                style={{
-                  padding: '0.55rem 1.25rem', border: '1px solid #DDD0C4', borderRadius: '8px',
-                  background: '#ffffff', color: '#2A1628', fontSize: '0.8125rem', fontWeight: 600,
-                  cursor: 'pointer', fontFamily: 'inherit'
-                }}
+                type="button"
+                onClick={() => setPopup({ type: null })}
+                style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', color: '#2A1628', fontFamily: 'inherit' }}
               >
                 Cancel
               </button>
               <button
-                onClick={() => { alert('Filing record logged successfully!'); setNewReturnOpen(false); }}
+                type="button"
+                disabled={!newFormClient || !newFormTrn}
+                onClick={handleCreateReturnSubmit as unknown as React.MouseEventHandler}
                 style={{
-                  padding: '0.55rem 1.25rem', border: 'none', borderRadius: '8px',
-                  background: '#2A1628', color: '#ffffff', fontSize: '0.8125rem', fontWeight: 600,
-                  cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 12px rgba(42,22,40,0.15)'
+                  background: (!newFormClient || !newFormTrn) ? 'rgba(42,22,40,0.12)' : '#2A1628',
+                  color: (!newFormClient || !newFormTrn) ? 'rgba(42,22,40,0.3)' : '#fff',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '0.625rem 1.5rem',
+                  fontSize: '0.8125rem',
+                  fontWeight: 700,
+                  cursor: (!newFormClient || !newFormTrn) ? 'not-allowed' : 'pointer',
+                  fontFamily: 'inherit',
                 }}
               >
-                Create Filing
+                Generate Filing
               </button>
+            </>
+          }
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.35rem', letterSpacing: '0.06em' }}>Client Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Al Futtaim Group"
+                  value={newFormClient}
+                  onChange={(e) => setNewFormClient(e.target.value)}
+                  style={{ width: '100%', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', color: '#2A1628' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.35rem', letterSpacing: '0.06em' }}>UAE TRN *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. 100556789600003"
+                  value={newFormTrn}
+                  onChange={(e) => setNewFormTrn(e.target.value)}
+                  style={{ width: '100%', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', color: '#2A1628' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.35rem', letterSpacing: '0.06em' }}>Filing Year</label>
+                <CustomSelect value={newFormYear} onChange={setNewFormYear} options={YEARS} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.35rem', letterSpacing: '0.06em' }}>Tax Period</label>
+                <CustomSelect value={newFormPeriod} onChange={setNewFormPeriod} options={PERIODS} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.35rem', letterSpacing: '0.06em' }}>Tax Zone</label>
+                <CustomSelect value={newFormType} onChange={(val) => setNewFormType(val as 'Mainland' | 'Free Zone')} options={['Mainland', 'Free Zone']} />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.35rem', letterSpacing: '0.06em' }}>Accounting Profit (AED)</label>
+                <input
+                  type="number"
+                  placeholder="0.00"
+                  value={newFormAccountingProfit}
+                  onChange={(e) => setNewFormAccountingProfit(e.target.value)}
+                  style={{ width: '100%', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', color: '#2A1628' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.35rem', letterSpacing: '0.06em' }}>Taxable Profit (AED)</label>
+                <input
+                  type="number"
+                  placeholder="0.00"
+                  value={newFormTaxableProfit}
+                  onChange={(e) => setNewFormTaxableProfit(e.target.value)}
+                  style={{ width: '100%', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', color: '#2A1628' }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.35rem', letterSpacing: '0.06em' }}>Assigned Reviewer</label>
+              <CustomSelect value={newFormReviewer} onChange={setNewFormReviewer} options={REVIEWERS} />
             </div>
           </div>
-        </div>
+        </ModalShell>
       )}
 
+      {/* Export Center Modal */}
+      {popup.type === 'export' && (
+        <ModalShell
+          onClose={() => setPopup({ type: null })}
+          eyebrow="Corporate Tax Center"
+          titlePlain="Export"
+          titleAccent="Returns"
+          maxWidth="500px"
+          bodyStyle={{ padding: '1.5rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}
+          footer={
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+              <span style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.45)', fontWeight: 500 }}>
+                Exporting as <strong style={{ color: '#2A1628' }}>.{exportFormat === 'excel' ? 'XLSX' : exportFormat.toUpperCase()}</strong>
+              </span>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setPopup({ type: null })}
+                  style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', color: '#2A1628', fontFamily: 'inherit' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPopup({ type: null });
+                    pushToast(`${exportFormat === 'excel' ? 'XLSX' : exportFormat.toUpperCase()} CT return registry export started.`, 'success');
+                  }}
+                  style={{ background: '#E8760A', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'inherit', boxShadow: '0 4px 12px rgba(232,118,10,0.25)' }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+                  Download Export
+                </button>
+              </div>
+            </div>
+          }
+        >
+          {/* Scope selection */}
+          <div>
+            <p style={{ margin: '0 0 0.75rem', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              Which returns to export?
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {[
+                { key: 'all' as const, label: 'All Returns', sublabel: 'Export all records in the CT center register', count: data.length },
+                { key: 'filtered' as const, label: 'Filtered Results', sublabel: 'Only records matching current active filters', count: filteredData.length },
+                { key: 'selected' as const, label: 'Selected Returns', sublabel: 'Only the returns you have checked', count: selectedIds.length }
+              ].map((opt) => {
+                const isSelected = exportScope === opt.key;
+                return (
+                  <div
+                    key={opt.key}
+                    onClick={() => setExportScope(opt.key)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      padding: '0.75rem 1rem',
+                      borderRadius: '10px',
+                      border: `1.5px solid ${isSelected ? '#E8760A' : '#DDD0C4'}`,
+                      background: isSelected ? 'rgba(232,118,10,0.04)' : '#ffffff',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {/* Custom radio circle */}
+                    <div style={{
+                      width: '18px',
+                      height: '18px',
+                      borderRadius: '50%',
+                      border: `2px solid ${isSelected ? '#E8760A' : '#DDD0C4'}`,
+                      background: isSelected ? '#E8760A' : 'transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      {isSelected && <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#ffffff' }} />}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: '#2A1628' }}>{opt.label}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.5)', marginTop: '0.1rem' }}>{opt.sublabel}</div>
+                    </div>
+                    {/* Count badge */}
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: isSelected ? '#E8760A' : 'rgba(42,22,40,0.4)', background: isSelected ? 'rgba(232,118,10,0.08)' : 'rgba(42,22,40,0.04)', borderRadius: '4px', padding: '0.15rem 0.5rem', whiteSpace: 'nowrap' }}>
+                      {opt.count} returns
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Format selector */}
+          <div>
+            <p style={{ margin: '0 0 0.75rem', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              Select Format
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem' }}>
+              {[
+                { key: 'excel' as const, label: '.XLSX' },
+                { key: 'csv' as const, label: '.CSV' },
+                { key: 'pdf' as const, label: '.PDF' },
+                { key: 'print' as const, label: 'PRINT' }
+              ].map((fmt) => {
+                const isActive = exportFormat === fmt.key;
+                return (
+                  <button
+                    key={fmt.key}
+                    type="button"
+                    onClick={() => setExportFormat(fmt.key)}
+                    style={{
+                      padding: '0.625rem',
+                      borderRadius: '8px',
+                      border: `1.5px solid ${isActive ? '#E8760A' : '#DDD0C4'}`,
+                      background: isActive ? 'rgba(232,118,10,0.04)' : '#ffffff',
+                      color: isActive ? '#E8760A' : 'rgba(42,22,40,0.6)',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      fontFamily: 'inherit'
+                    }}
+                  >
+                    {fmt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </ModalShell>
+      )}
+
+      {/* Assign Reviewer Modal */}
+      {popup.type === 'assign' && (
+        <ModalShell
+          onClose={() => setPopup({ type: null })}
+          eyebrow="Corporate Tax Center"
+          titlePlain="Assign"
+          titleAccent="Reviewer"
+          maxWidth="440px"
+          footer={
+            <>
+              <button
+                type="button"
+                onClick={() => setPopup({ type: null })}
+                style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', color: '#2A1628', fontFamily: 'inherit' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={applyAssignReviewer}
+                style={{ background: '#2A1628', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Assign Reviewer
+              </button>
+            </>
+          }
+        >
+          <div>
+            <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.5rem', letterSpacing: '0.06em' }}>Select Reviewer</label>
+            <CustomSelect
+              value={assignedReviewerSelection}
+              onChange={setAssignedReviewerSelection}
+              options={REVIEWERS}
+            />
+          </div>
+        </ModalShell>
+      )}
+      {/* Modal: Confirm Delete */}
+      {popup.type === 'confirmDelete' && popup.tx && (
+        <ModalShell
+          onClose={() => setPopup({ type: null })}
+          eyebrow="Corporate Tax Center"
+          titlePlain="Delete"
+          titleAccent="Filing"
+          maxWidth="400px"
+          footer={
+            <>
+              <button
+                type="button"
+                onClick={() => setPopup({ type: null })}
+                style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', color: '#2A1628', fontFamily: 'inherit' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setData((prev) => prev.filter((x) => x.id !== popup.tx!.id));
+                  setPopup({ type: null });
+                  pushToast('Filing record deleted.', 'danger');
+                }}
+                style={{ background: '#DC2626', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Delete
+              </button>
+            </>
+          }
+        >
+          <div style={{ padding: '0.5rem 0', fontSize: '0.875rem', color: '#2A1628', lineHeight: 1.4 }}>
+            Are you sure you want to delete the Corporate Tax filing record for <strong>{popup.tx.client}</strong>? This action is permanent.
+          </div>
+        </ModalShell>
+      )}
+
+      {/* Modal: Confirm Archive */}
+      {popup.type === 'confirmArchive' && popup.tx && (
+        <ModalShell
+          onClose={() => setPopup({ type: null })}
+          eyebrow="Corporate Tax Center"
+          titlePlain="Archive"
+          titleAccent="Filing"
+          maxWidth="400px"
+          footer={
+            <>
+              <button
+                type="button"
+                onClick={() => setPopup({ type: null })}
+                style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', color: '#2A1628', fontFamily: 'inherit' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setData((prev) => prev.map((x) => (x.id === popup.tx!.id ? { ...x, status: 'Archived' } : x)));
+                  setPopup({ type: null });
+                  pushToast('Filing record archived.', 'warning');
+                }}
+                style={{ background: '#B06000', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Archive
+              </button>
+            </>
+          }
+        >
+          <div style={{ padding: '0.5rem 0', fontSize: '0.875rem', color: '#2A1628', lineHeight: 1.4 }}>
+            Are you sure you want to archive the Corporate Tax filing record for <strong>{popup.tx.client}</strong>?
+          </div>
+        </ModalShell>
+      )}
+
+      {/* Modal: Confirm Submit */}
+      {popup.type === 'confirmSubmit' && popup.tx && (
+        <ModalShell
+          onClose={() => setPopup({ type: null })}
+          eyebrow="Corporate Tax Center"
+          titlePlain="Submit to"
+          titleAccent="FTA Portal"
+          maxWidth="440px"
+          footer={
+            <>
+              <button
+                type="button"
+                onClick={() => setPopup({ type: null })}
+                style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', color: '#2A1628', fontFamily: 'inherit' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setData((prev) => prev.map((x) => (x.id === popup.tx!.id ? { ...x, status: 'Filed' } : x)));
+                  setPopup({ type: null });
+                  pushToast('Submitted return to FTA portal.', 'success');
+                }}
+                style={{ background: '#E8760A', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Confirm Submit
+              </button>
+            </>
+          }
+        >
+          <div style={{ padding: '0.5rem 0', fontSize: '0.875rem', color: '#2A1628', lineHeight: 1.4 }}>
+            You are about to officially submit the Form CT-1 Corporate Tax filing package for <strong>{popup.tx.client}</strong> to the Federal Tax Authority.
+          </div>
+        </ModalShell>
+      )}
+
+      {/* Styled JSX injected for dynamic animations */}
+      <style jsx global>{`
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none !important;
+        }
+        .hide-scrollbar {
+          -ms-overflow-style: none !important;
+          scrollbar-width: none !important;
+        }
+        @keyframes drawerSlide {
+          from {
+            transform: translateX(100%);
+          }
+          to {
+            transform: translateX(0);
+          }
+        }
+        @keyframes slideIn {
+          from {
+            transform: translateY(-1rem);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+      `}</style>
     </div>
   );
 }
