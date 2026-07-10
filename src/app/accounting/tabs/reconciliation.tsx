@@ -7467,29 +7467,29 @@ interface ReconciliationTableProps {
 
 const DENSITY_PADDING: Record<Density, string> = { compact: '0.3rem 0.75rem', comfortable: '0.5rem 0.75rem', spacious: '0.75rem 0.75rem' };
 
-const ROW_ACTIONS: { key: RowActionKey; label: string; permission?: PermissionAction; hideForReadOnly?: boolean; danger?: boolean; group: number }[] = [
-  { key: 'openDrawer', label: 'Open Reconciliation Drawer', group: 1 },
-  { key: 'viewTimeline', label: 'View Timeline', group: 1 },
-  { key: 'previewTransactions', label: 'Preview Transactions', group: 1 },
-  { key: 'aiMatchAnalysis', label: 'AI Match Analysis', group: 1 },
-  { key: 'manualMatch', label: 'Manual Match', hideForReadOnly: true, group: 2 },
-  { key: 'splitTransaction', label: 'Split Transaction', permission: 'split', group: 2 },
-  { key: 'mergeTransaction', label: 'Merge Transaction', permission: 'merge', group: 2 },
-  { key: 'postToQuickBooks', label: 'Post To QuickBooks', permission: 'postToQuickBooks', group: 2 },
-  { key: 'duplicate', label: 'Duplicate', hideForReadOnly: true, group: 3 },
-  { key: 'clone', label: 'Clone', hideForReadOnly: true, group: 3 },
-  { key: 'export', label: 'Export', permission: 'export', group: 3 },
-  { key: 'downloadPdf', label: 'Download PDF', group: 3 },
-  { key: 'downloadCsv', label: 'Download CSV', group: 3 },
-  { key: 'copyTransactionId', label: 'Copy Transaction ID', group: 3 },
-  { key: 'openClient', label: 'Open Client', group: 4 },
-  { key: 'jumpToAiQueue', label: 'Jump to AI Queue', group: 4 },
-  { key: 'jumpToVat', label: 'Jump to VAT', group: 4 },
-  { key: 'jumpToQuickBooks', label: 'Jump to QuickBooks', group: 4 },
-  { key: 'notes', label: 'Notes', permission: 'addNotes', group: 5 },
-  { key: 'auditLog', label: 'Audit Log', group: 5 },
-  { key: 'archive', label: 'Archive', permission: 'archive', group: 6 },
-  { key: 'delete', label: 'Delete', permission: 'delete', danger: true, group: 6 },
+const ROW_ACTIONS: { key: RowActionKey; label: string; icon: React.ReactNode; permission?: PermissionAction; hideForReadOnly?: boolean; danger?: boolean; group: number }[] = [
+  { key: 'openDrawer', label: 'Open Reconciliation Drawer', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>, group: 1 },
+  { key: 'viewTimeline', label: 'View Timeline', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>, group: 1 },
+  { key: 'previewTransactions', label: 'Preview Transactions', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, group: 1 },
+  { key: 'aiMatchAnalysis', label: 'AI Match Analysis', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>, group: 1 },
+  { key: 'manualMatch', label: 'Manual Match', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>, hideForReadOnly: true, group: 2 },
+  { key: 'splitTransaction', label: 'Split Transaction', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3v12a4 4 0 0 0 4 4h4"/><polyline points="18 13 22 17 18 21"/></svg>, permission: 'split', group: 2 },
+  { key: 'mergeTransaction', label: 'Merge Transaction', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>, permission: 'merge', group: 2 },
+  { key: 'postToQuickBooks', label: 'Post To QuickBooks', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>, permission: 'postToQuickBooks', group: 2 },
+  { key: 'duplicate', label: 'Duplicate', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>, hideForReadOnly: true, group: 3 },
+  { key: 'clone', label: 'Clone', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>, hideForReadOnly: true, group: 3 },
+  { key: 'export', label: 'Export', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>, permission: 'export', group: 3 },
+  { key: 'downloadPdf', label: 'Download PDF', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>, group: 3 },
+  { key: 'downloadCsv', label: 'Download CSV', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>, group: 3 },
+  { key: 'copyTransactionId', label: 'Copy Transaction ID', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M9 15H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"/></svg>, group: 3 },
+  { key: 'openClient', label: 'Open Client', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>, group: 4 },
+  { key: 'jumpToAiQueue', label: 'Jump to AI Queue', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>, group: 4 },
+  { key: 'jumpToVat', label: 'Jump to VAT', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>, group: 4 },
+  { key: 'jumpToQuickBooks', label: 'Jump to QuickBooks', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>, group: 4 },
+  { key: 'notes', label: 'Notes', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>, permission: 'addNotes', group: 5 },
+  { key: 'auditLog', label: 'Audit Log', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, group: 5 },
+  { key: 'archive', label: 'Archive', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/></svg>, permission: 'archive', group: 6 },
+  { key: 'delete', label: 'Delete', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>, permission: 'delete', danger: true, group: 6 },
 ];
 
 function RowMenu({ tx, onAction }: { tx: ReconciliationTransaction; onAction: (a: RowActionKey) => void }) {
@@ -7531,7 +7531,7 @@ function RowMenu({ tx, onAction }: { tx: ReconciliationTransaction; onAction: (a
         <div
           role="menu"
           className="hide-scrollbar"
-          style={{ position: 'absolute', top: 'calc(100% + 4px)', right: 0, background: '#fff', border: '1px solid #DDD0C4', borderRadius: '12px', boxShadow: '0 12px 36px rgba(42,22,40,0.14)', zIndex: 200, minWidth: '220px', padding: '4px', maxHeight: '380px', overflowY: 'auto' }}
+          style={{ position: 'absolute', top: 'calc(100% + 4px)', right: 0, background: '#fff', border: '1px solid #DDD0C4', borderRadius: '12px', boxShadow: '0 12px 36px rgba(42,22,40,0.14)', zIndex: 200, minWidth: '220px', padding: '6px', maxHeight: '380px', overflowY: 'auto' }}
         >
           {menuItems.map(({ action, showDivider }) => {
             const disabled = action.permission ? !can(role, action.permission) : false;
@@ -7546,10 +7546,24 @@ function RowMenu({ tx, onAction }: { tx: ReconciliationTransaction; onAction: (a
                   title={disabled && reason ? reason : undefined}
                   onClick={() => { if (disabled) return; setOpen(false); onAction(action.key); }}
                   onKeyDown={(e) => { if (!disabled && (e.key === 'Enter' || e.key === ' ')) { setOpen(false); onAction(action.key); } }}
-                  style={{ padding: '0.45rem 0.75rem', fontSize: '0.775rem', borderRadius: '8px', cursor: disabled ? 'not-allowed' : 'pointer', color: disabled ? 'rgba(42,22,40,0.3)' : action.danger ? '#EF4444' : '#2A1628', fontWeight: 500 }}
+                  style={{
+                    padding: '0.45rem 0.75rem',
+                    fontSize: '0.775rem',
+                    borderRadius: '8px',
+                    cursor: disabled ? 'not-allowed' : 'pointer',
+                    color: disabled ? 'rgba(42,22,40,0.3)' : action.danger ? '#EF4444' : '#2A1628',
+                    fontWeight: 500,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    transition: 'background 150ms ease'
+                  }}
                   onMouseEnter={(e) => { if (!disabled) e.currentTarget.style.background = action.danger ? 'rgba(239,68,68,0.06)' : 'rgba(232,118,10,0.06)'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                 >
+                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px', color: disabled ? 'rgba(42,22,40,0.3)' : action.danger ? '#EF4444' : '#E8760A' }}>
+                    {action.icon}
+                  </span>
                   {action.label}
                 </div>
               </React.Fragment>
