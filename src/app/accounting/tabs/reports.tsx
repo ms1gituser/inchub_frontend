@@ -1,335 +1,848 @@
-/* eslint-disable */
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+
+// ============================================================================
+// TYPES & MOCKS
+// ============================================================================
 
 interface ReportItem {
   id: string;
   name: string;
-  desc: string;
-  type: string;
-  typeBg: string;
-  typeColor: string;
+  category: 'Financial' | 'Accounting' | 'VAT' | 'Corporate Tax' | 'Audit' | 'Compliance' | 'Management' | 'Custom';
   client: string;
   period: string;
-  generatedOn: string;
-  status: 'Completed' | 'Failed';
+  financialYear: string;
   generatedBy: string;
   generatedByInitials: string;
-  icon: React.ReactNode;
-  iconBg: string;
+  generatedDate: string;
+  status: 'Completed' | 'Pending' | 'Failed';
+  lastUpdated: string;
+  favorite?: boolean;
+  scheduled?: boolean;
+  archived?: boolean;
+  version?: string;
+  exportCount?: number;
+  fileSize?: string;
+  lastDownloaded?: string;
+  sharedWith?: string[];
 }
 
 const INITIAL_REPORTS: ReportItem[] = [
   {
-    id: '1',
+    id: 'rep-1',
     name: 'Profit & Loss Statement',
-    desc: 'Income and expense summary',
-    type: 'P&L',
-    typeBg: '#EFF6FF',
-    typeColor: '#1E3A8A',
+    category: 'Financial',
     client: 'ABC Trading LLC',
-    period: 'Apr 2026',
-    generatedOn: '07 May 2026, 10:30 AM',
-    status: 'Completed',
+    period: 'Q1 2026',
+    financialYear: '2026',
     generatedBy: 'Mahesh Maddu',
     generatedByInitials: 'MM',
-    icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>,
-    iconBg: '#FAF2EC'
+    generatedDate: '2026-04-15',
+    status: 'Completed',
+    lastUpdated: '2 hours ago',
+    favorite: true,
+    version: 'v1.4',
+    exportCount: 8,
+    fileSize: '2.4 MB',
+    lastDownloaded: '1 hour ago',
+    sharedWith: ['Priya Nair', 'Sneha Iyer']
   },
   {
-    id: '2',
+    id: 'rep-2',
     name: 'Balance Sheet',
-    desc: 'Assets, liabilities and equity',
-    type: 'Balance Sheet',
-    typeBg: '#ECFDF5',
-    typeColor: '#065F46',
+    category: 'Financial',
     client: 'XYZ Holdings Limited',
     period: 'Apr 2026',
-    generatedOn: '07 May 2026, 09:15 AM',
-    status: 'Completed',
+    financialYear: '2026',
     generatedBy: 'Priya Nair',
     generatedByInitials: 'PN',
-    icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>,
-    iconBg: '#FAF2EC'
+    generatedDate: '2026-05-02',
+    status: 'Completed',
+    lastUpdated: '1 day ago',
+    favorite: true,
+    version: 'v1.2',
+    exportCount: 4,
+    fileSize: '4.8 MB',
+    lastDownloaded: '2 days ago',
+    sharedWith: ['Mahesh Maddu']
   },
   {
-    id: '3',
-    name: 'VAT Return Report',
-    desc: 'VAT return for Apr 2026',
-    type: 'VAT',
-    typeBg: '#F3E8FF',
-    typeColor: '#581C87',
+    id: 'rep-3',
+    name: 'VAT Summary Report',
+    category: 'VAT',
     client: 'Alpha Tech FZCO',
     period: 'Q1 2026',
-    generatedOn: '06 May 2026, 06:45 PM',
-    status: 'Completed',
+    financialYear: '2026',
     generatedBy: 'Sneha Iyer',
     generatedByInitials: 'SI',
-    icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>,
-    iconBg: '#FAF2EC'
-  },
-  {
-    id: '4',
-    name: 'Cash Flow Statement',
-    desc: 'Cash flow summary',
-    type: 'Cash Flow',
-    typeBg: '#FEF3C7',
-    typeColor: '#92400E',
-    client: 'Delta Properties FZCO',
-    period: 'Apr 2026',
-    generatedOn: '06 May 2026, 04:20 PM',
+    generatedDate: '2026-04-20',
     status: 'Completed',
-    generatedBy: 'Rohit Sharma',
-    generatedByInitials: 'RS',
-    icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" /></svg>,
-    iconBg: '#FAF2EC'
+    lastUpdated: '3 days ago',
+    version: 'v2.0',
+    exportCount: 15,
+    fileSize: '1.8 MB',
+    lastDownloaded: 'Just now',
+    sharedWith: ['Priya Nair', 'Kevin Park']
   },
   {
-    id: '5',
-    name: 'Corporate Tax Report',
-    desc: 'Tax computation FY 2025',
-    type: 'Corporate Tax',
-    typeBg: '#F0F6FC',
-    typeColor: '#1E3A8A',
+    id: 'rep-4',
+    name: 'Corporate Tax Computation',
+    category: 'Corporate Tax',
     client: 'Beta Industries LLC',
     period: 'FY 2025',
-    generatedOn: '05 May 2026, 11:10 AM',
-    status: 'Completed',
-    generatedBy: 'Mahesh Maddu',
-    generatedByInitials: 'MM',
-    icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" /></svg>,
-    iconBg: '#FAF2EC'
+    financialYear: '2025',
+    generatedBy: 'Kevin Park',
+    generatedByInitials: 'KP',
+    generatedDate: '2026-05-10',
+    status: 'Pending',
+    lastUpdated: '5 days ago',
+    version: 'v1.0',
+    exportCount: 0,
+    fileSize: '--',
+    lastDownloaded: '--',
+    sharedWith: []
   },
   {
-    id: '6',
-    name: 'General Ledger Report',
-    desc: 'Detailed ledger transactions',
-    type: 'General Ledger',
-    typeBg: '#FAF8F5',
-    typeColor: '#2A1628',
-    client: 'Gamma Solutions FZCO',
-    period: 'Apr 2026',
-    generatedOn: '05 May 2026, 09:40 AM',
-    status: 'Completed',
-    generatedBy: 'Priya Nair',
-    generatedByInitials: 'PN',
-    icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>,
-    iconBg: '#FAF2EC'
-  },
-  {
-    id: '7',
-    name: 'VAT Audit Report',
-    desc: 'VAT audit for Jan - Mar 2026',
-    type: 'VAT Audit',
-    typeBg: '#F8F1F9',
-    typeColor: '#581C87',
-    client: 'Nova Hospitality LLC',
+    id: 'rep-5',
+    name: 'Cash Flow Statement',
+    category: 'Financial',
+    client: 'Delta Properties FZCO',
     period: 'Q1 2026',
-    generatedOn: '04 May 2026, 03:30 PM',
-    status: 'Failed',
-    generatedBy: 'Sneha Iyer',
-    generatedByInitials: 'SI',
-    icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>,
-    iconBg: '#FAF2EC'
-  },
-  {
-    id: '8',
-    name: 'Trial Balance',
-    desc: 'Trial balance summary',
-    type: 'Trial Balance',
-    typeBg: '#F1F3F4',
-    typeColor: '#5F6368',
-    client: 'Prime Consultants FZCO',
-    period: 'Apr 2026',
-    generatedOn: '04 May 2026, 01:20 PM',
-    status: 'Completed',
+    financialYear: '2026',
     generatedBy: 'Rohit Sharma',
     generatedByInitials: 'RS',
-    icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg>,
-    iconBg: '#FAF2EC'
+    generatedDate: '2026-04-18',
+    status: 'Completed',
+    lastUpdated: '2 hours ago',
+    version: 'v1.1',
+    exportCount: 3,
+    fileSize: '3.1 MB',
+    lastDownloaded: '3 hours ago',
+    sharedWith: ['Mahesh Maddu']
+  },
+  {
+    id: 'rep-6',
+    name: 'Transfer Pricing Review',
+    category: 'Compliance',
+    client: 'Gamma Solutions FZCO',
+    period: 'FY 2025',
+    financialYear: '2025',
+    generatedBy: 'Sneha Iyer',
+    generatedByInitials: 'SI',
+    generatedDate: '2026-05-05',
+    status: 'Completed',
+    lastUpdated: '12 hours ago',
+    scheduled: true,
+    version: 'v1.5',
+    exportCount: 9,
+    fileSize: '5.2 MB',
+    lastDownloaded: '1 day ago',
+    sharedWith: ['Rohit Sharma']
+  },
+  {
+    id: 'rep-7',
+    name: 'Filing Compliance Audit Log',
+    category: 'Audit',
+    client: 'Nova Hospitality LLC',
+    period: 'Q4 2025',
+    financialYear: '2025',
+    generatedBy: 'Priya Nair',
+    generatedByInitials: 'PN',
+    generatedDate: '2026-01-22',
+    status: 'Failed',
+    lastUpdated: '1 week ago',
+    version: 'v1.0',
+    exportCount: 0,
+    fileSize: '--',
+    lastDownloaded: '--',
+    sharedWith: []
   }
 ];
-export default function ReportsTab() {
-  // Reports data state
-  const [reports, setReports] = useState<ReportItem[]>(INITIAL_REPORTS);
 
-  // Generate Report Modal
-  const [generateModalOpen, setGenerateModalOpen] = useState(false);
-  const [generateForm, setGenerateForm] = useState({
-    reportName: '',
-    client: 'ABC Trading LLC',
-    generatedBy: 'Mahesh Maddu',
-    generatedByInitials: 'MM',
-    period: 'Apr 2026',
-    status: 'Completed' as 'Completed' | 'Failed'
-  });
-  
-  const [genClientDropdownOpen, setGenClientDropdownOpen] = useState(false);
-  const [genByDropdownOpen, setGenByDropdownOpen] = useState(false);
-  const [genPeriodDropdownOpen, setGenPeriodDropdownOpen] = useState(false);
-  const [genStatusDropdownOpen, setGenStatusDropdownOpen] = useState(false);
+const CATEGORIES = [
+  'All',
+  'Financial',
+  'Accounting',
+  'VAT',
+  'Corporate Tax',
+  'Audit',
+  'Compliance',
+  'Management',
+  'Custom',
+  'Scheduled',
+  'Favorites',
+  'Archived'
+];
 
-  // Modal open states
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [scheduleOpen, setScheduleOpen] = useState(false);
-  const [newReportOpen, setNewReportOpen] = useState(false);
 
-  // New report form states
-  const [newReportForm, setNewReportForm] = useState({
-    client: 'ABC Trading LLC',
-    type: 'Profit & Loss Statement',
-    period: 'Apr 2026',
-    format: 'xlsx'
-  });
-  const [modalClientOpen, setModalClientOpen] = useState(false);
-  const [modalTypeOpen, setModalTypeOpen] = useState(false);
-  const [modalPeriodOpen, setModalPeriodOpen] = useState(false);
-  
-  // Schedule modal state
-  const [scheduleFrequency, setScheduleFrequency] = useState('Every Monday');
-  const [modalFrequencyOpen, setModalFrequencyOpen] = useState(false);
 
-  // Date picker states
-  const [startDate, setStartDate] = useState('2026-05-01');
-  const [endDate, setEndDate] = useState('2026-05-07');
-  const [tempStartDate, setTempStartDate] = useState('2026-05-01');
-  const [tempEndDate, setTempEndDate] = useState('2026-05-07');
+// FocusTrap helper
+interface FocusTrapProps {
+  children: React.ReactNode;
+  onEscape: () => void;
+}
 
-  const [filters, setFilters] = useState({
-    type: 'All',
-    client: 'All',
-    status: 'All'
-  });
-
-  const filterOptions = {
-    type: ['All', 'P&L', 'Balance Sheet', 'VAT', 'Cash Flow', 'Corporate Tax', 'General Ledger'],
-    client: ['All', 'ABC Trading LLC', 'XYZ Holdings Limited', 'Alpha Tech FZCO', 'Delta Properties FZCO', 'Beta Industries LLC'],
-    status: ['All', 'Completed', 'Failed']
-  };
-
-  const [search, setSearch] = useState('');
-  const [selectedRows, setSelectedRows] = useState<string[]>([]);
-  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [rowsPerPageOpen, setRowsPerPageOpen] = useState(false);
-  const [datePickerOpen, setDatePickerOpen] = useState(false);
-
-  const toggleSelectAll = () => {
-    if (selectedRows.length === reports.length) {
-      setSelectedRows([]);
-    } else {
-      setSelectedRows(reports.map(r => r.id));
-    }
-  };
-
-  const handleSelectOne = (id: string) => {
-    if (selectedRows.includes(id)) {
-      setSelectedRows(selectedRows.filter(x => x !== id));
-    } else {
-      setSelectedRows([...selectedRows, id]);
-    }
-  };
-
-  const formatDate = (dStr: string) => {
-    try {
-      const parts = dStr.split('-');
-      if (parts.length === 3) {
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const day = parseInt(parts[2], 10);
-        const month = months[parseInt(parts[1], 10) - 1];
-        const year = parts[0];
-        return `${day} ${month} ${year}`;
+function FocusTrap({ children, onEscape }: FocusTrapProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onEscape();
       }
-    } catch (e) {}
-    return dStr;
-  };
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onEscape]);
+  return <div ref={containerRef} style={{ display: 'contents' }}>{children}</div>;
+}
 
-  const filteredReports = reports.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase()) || item.desc.toLowerCase().includes(search.toLowerCase());
-    const matchesType = filters.type === 'All' || item.type === filters.type;
-    const matchesClient = filters.client === 'All' || item.client === filters.client;
-    const matchesStatus = filters.status === 'All' || item.status === filters.status;
-    return matchesSearch && matchesType && matchesClient && matchesStatus;
-  });
+// Modal Shell Component
+interface ModalShellProps {
+  onClose: () => void;
+  eyebrow: string;
+  titlePlain: string;
+  titleAccent: string;
+  maxWidth?: string;
+  footer?: React.ReactNode;
+  children: React.ReactNode;
+  bodyStyle?: React.CSSProperties;
+}
+
+function ModalShell({ onClose, eyebrow, titlePlain, titleAccent, maxWidth = '540px', footer, children, bodyStyle }: ModalShellProps) {
+  return (
+    <div
+      role="presentation"
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(42,22,40,0.45)', backdropFilter: 'blur(4px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+    >
+      <FocusTrap onEscape={onClose}>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${titlePlain} ${titleAccent}`}
+          onClick={(e) => e.stopPropagation()}
+          style={{ background: '#ffffff', borderRadius: '24px', width: '100%', maxWidth, maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(42,22,40,0.2)', overflow: 'hidden', fontFamily: 'var(--font-sans), Inter, sans-serif' }}
+        >
+          {/* Header */}
+          <div style={{ padding: '2rem 2rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexShrink: 0 }}>
+            <div>
+              <p style={{ margin: 0, fontSize: '0.75rem', color: 'rgba(42,22,40,0.4)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{eyebrow}</p>
+              <h2 style={{ margin: '0.2rem 0 0', fontSize: '1.625rem', fontWeight: 300, color: '#2A1628', fontFamily: 'var(--font-serif), Georgia, serif' }}>
+                {titlePlain} <span style={{ fontStyle: 'italic', color: '#E8760A' }}>{titleAccent}</span>
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{ background: 'rgba(42,22,40,0.04)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#2A1628', transition: 'background 0.15s ease' }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(42,22,40,0.08)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(42,22,40,0.04)')}
+            >
+              ✕
+            </button>
+          </div>
+          {/* Body */}
+          <div style={{ padding: '0 2rem 2rem', overflowY: 'auto', flex: 1, ...bodyStyle }} className="hide-scrollbar">
+            {children}
+          </div>
+          {/* Footer */}
+          {footer && (
+            <div style={{ padding: '1.25rem 2rem 1.5rem', background: '#FAF8F5', borderTop: '1px solid rgba(42,22,40,0.06)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', flexShrink: 0 }}>
+              {footer}
+            </div>
+          )}
+        </div>
+      </FocusTrap>
+    </div>
+  );
+}
+
+// Custom Select Component
+interface CustomSelectProps {
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+  placeholder?: string;
+  icon?: React.ReactNode;
+}
+
+function CustomSelect({ value, onChange, options, placeholder = 'Select...', icon }: CustomSelectProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [openUpward, setOpenUpward] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Calculate direction when opening dropdown
+  useEffect(() => {
+    if (isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      if (spaceBelow < 220 && rect.top > 220) {
+        setOpenUpward(true);
+      } else {
+        setOpenUpward(false);
+      }
+    }
+  }, [isOpen]);
 
   return (
-    <div style={{
-      color: '#2A1628',
-      fontFamily: 'var(--font-sans), Inter, sans-serif',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '1.5rem',
-      background: 'transparent',
-    }}>
-      
-      {/* ── HEADER SECTION ── */}
-      <div style={{
+    <div ref={containerRef} style={{ position: 'relative', width: '100%', fontFamily: 'var(--font-sans), Inter, sans-serif' }}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          padding: '0.625rem 0.75rem',
+          paddingLeft: icon ? '2.25rem' : '0.75rem',
+          borderRadius: '10px',
+          border: isOpen ? '1.5px solid #E8760A' : '1px solid #DDD0C4',
+          background: '#ffffff',
+          color: value ? '#2A1628' : 'rgba(42,22,40,0.4)',
+          fontSize: '0.8125rem',
+          fontFamily: 'inherit',
+          textAlign: 'left',
+          cursor: 'pointer',
+          outline: 'none',
+          boxSizing: 'border-box',
+          position: 'relative',
+        }}
+      >
+        {icon && (
+          <div style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
+            {icon}
+          </div>
+        )}
+        <span style={{ flex: 1, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <span style={{ color: 'rgba(42,22,40,0.45)', marginRight: '0.25rem' }}>{placeholder}:</span>
+          <span style={{ color: '#2A1628', fontWeight: 600 }}>{value || 'All'}</span>
+        </span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(42,22,40,0.4)" strokeWidth="2.5" style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div
+          style={{
+            position: 'absolute',
+            top: openUpward ? 'auto' : '100%',
+            bottom: openUpward ? '100%' : 'auto',
+            left: 0,
+            width: '100%',
+            marginTop: openUpward ? '0' : '4px',
+            marginBottom: openUpward ? '4px' : '0',
+            background: '#ffffff',
+            border: '1px solid #DDD0C4',
+            borderRadius: '10px',
+            boxShadow: '0 8px 24px rgba(42,22,40,0.12)',
+            zIndex: 1000,
+            maxHeight: '200px',
+            overflowY: 'auto',
+            boxSizing: 'border-box',
+            padding: '4px 0',
+          }}
+        >
+          {options.map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => {
+                onChange(opt);
+                setIsOpen(false);
+              }}
+              style={{
+                width: '100%',
+                padding: '0.5rem 0.75rem',
+                border: 'none',
+                background: opt === value ? 'rgba(232,118,10,0.06)' : 'transparent',
+                color: opt === value ? '#E8760A' : '#2A1628',
+                fontSize: '0.8125rem',
+                fontWeight: opt === value ? 700 : 500,
+                textAlign: 'left',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Pagination Component
+interface PaginationProps {
+  totalItems: number;
+  currentPage: number;
+  rowsPerPage: number;
+  onPageChange: (page: number) => void;
+  onRowsPerPageChange: (rows: number) => void;
+  itemLabel?: string;
+}
+
+function Pagination({ totalItems, currentPage, rowsPerPage, onPageChange, onRowsPerPageChange, itemLabel = 'records' }: PaginationProps) {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const totalPages = Math.max(1, Math.ceil(totalItems / rowsPerPage));
+  const from = totalItems === 0 ? 0 : Math.min((currentPage - 1) * rowsPerPage + 1, totalItems);
+  const to = Math.min(currentPage * rowsPerPage, totalItems);
+
+  return (
+    <div
+      style={{
+        background: '#FAF8F5',
+        border: '1px solid rgba(42,22,40,0.06)',
+        borderTop: 'none',
+        borderRadius: '0 0 16px 16px',
+        padding: '0.75rem 1.5rem',
         display: 'flex',
         justifyContent: 'space-between',
-        alignItems: 'flex-end',
-        paddingBottom: '1rem',
-        borderBottom: '1px solid #DDD0C4',
-      }}>
+        alignItems: 'center',
+        fontSize: '0.75rem',
+        color: 'rgba(42,22,40,0.6)',
+        marginTop: '-1px',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <span style={{ fontWeight: 500 }}>Rows per page:</span>
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={() => setDropdownOpen((o) => !o)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              border: '1px solid #DDD0C4',
+              borderRadius: '6px',
+              padding: '0.25rem 0.6rem',
+              background: '#fff',
+              fontSize: '0.75rem',
+              color: '#2A1628',
+              cursor: 'pointer',
+              fontFamily: 'var(--font-sans), Inter, sans-serif',
+            }}
+          >
+            {rowsPerPage}
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+          {dropdownOpen && (
+            <div style={{ position: 'absolute', bottom: '100%', left: 0, background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px', boxShadow: '0 4px 16px rgba(42,22,40,0.1)', zIndex: 100, minWidth: '60px', overflow: 'hidden' }}>
+              {[10, 20, 50].map((n) => (
+                <div
+                  key={n}
+                  onClick={() => {
+                    onRowsPerPageChange(n);
+                    setDropdownOpen(false);
+                  }}
+                  style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem', cursor: 'pointer', color: '#2A1628' }}
+                >
+                  {n}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <span>
+          Showing {from}–{to} of {totalItems} {itemLabel}
+        </span>
+      </div>
+
+      <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+        <button
+          onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+          disabled={currentPage === 1}
+          style={{ background: 'transparent', border: 'none', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', opacity: currentPage === 1 ? 0.3 : 0.8 }}
+        >
+          ◀
+        </button>
+        <span style={{ fontWeight: 600, color: '#2A1628', padding: '0 0.5rem' }}>
+          Page {currentPage} of {totalPages}
+        </span>
+        <button
+          onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+          disabled={currentPage === totalPages}
+          style={{ background: 'transparent', border: 'none', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', opacity: currentPage === totalPages ? 0.3 : 0.8 }}
+        >
+          ▶
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
+
+export default function ReportsTab() {
+  const [data, setData] = useState<ReportItem[]>(INITIAL_REPORTS);
+  const [isLoading, setIsLoading] = useState(false);
+  const [toasts, setToasts] = useState<{ id: string; message: string; tone: 'success' | 'danger' | 'info' | 'warning' }[]>([]);
+  const nextIdRef = useRef(1);
+
+  // Layout Filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterYear, setFilterYear] = useState('All');
+  const [filterPeriod, setFilterPeriod] = useState('All');
+  const [filterClient, setFilterClient] = useState('All');
+  const [filterUser, setFilterUser] = useState('All');
+  const [filterStatus, setFilterStatus] = useState('All');
+
+  // Selected Status Category Tab
+  const [activeTab, setActiveTab] = useState<string>('All');
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  // Bulk / checklist actions
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  // Actions menu trigger
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const [menuItem, setMenuItem] = useState<ReportItem | null>(null);
+
+  // Sorting
+  const [sortCol] = useState<string | null>(null);
+  const [sortDir] = useState<'asc' | 'desc'>('asc');
+
+  // Modals state
+  const [popup, setPopup] = useState<{
+    type: 'generate' | 'schedule' | 'templates' | 'exportCenter' | 'confirmDelete' | 'confirmArchive' | 'confirmGenerate' | 'confirmCancelSchedule' | 'reportPreview' | null;
+    tx?: ReportItem;
+  }>({ type: null });
+
+  // Drawer layout detail trigger
+  const [drawerTxId, setDrawerTxId] = useState<string | null>(null);
+  const [drawerTab, setDrawerTab] = useState<'overview' | 'charts' | 'transactions' | 'attachments' | 'history' | 'sharing' | 'export' | 'notes'>('overview');
+
+  // Top level state hooks for sub elements (adhering to hook rules)
+  const [previewZoom, setPreviewZoom] = useState(100);
+  const [previewPage, setPreviewPage] = useState(1);
+  const [drawerTxSubTab, setDrawerTxSubTab] = useState<'all' | 'journal' | 'invoice' | 'payment' | 'bill' | 'ledger' | 'adjustment'>('all');
+  const [drawerNoteTag, setDrawerNoteTag] = useState<'all' | 'internal' | 'ai' | 'audit' | 'pinned' | 'reviewer'>('all');
+
+  // Generate wizard state variables
+  const [genReportTemplate, setGenReportTemplate] = useState('Profit & Loss');
+  const [genClientName, setGenClientName] = useState('ABC Trading LLC');
+  const [genReportingPeriod, setGenReportingPeriod] = useState('Q1 2026');
+  const [genFinYear, setGenFinYear] = useState('2026');
+
+  // Schedule wizard state variables
+  const [schFrequency, setSchFrequency] = useState('Monthly');
+  const [schRecipients, setSchRecipients] = useState('');
+  const [schFormat, setSchFormat] = useState('pdf');
+
+  // Export Center state variables
+  const [exportScope, setExportScope] = useState<'all' | 'filtered' | 'selected'>('all');
+  const [exportFormat, setExportFormat] = useState<'excel' | 'csv' | 'pdf' | 'print'>('excel');
+
+  // Dynamic dynamic list arrays derived
+  const CLIENTS = useMemo(() => Array.from(new Set(data.map((x) => x.client))), [data]);
+  const PERIODS = useMemo(() => Array.from(new Set(data.map((x) => x.period))), [data]);
+  const YEARS = useMemo(() => Array.from(new Set(data.map((x) => x.financialYear))), [data]);
+  const USERS = useMemo(() => Array.from(new Set(data.map((x) => x.generatedBy))), [data]);
+
+  // Toast utility helper
+  const pushToast = (message: string, tone: 'success' | 'danger' | 'info' | 'warning') => {
+    const id = String(nextIdRef.current++);
+    setToasts((prev) => [...prev, { id, message, tone }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4000);
+  };
+
+  const handleRefresh = () => {
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+      pushToast('Financial reports repository updated from database.', 'success');
+    }, 300);
+  };
+
+  // Simulate loading states on filter changes
+  useEffect(() => {
+    let active = true;
+    const rafId = requestAnimationFrame(() => {
+      if (active) setIsLoading(true);
+    });
+    const timer = setTimeout(() => {
+      if (active) setIsLoading(false);
+    }, 250);
+    return () => {
+      active = false;
+      cancelAnimationFrame(rafId);
+      clearTimeout(timer);
+    };
+  }, [
+    activeTab,
+    filterYear,
+    filterPeriod,
+    filterClient,
+    filterUser,
+    filterStatus,
+    searchQuery,
+  ]);
+
+  // Filter returns based on search and parameters
+  const filteredData = useMemo(() => {
+    return data
+      .filter((r) => {
+        // Tab routing filter logic
+        if (activeTab === 'Scheduled' && !r.scheduled) return false;
+        if (activeTab === 'Favorites' && !r.favorite) return false;
+        if (activeTab === 'Archived' && !r.archived) return false;
+        if (activeTab !== 'All' && activeTab !== 'Scheduled' && activeTab !== 'Favorites' && activeTab !== 'Archived' && r.category !== activeTab) return false;
+
+        // Dropdown filters logic
+        if (filterYear !== 'All' && r.financialYear !== filterYear) return false;
+        if (filterPeriod !== 'All' && r.period !== filterPeriod) return false;
+        if (filterClient !== 'All' && r.client !== filterClient) return false;
+        if (filterUser !== 'All' && r.generatedBy !== filterUser) return false;
+        if (filterStatus !== 'All' && r.status !== filterStatus) return false;
+
+        // Search text matching logic
+        if (searchQuery.trim() !== '') {
+          const s = searchQuery.toLowerCase();
+          const matchClient = r.client.toLowerCase().includes(s);
+          const matchName = r.name.toLowerCase().includes(s);
+          const matchUser = r.generatedBy.toLowerCase().includes(s);
+          return matchClient || matchName || matchUser;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        if (!sortCol) return 0;
+        const v1 = a[sortCol as keyof ReportItem];
+        const v2 = b[sortCol as keyof ReportItem];
+
+        if (typeof v1 === 'string') {
+          return sortDir === 'asc'
+            ? (v1 as string).localeCompare(v2 as string)
+            : (v2 as string).localeCompare(v1 as string);
+        }
+        return 0;
+      });
+  }, [data, activeTab, filterYear, filterPeriod, filterClient, filterUser, filterStatus, searchQuery, sortCol, sortDir]);
+
+  // Page split calculation
+  const pagedData = useMemo(() => {
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    return filteredData.slice(startIndex, startIndex + rowsPerPage);
+  }, [filteredData, currentPage, rowsPerPage]);
+
+  const activeTx = useMemo(() => {
+    return data.find((x) => x.id === drawerTxId) || null;
+  }, [data, drawerTxId]);
+
+  // Checklist handler
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedIds(filteredData.map((r) => r.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectRow = (id: string) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  // Bulk actions trigger
+  const triggerBulkAction = (action: string) => {
+    if (selectedIds.length === 0) {
+      pushToast('No items selected.', 'warning');
+      return;
+    }
+    if (action === 'delete') {
+      setData((prev) => prev.filter((x) => !selectedIds.includes(x.id)));
+      pushToast(`${selectedIds.length} reports deleted successfully.`, 'danger');
+    } else if (action === 'archive') {
+      setData((prev) => prev.map((x) => (selectedIds.includes(x.id) ? { ...x, archived: true } : x)));
+      pushToast(`${selectedIds.length} reports archived.`, 'warning');
+    } else if (action === 'export') {
+      setPopup({ type: 'exportCenter' });
+    }
+    setSelectedIds([]);
+  };
+
+  // Submit generators
+  const handleGenerateSubmit = () => {
+    const newReport: ReportItem = {
+      id: `rep-${nextIdRef.current++}`,
+      name: `${genReportTemplate} Statement`,
+      category: 'Financial',
+      client: genClientName,
+      period: genReportingPeriod,
+      financialYear: genFinYear,
+      generatedBy: 'Mahesh Maddu',
+      generatedByInitials: 'MM',
+      generatedDate: new Date().toISOString().split('T')[0],
+      status: 'Completed',
+      lastUpdated: 'Just now',
+      version: 'v1.0',
+      exportCount: 0,
+      fileSize: '1.2 MB',
+      lastDownloaded: 'Never',
+      sharedWith: []
+    };
+
+    setData((prev) => [newReport, ...prev]);
+    setPopup({ type: null });
+    pushToast(`Report "${newReport.name}" generated successfully.`, 'success');
+  };
+
+  const handleScheduleSubmit = () => {
+    setPopup({ type: null });
+    pushToast(`Report schedule builder established successfully.`, 'success');
+  };
+
+  const handleMenuAction = (key: string) => {
+    if (!menuItem) return;
+    if (key === 'preview') {
+      setDrawerTxId(menuItem.id);
+      setDrawerTab('overview');
+    } else if (key === 'regenerate') {
+      setPopup({ type: 'confirmGenerate', tx: menuItem });
+    } else if (key === 'downloadPdf') {
+      pushToast(`PDF download initiated.`, 'info');
+    } else if (key === 'downloadExcel') {
+      pushToast(`Excel sheet export completed.`, 'info');
+    } else if (key === 'downloadCsv') {
+      pushToast(`CSV extraction completed.`, 'info');
+    } else if (key === 'history') {
+      setDrawerTxId(menuItem.id);
+      setDrawerTab('history');
+    } else if (key === 'duplicate') {
+      const duplicated: ReportItem = {
+        ...menuItem,
+        id: `rep-${nextIdRef.current++}`,
+        name: `${menuItem.name} (Copy)`,
+        generatedDate: new Date().toISOString().split('T')[0],
+      };
+      setData((prev) => [duplicated, ...prev]);
+      pushToast(`Report duplicated successfully.`, 'success');
+    } else if (key === 'share') {
+      setDrawerTxId(menuItem.id);
+      setDrawerTab('sharing');
+    } else if (key === 'email') {
+      pushToast(`Email report queued for delivery.`, 'success');
+    } else if (key === 'schedule') {
+      setPopup({ type: 'schedule', tx: menuItem });
+    } else if (key === 'openClient') {
+      pushToast(`Navigating to Client Hub profile: ${menuItem.client}...`, 'info');
+    } else if (key === 'auditLog') {
+      setDrawerTxId(menuItem.id);
+      setDrawerTab('history');
+    } else if (key === 'archive') {
+      setPopup({ type: 'confirmArchive', tx: menuItem });
+    } else if (key === 'delete') {
+      setPopup({ type: 'confirmDelete', tx: menuItem });
+    }
+  };
+
+  useEffect(() => {
+    const closeMenu = (e: MouseEvent) => {
+      // If clicking inside the actions trigger button, let its own click handler manage it
+      const target = e.target as HTMLElement;
+      if (target.closest('.action-btn-trigger')) return;
+      setMenuPos(null);
+    };
+    document.addEventListener('click', closeMenu);
+    return () => document.removeEventListener('click', closeMenu);
+  }, []);
+
+  return (
+    <div style={{ color: '#2A1628', fontFamily: 'var(--font-sans), Inter, sans-serif', display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0 0.5rem' }}>
+      {/* Toast notifications */}
+      <div style={{ position: 'fixed', top: '1.5rem', right: '1.5rem', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '0.5rem', pointerEvents: 'none' }}>
+        {toasts.map((t) => {
+          const bg = t.tone === 'success' ? '#E6F4EA' : t.tone === 'danger' ? '#FCE8E6' : t.tone === 'warning' ? '#FEF7E0' : '#E8F0FE';
+          const color = t.tone === 'success' ? '#137333' : t.tone === 'danger' ? '#C5221F' : t.tone === 'warning' ? '#B06000' : '#1A73E8';
+          return (
+            <div key={t.id} style={{ pointerEvents: 'auto', background: bg, border: `1px solid ${color}20`, borderRadius: '12px', padding: '0.75rem 1.25rem', boxShadow: '0 10px 30px rgba(42,22,40,0.08)', display: 'flex', alignItems: 'center', gap: '0.75rem', animation: 'slideIn 0.25s ease forwards' }}>
+              <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: color }} />
+              <span style={{ fontSize: '0.8125rem', fontWeight: 600, color }}>{t.message}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── 1. HEADER SECTION ── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingBottom: '1rem', borderBottom: '1px solid #DDD0C4' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#E8760A', display: 'inline-block' }} />
-            <p style={{ margin: 0, fontSize: '0.75rem', color: 'rgba(42,22,40,0.5)', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', fontFamily: 'Inter, sans-serif' }}>
-              Accounting &gt; Reports
+            <p style={{ margin: 0, fontSize: '0.75rem', color: 'rgba(42,22,40,0.5)', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase' }}>
+              Accounting &gt; Reports Center
             </p>
           </div>
-          <h1 style={{
-            margin: 0,
-            fontSize: '2.5rem',
-            fontWeight: 300,
-            color: '#2A1628',
-            letterSpacing: '-0.02em',
-            fontFamily: 'var(--font-serif), Georgia, serif'
-          }}>
+          <h1 style={{ margin: 0, fontSize: '2.5rem', fontWeight: 300, color: '#2A1628', letterSpacing: '-0.02em', fontFamily: 'var(--font-serif), Georgia, serif' }}>
             Reports <span style={{ fontStyle: 'italic', color: '#E8760A' }}>Center</span>
           </h1>
           <p style={{ margin: '0.5rem 0 0', fontSize: '0.875rem', color: 'rgba(42,22,40,0.6)' }}>
-            Generate, view and export financial and compliance reports for your clients.
+            Generate financial statements, tax reports, compliance reports, and management reports.
           </p>
         </div>
-        
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+
+        <div style={{ display: 'flex', gap: '0.625rem', alignItems: 'center' }}>
           <button
-            onClick={() => setSettingsOpen(true)}
+            type="button"
+            onClick={() => setPopup({ type: 'generate' })}
             style={{
               background: '#ffffff',
               border: '1px solid #DDD0C4',
-              padding: '0.625rem 1.25rem',
+              color: '#2A1628',
               borderRadius: '8px',
+              padding: '0.625rem 1.25rem',
               fontSize: '0.8125rem',
               fontWeight: 600,
               cursor: 'pointer',
-              color: '#2A1628',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem'
+              gap: '0.375rem',
+              whiteSpace: 'nowrap',
+              fontFamily: 'inherit',
             }}
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5">
-              <circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
             </svg>
-            Report Settings
+            Generate Report
           </button>
-          
           <button
-            onClick={() => setScheduleOpen(true)}
+            type="button"
+            onClick={() => setPopup({ type: 'schedule' })}
             style={{
               background: '#ffffff',
               border: '1px solid #DDD0C4',
-              padding: '0.625rem 1.25rem',
+              color: '#2A1628',
               borderRadius: '8px',
+              padding: '0.625rem 1.25rem',
               fontSize: '0.8125rem',
               fontWeight: 600,
               cursor: 'pointer',
-              color: '#2A1628',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem'
+              gap: '0.375rem',
+              whiteSpace: 'nowrap',
+              fontFamily: 'inherit',
             }}
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5">
@@ -337,48 +850,103 @@ export default function ReportsTab() {
             </svg>
             Schedule Report
           </button>
+          <button
+            type="button"
+            onClick={() => setPopup({ type: 'exportCenter' })}
+            style={{
+              background: '#ffffff',
+              border: '1px solid #DDD0C4',
+              color: '#2A1628',
+              borderRadius: '8px',
+              padding: '0.625rem 1.25rem',
+              fontSize: '0.8125rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.375rem',
+              whiteSpace: 'nowrap',
+              fontFamily: 'inherit',
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5">
+              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13" />
+            </svg>
+            Export Center
+          </button>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            style={{
+              background: '#2A1628',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '0.625rem 1.25rem',
+              fontSize: '0.8125rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.375rem',
+              whiteSpace: 'nowrap',
+              boxShadow: '0 4px 12px rgba(42,22,40,0.15)',
+              fontFamily: 'inherit',
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+            </svg>
+            Refresh
+          </button>
         </div>
       </div>
 
-      {/* ── METRICS GRID (5 CARDS ROW) ── */}
+      {/* ── 2. METRICS DASHBOARD CARDS ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.75rem' }}>
         {[
-          { label: 'Total Reports', value: '268', sub: '+18 this month', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>, bg: '#FAF2EC', border: '#F3DEC9' },
-          { label: 'Generated This Month', value: '86', sub: '+12 vs last month', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg>, bg: '#FAF2EC', border: '#F3DEC9' },
-          { label: 'Scheduled Reports', value: '24', sub: 'Active schedules', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>, bg: '#FAF2EC', border: '#F3DEC9' },
-          { label: 'Report Downloads', value: '142', sub: 'This month', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>, bg: '#FAF2EC', border: '#F3DEC9' },
-          { label: 'Failed Reports', value: '3', sub: 'View errors', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>, bg: '#FEF2F2', border: '#FECACA' },
+          { label: 'Total Reports Generated', value: '148', sub: '+12 this month', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg> },
+          { label: 'Reports Generated Today', value: '14', sub: 'Last sync 5 mins ago', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> },
+          { label: 'Average Generation Time', value: '1.8s', sub: 'Optimization peak', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg> },
+          { label: 'Failed Reports', value: '1', sub: 'Failed compilation logs', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg> },
+          { label: 'Storage Used', value: '254 MB', sub: 'PDF & Excel packages', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg> },
+          { label: 'Active Schedules', value: '8', sub: 'Weekly & Monthly', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg> },
+          { label: 'AI Generated Reports', value: '42', sub: 'IncHub Suite insights', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg> },
+          { label: 'Last Generated', value: 'rep-1', sub: '2 hours ago', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> },
+          { label: 'Export Count', value: '34 times', sub: 'Shared via APIs', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13"/></svg> },
+          { label: 'Compliance Score', value: '98%', sub: '2 audits remaining', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg> }
         ].map((card, i) => (
-          <div key={i} style={{
-            background: '#ffffff',
-            border: '1px solid rgba(42,22,40,0.06)',
-            borderRadius: '12px',
-            padding: '1rem',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            boxShadow: '0 4px 10px rgba(42,22,40,0.02)',
-            minHeight: '105px'
-          }}>
+          <div
+            key={i}
+            style={{
+              background: '#ffffff',
+              border: '1px solid #DDD0C4',
+              borderRadius: '12px',
+              padding: '1rem',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              boxShadow: '0 4px 10px rgba(42,22,40,0.02)',
+              minHeight: '105px',
+            }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'rgba(42,22,40,0.6)', lineHeight: 1.2, flex: 1, marginRight: '0.5rem' }}>{card.label}</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'rgba(42,22,40,0.6)', lineHeight: 1.2 }}>
+                {card.label}
+              </span>
               <div style={{
-                width: '28px',
-                height: '28px',
-                borderRadius: '6px',
-                background: card.bg,
-                border: `1px solid ${card.border}`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#E8760A',
-                flexShrink: 0
+                width: '28px', height: '28px', borderRadius: '6px',
+                background: 'rgba(232,118,10,0.06)', color: '#E8760A',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0, fontSize: '0.9rem'
               }}>
                 {card.icon}
               </div>
             </div>
             <div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#2A1628', lineHeight: 1.1 }}>{card.value}</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 300, color: '#2A1628', lineHeight: 1.1, fontFamily: 'var(--font-serif), Georgia, serif' }}>
+                {card.value}
+              </div>
               <div style={{ fontSize: '0.6875rem', color: 'rgba(42,22,40,0.45)', marginTop: '0.125rem', fontWeight: 500 }}>
                 {card.sub}
               </div>
@@ -387,1202 +955,1258 @@ export default function ReportsTab() {
         ))}
       </div>
 
-      {/* ── FILTER BAR ── */}
-      <div style={{
-        background: '#ffffff',
-        border: '1px solid rgba(42,22,40,0.06)',
-        borderRadius: '12px',
-        padding: '0.75rem 1rem',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '0.75rem',
-        boxShadow: '0 4px 12px rgba(42,22,40,0.01)'
-      }}>
-        {/* Search box */}
-        <div style={{ position: 'relative', flex: 1, minWidth: '180px' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'rgba(42,22,40,0.35)' }}>
-            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Search reports by name..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ width: '100%', padding: '0.55rem 1rem 0.55rem 2.25rem', fontSize: '0.8125rem', border: '1px solid #DDD0C4', borderRadius: '8px', background: '#FAF8F5', outline: 'none', color: '#2A1628', boxSizing: 'border-box' }}
-          />
-        </div>
-
-        {/* Custom filter dropdowns */}
-        {['type', 'client', 'status'].map((key) => {
-          const isOpen = activeDropdown === key;
-          const selectedVal = filters[key as keyof typeof filters];
-          const options = filterOptions[key as keyof typeof filterOptions];
-          const label = key === 'type' ? 'Report Type' : key === 'client' ? 'Client' : 'Status';
+      {/* ── 3. FILTER & SEGMENTATION TABS ── */}
+      <div style={{ display: 'flex', justifyContent: 'center', width: '100%', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.25rem', borderBottom: '1px solid rgba(42,22,40,0.04)' }} className="hide-scrollbar">
+        {CATEGORIES.map((tab) => {
+          const isActive = activeTab === tab;
+          const tabColors = {
+            border: isActive ? '1.5px solid #E8760A' : '1px solid #DDD0C4',
+            bg: isActive ? 'rgba(232,118,10,0.06)' : '#ffffff',
+            color: isActive ? '#E8760A' : 'rgba(42,22,40,0.6)',
+          };
 
           return (
-            <div key={key} style={{ position: 'relative' }}>
-              <button
-                onClick={() => setActiveDropdown(isOpen ? null : key)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  padding: '0.55rem 0.85rem',
-                  fontSize: '0.8125rem',
-                  border: '1px solid #DDD0C4',
-                  borderRadius: '8px',
-                  background: '#FAF8F5',
-                  color: '#2A1628',
-                  cursor: 'pointer',
-                  fontWeight: 500,
-                  whiteSpace: 'nowrap',
-                  fontFamily: 'inherit',
-                  justifyContent: 'space-between',
-                  minWidth: key === 'type' ? '140px' : key === 'client' ? '130px' : '110px'
-                }}
-              >
-                <span>{label}: {selectedVal}</span>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 150ms ease' }}>
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
-              </button>
-
-              {isOpen && (
-                <div 
-                  className="hide-scrollbar"
-                  style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    marginTop: '4px',
-                    background: '#ffffff',
-                    border: '1px solid #DDD0C4',
-                    borderRadius: '8px',
-                    boxShadow: '0 4px 12px rgba(42,22,40,0.08)',
-                    zIndex: 30,
-                    minWidth: '100%',
-                    padding: '4px',
-                    maxHeight: '200px',
-                    overflowY: 'auto'
-                  }}>
-                  {options.map((option) => (
-                    <div
-                      key={option}
-                      onClick={() => {
-                        setFilters({ ...filters, [key]: option });
-                        setActiveDropdown(null);
-                      }}
-                      style={{
-                        padding: '0.4rem 0.625rem',
-                        fontSize: '0.75rem',
-                        color: '#2A1628',
-                        cursor: 'pointer',
-                        borderRadius: '6px',
-                        background: selectedVal === option ? 'rgba(232, 118, 10, 0.06)' : 'transparent',
-                        fontWeight: selectedVal === option ? 600 : 400,
-                        transition: 'all 100ms ease',
-                        whiteSpace: 'nowrap'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'rgba(232, 118, 10, 0.06)';
-                        e.currentTarget.style.color = '#E8760A';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = selectedVal === option ? 'rgba(232, 118, 10, 0.06)' : 'transparent';
-                        e.currentTarget.style.color = '#2A1628';
-                      }}
-                    >
-                      {option}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <button
+              key={tab}
+              type="button"
+              onClick={() => {
+                setActiveTab(tab);
+                setCurrentPage(1);
+              }}
+              style={{
+                padding: '0.375rem 0.875rem',
+                borderRadius: '20px',
+                border: tabColors.border,
+                background: tabColors.bg,
+                color: tabColors.color,
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.15s ease',
+                fontFamily: 'inherit',
+              }}
+            >
+              {tab}
+            </button>
           );
         })}
+      </div>
 
-        {/* Date range picker */}
-        <div style={{ position: 'relative' }}>
-          <button
-            onClick={() => setDatePickerOpen(o => !o)}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#FAF8F5', border: '1px solid #DDD0C4', padding: '0.55rem 0.85rem', borderRadius: '8px', fontSize: '0.8125rem', color: '#2A1628', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
-          >
-            {formatDate(startDate)} – {formatDate(endDate)}
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'rgba(42,22,40,0.4)' }}>
-              <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+      {/* ── 4. SEARCH & FILTER DROPDOWNS ── */}
+      <div style={{ background: '#ffffff', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '12px', padding: '0.75rem 1rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center', boxShadow: '0 4px 12px rgba(42,22,40,0.01)' }}>
+        <div style={{ position: 'relative', flex: '1 1 200px' }}>
+          <input
+            type="text"
+            placeholder="Search reports..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{ width: '100%', padding: '0.625rem 0.75rem 0.625rem 2.25rem', borderRadius: '10px', border: '1px solid #DDD0C4', outline: 'none', fontSize: '0.8125rem', boxSizing: 'border-box', background: '#FAF8F5', color: '#2A1628', fontFamily: 'inherit' }}
+          />
+          <div style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(42,22,40,0.4)" strokeWidth="2.5">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
-          </button>
-          
-          {datePickerOpen && (
-            <div style={{
-              position: 'absolute',
-              top: '100%',
-              right: 0,
-              marginTop: '4px',
-              background: '#ffffff',
-              border: '1px solid #DDD0C4',
-              borderRadius: '12px',
-              boxShadow: '0 8px 24px rgba(42,22,40,0.12)',
-              zIndex: 30,
-              padding: '1rem',
-              width: '260px',
-              fontFamily: 'inherit',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.75rem'
-            }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.3rem' }}>Start Date</label>
-                <input
-                  type="text"
-                  placeholder="YYYY-MM-DD"
-                  value={tempStartDate}
-                  onChange={e => setTempStartDate(e.target.value)}
-                  style={{ width: '100%', border: '1px solid #DDD0C4', borderRadius: '6px', padding: '0.4rem 0.5rem', fontSize: '0.8125rem', color: '#2A1628', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.3rem' }}>End Date</label>
-                <input
-                  type="text"
-                  placeholder="YYYY-MM-DD"
-                  value={tempEndDate}
-                  onChange={e => setTempEndDate(e.target.value)}
-                  style={{ width: '100%', border: '1px solid #DDD0C4', borderRadius: '6px', padding: '0.4rem 0.5rem', fontSize: '0.8125rem', color: '#2A1628', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
-                />
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
-                <button
-                  onClick={() => { setTempStartDate(startDate); setTempEndDate(endDate); setDatePickerOpen(false); }}
-                  style={{ flex: 1, padding: '0.45rem', border: '1px solid #DDD0C4', borderRadius: '6px', background: '#fff', color: '#2A1628', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => { setStartDate(tempStartDate); setEndDate(tempEndDate); setDatePickerOpen(false); }}
-                  style={{ flex: 1, padding: '0.45rem', border: 'none', borderRadius: '6px', background: '#E8760A', color: '#fff', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 2px 6px rgba(232,118,10,0.2)' }}
-                >
-                  Apply
-                </button>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
 
-        <button
-          onClick={() => setFilters({ type: 'All', client: 'All', status: 'All' })}
-          style={{
-            padding: '0.55rem 1.25rem',
-            fontSize: '0.8125rem',
-            border: '1px solid #DDD0C4',
-            borderRadius: '8px',
-            background: '#FAF8F5',
-            color: 'rgba(42,22,40,0.6)',
-            cursor: 'pointer',
-            fontWeight: 600,
-            transition: 'all 150ms ease',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            outline: 'none',
-            fontFamily: 'inherit'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#ffffff';
-            e.currentTarget.style.color = '#E8760A';
-            e.currentTarget.style.borderColor = '#E8760A';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = '#FAF8F5';
-            e.currentTarget.style.color = 'rgba(42,22,40,0.6)';
-            e.currentTarget.style.borderColor = '#DDD0C4';
-          }}
-        >
-          Reset
-        </button>
-      </div>
-
-      {/* ── POPULAR REPORTS ROW ── */}
-      <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#2A1628', margin: 0, fontFamily: 'var(--font-sans), Inter, sans-serif' }}>Popular Reports</h3>
-          <a href="#" style={{ fontSize: '0.75rem', color: '#E8760A', textDecoration: 'none', fontWeight: 600 }}>View All Reports →</a>
+        <div style={{ flex: '1 1 120px' }}>
+          <CustomSelect value={filterYear} onChange={setFilterYear} options={['All', ...YEARS]} placeholder="Year" />
         </div>
-        
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '0.75rem' }}>
-          {[
-            { title: 'Profit & Loss Statement', desc: 'View income, expenses and net profit for a period.', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg>, bg: '#FAF2EC' },
-            { title: 'Balance Sheet', desc: 'View assets, liabilities and equity as of a date.', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>, bg: '#FAF2EC' },
-            { title: 'Cash Flow Statement', desc: 'Track cash inflows and outflows.', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" /></svg>, bg: '#FAF2EC' },
-            { title: 'VAT Return Report', desc: 'Detailed VAT summary for returns and submissions.', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>, bg: '#FAF2EC' },
-            { title: 'Corporate Tax Report', desc: 'Tax computation and compliance summary.', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" /></svg>, bg: '#FAF2EC' },
-            { title: 'General Ledger', desc: 'Detailed general ledger transactions.', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>, bg: '#FAF2EC' }
-          ].map((report, idx) => (
-            <div key={idx} style={{
-              background: '#ffffff',
-              border: '1px solid rgba(42,22,40,0.06)',
-              borderRadius: '12px',
-              padding: '1rem',
-              boxShadow: '0 4px 12px rgba(42,22,40,0.02)',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              minHeight: '180px'
-            }}>
-              <div>
-                <div style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '6px',
-                  background: report.bg,
-                  border: '1px solid #F3DEC9',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#E8760A',
-                  marginBottom: '0.75rem'
-                }}>
-                  {report.icon}
-                </div>
-                <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#2A1628', marginBottom: '0.35rem', lineHeight: 1.2 }}>{report.title}</div>
-                <div style={{ fontSize: '0.6875rem', color: 'rgba(42,22,40,0.5)', lineHeight: 1.3 }}>{report.desc}</div>
-              </div>
-              <button 
-                onClick={() => {
-                  setGenerateForm({
-                    reportName: report.title,
-                    client: '',
-                    generatedBy: '',
-                    generatedByInitials: '',
-                    period: '',
-                    status: '' as any
-                  });
-                  setGenerateModalOpen(true);
-                }}
-                style={{
-                  background: '#FAF8F5',
-                  border: '1px solid #DDD0C4',
-                  color: '#2A1628',
-                  borderRadius: '6px',
-                  padding: '0.4rem 0',
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  width: '100%',
-                  cursor: 'pointer',
-                  transition: 'all 150ms ease',
-                  fontFamily: 'inherit'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#2A1628';
-                  e.currentTarget.style.color = '#ffffff';
-                  e.currentTarget.style.borderColor = '#2A1628';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = '#FAF8F5';
-                  e.currentTarget.style.color = '#2A1628';
-                  e.currentTarget.style.borderColor = '#DDD0C4';
-                }}
-              >
-                Generate
-              </button>
-            </div>
-          ))}
+        <div style={{ flex: '1 1 120px' }}>
+          <CustomSelect value={filterPeriod} onChange={setFilterPeriod} options={['All', ...PERIODS]} placeholder="Period" />
+        </div>
+        <div style={{ flex: '1 1 120px' }}>
+          <CustomSelect value={filterClient} onChange={setFilterClient} options={['All', ...CLIENTS]} placeholder="Client" />
+        </div>
+        <div style={{ flex: '1 1 120px' }}>
+          <CustomSelect value={filterUser} onChange={setFilterUser} options={['All', ...USERS]} placeholder="Author" />
+        </div>
+        <div style={{ flex: '1 1 120px' }}>
+          <CustomSelect value={filterStatus} onChange={setFilterStatus} options={['All', 'Completed', 'Pending', 'Failed']} placeholder="Status" />
         </div>
       </div>
 
-      {/* ── ALL REPORTS LIST TABLE ── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#2A1628', margin: 0, fontFamily: 'var(--font-sans), Inter, sans-serif' }}>All Reports</h3>
+      {/* ── 5. CHECKLIST BULK ACTION BAR ── */}
+      {selectedIds.length > 0 && (
+        <div style={{ background: '#2A1628', color: '#ffffff', padding: '0.75rem 1.25rem', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', animation: 'slideIn 0.2s ease forwards' }}>
+          <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{selectedIds.length} reports selected</span>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button onClick={() => triggerBulkAction('export')} style={{ background: 'rgba(255,255,255,0.08)', color: '#fff', border: 'none', borderRadius: '6px', padding: '0.4rem 0.85rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Export Selected</button>
+            <button onClick={() => triggerBulkAction('archive')} style={{ background: 'rgba(255,255,255,0.08)', color: '#fff', border: 'none', borderRadius: '6px', padding: '0.4rem 0.85rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Archive Selected</button>
+            <button onClick={() => triggerBulkAction('delete')} style={{ background: '#DC2626', color: '#fff', border: 'none', borderRadius: '6px', padding: '0.4rem 0.85rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Delete Selected</button>
+          </div>
         </div>
+      )}
 
-        <div className="client-table-scroll" style={{
-          background: '#ffffff',
-          border: '1px solid rgba(42,22,40,0.06)',
-          borderRadius: '16px',
-          overflowX: 'auto',
-          boxShadow: '0 4px 12px rgba(42,22,40,0.01)'
-        }}>
-          <style>{`
-            .client-table-scroll::-webkit-scrollbar { height: 6px; }
-            .client-table-scroll::-webkit-scrollbar-track { background: rgba(42,22,40,0.03); border-radius: 4px; }
-            .client-table-scroll::-webkit-scrollbar-thumb { background: rgba(42,22,40,0.15); border-radius: 4px; }
-            .client-table-scroll::-webkit-scrollbar-thumb:hover { background: rgba(42,22,40,0.25); }
-          `}</style>
-          <table style={{ width: '100%', minWidth: '1350px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8125rem' }}>
+      {/* ── 6. MAIN TABLE ── */}
+      <div style={{ border: '1px solid rgba(42,22,40,0.06)', borderRadius: '16px', overflow: 'hidden', background: '#ffffff', boxShadow: '0 4px 12px rgba(42,22,40,0.01)' }}>
+        <div style={{ overflowX: 'auto', position: 'relative' }} className="hide-scrollbar">
+          <table style={{ width: '100%', minWidth: '1100px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8125rem' }}>
             <thead>
               <tr style={{ background: '#FAF8F5', borderBottom: '1px solid rgba(42,22,40,0.06)', color: 'rgba(42,22,40,0.5)', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                <th style={{ 
-                  padding: '1rem 0.75rem', 
-                  width: '48px', 
-                  textAlign: 'center', 
-                  position: 'sticky', 
-                  left: 0, 
-                  background: '#FAF8F5', 
-                  zIndex: 10 
-                }}>
-                  <div 
-                    onClick={toggleSelectAll}
-                    style={{
-                      width: '16px',
-                      height: '16px',
-                      borderRadius: '4px',
-                      border: selectedRows.length === INITIAL_REPORTS.length ? '1px solid #E8760A' : '1px solid #DDD0C4',
-                      background: selectedRows.length === INITIAL_REPORTS.length ? '#E8760A' : '#ffffff',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      userSelect: 'none',
-                      transition: 'all 150ms ease',
-                      margin: '0 auto'
-                    }}
-                  >
-                    {selectedRows.length === INITIAL_REPORTS.length && (
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3.5">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    )}
-                  </div>
+                <th style={{ padding: '1rem 0.75rem', width: '48px', textAlign: 'center', position: 'sticky', left: 0, background: '#FAF8F5', zIndex: 10 }}>
+                  <input
+                    type="checkbox"
+                    onChange={handleSelectAll}
+                    checked={selectedIds.length === filteredData.length && filteredData.length > 0}
+                  />
                 </th>
-                <th style={{ 
-                  padding: '1rem', 
-                  position: 'sticky', 
-                  left: '48px', 
-                  background: '#FAF8F5', 
-                  zIndex: 10, 
-                  borderRight: '1px solid #DDD0C4' 
-                }}>REPORT NAME</th>
-                <th style={{ padding: '1rem' }}>REPORT TYPE</th>
-                <th style={{ padding: '1rem' }}>CLIENT / COMPANY</th>
+                <th style={{ padding: '1rem', position: 'sticky', left: '48px', background: '#FAF8F5', zIndex: 10, borderRight: '1px solid #DDD0C4' }}>REPORT NAME</th>
+                <th style={{ padding: '1rem' }}>CATEGORY</th>
+                <th style={{ padding: '1rem' }}>CLIENT</th>
                 <th style={{ padding: '1rem' }}>PERIOD</th>
-                <th style={{ padding: '1rem' }}>GENERATED ON</th>
-                <th style={{ padding: '1rem' }}>STATUS</th>
+                <th style={{ padding: '1rem' }}>VERSION</th>
+                <th style={{ padding: '1rem' }}>EXPORTS</th>
+                <th style={{ padding: '1rem' }}>FILE SIZE</th>
+                <th style={{ padding: '1rem' }}>LAST DOWNLOADED</th>
+                <th style={{ padding: '1rem' }}>SHARED WITH</th>
                 <th style={{ padding: '1rem' }}>GENERATED BY</th>
+                <th style={{ padding: '1rem' }}>GENERATED DATE</th>
+                <th style={{ padding: '1rem' }}>STATUS</th>
                 <th style={{ padding: '1rem', textAlign: 'center' }}>ACTIONS</th>
               </tr>
             </thead>
             <tbody>
-              {filteredReports.map((item, idx) => (
-                <tr key={item.id} style={{
-                  borderBottom: idx < filteredReports.length - 1 ? '1px solid rgba(42,22,40,0.04)' : 'none',
-                  background: selectedRows.includes(item.id) ? 'rgba(232,118,10,0.02)' : 'transparent'
-                }}>
-                  <td style={{ 
-                    padding: '1rem 0.75rem', 
-                    textAlign: 'center',
-                    position: 'sticky',
-                    left: 0,
-                    background: selectedRows.includes(item.id) ? '#FAF4EE' : '#ffffff',
-                    zIndex: 9
-                  }}>
-                    <div 
-                      onClick={() => handleSelectOne(item.id)}
-                      style={{
-                        width: '16px',
-                        height: '16px',
-                        borderRadius: '4px',
-                        border: selectedRows.includes(item.id) ? '1px solid #E8760A' : '1px solid #DDD0C4',
-                        background: selectedRows.includes(item.id) ? '#E8760A' : '#ffffff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        userSelect: 'none',
-                        transition: 'all 150ms ease',
-                        margin: '0 auto'
-                      }}
-                    >
-                      {selectedRows.includes(item.id) && (
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3.5">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      )}
-                    </div>
-                  </td>
-                  
-                  {/* Report Name details */}
-                  <td style={{ 
-                    padding: '1rem',
-                    position: 'sticky',
-                    left: '48px',
-                    background: selectedRows.includes(item.id) ? '#FAF4EE' : '#ffffff',
-                    zIndex: 9,
-                    borderRight: '1px solid #DDD0C4',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <div style={{
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '8px',
-                        background: '#FAF2EC',
-                        border: '1px solid #F3DEC9',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#E8760A',
-                        flexShrink: 0
-                      }}>
-                        {item.icon}
-                      </div>
-                      <div>
-                        <div style={{ fontWeight: 600, color: '#2A1628' }}>{item.name}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.45)' }}>{item.desc}</div>
-                      </div>
-                    </div>
-                  </td>
-
-                  {/* Report Type Badge */}
-                  <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
-                    <span style={{
-                      fontSize: '0.6875rem',
-                      fontWeight: 700,
-                      padding: '0.2rem 0.5rem',
-                      borderRadius: '4px',
-                      background: item.typeBg,
-                      color: item.typeColor,
-                      border: `1px solid ${item.typeColor}20`
-                    }}>{item.type}</span>
-                  </td>
-
-                  {/* Client company */}
-                  <td style={{ padding: '1rem', fontWeight: 600, color: '#2A1628', whiteSpace: 'nowrap' }}>
-                    {item.client}
-                  </td>
-
-                  {/* Period */}
-                  <td style={{ padding: '1rem', color: 'rgba(42,22,40,0.8)', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                    {item.period}
-                  </td>
-
-                  {/* Generated On */}
-                  <td style={{ padding: '1rem', color: 'rgba(42,22,40,0.7)', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                    {item.generatedOn}
-                  </td>
-
-                  {/* Status badge */}
-                  <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
-                    <span style={{
-                      fontSize: '0.7rem',
-                      fontWeight: 700,
-                      padding: '0.25rem 0.5rem',
-                      borderRadius: '4px',
-                      background: item.status === 'Completed' ? 'rgba(4, 120, 87, 0.08)' : 'rgba(196, 105, 90, 0.08)',
-                      color: item.status === 'Completed' ? '#047857' : '#C4695A'
-                    }}>
-                      {item.status}
-                    </span>
-                  </td>
-
-                  {/* Generated By */}
-                  <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <div style={{
-                        width: '24px',
-                        height: '24px',
-                        borderRadius: '50%',
-                        background: 'rgba(232, 118, 10, 0.08)',
-                        color: '#E8760A',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '0.65rem',
-                        fontWeight: 700,
-                        flexShrink: 0
-                      }}>
-                        {item.generatedByInitials}
-                      </div>
-                      <span style={{ fontWeight: 500, color: '#2A1628' }}>{item.generatedBy}</span>
-                    </div>
-                  </td>
-
-                  {/* Actions */}
-                  <td style={{ padding: '1rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', alignItems: 'center' }}>
-                      <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#2A1628', opacity: 0.6, display: 'flex', padding: 0 }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
-                      </button>
-                      <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#2A1628', opacity: 0.6, display: 'flex', padding: 0 }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                          <circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" />
-                        </svg>
-                      </button>
-                    </div>
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid rgba(42,22,40,0.04)' }}>
+                    <td style={{ padding: '1rem' }}><div style={{ width: '16px', height: '16px', background: '#F3F4F6', borderRadius: '4px' }} /></td>
+                    {Array.from({ length: 13 }).map((_, idx) => (
+                      <td key={idx} style={{ padding: '1rem' }}><div style={{ width: idx === 0 ? '180px' : '70px', height: '12px', background: '#F3F4F6', borderRadius: '4px' }} /></td>
+                    ))}
+                  </tr>
+                ))
+              ) : pagedData.length === 0 ? (
+                <tr>
+                  <td colSpan={14} style={{ padding: '4rem 3rem', textAlign: 'center', color: 'rgba(42,22,40,0.4)' }}>
+                    {(() => {
+                      let title = 'No reports found';
+                      let desc = 'Create your first statement using the wizard.';
+                      if (searchQuery) {
+                        title = 'No Search Results';
+                        desc = `We couldn't find any reports matching "${searchQuery}".`;
+                      } else if (activeTab === 'Scheduled') {
+                        title = 'No Scheduled Reports';
+                        desc = 'Configure recurrent automated report generations in the scheduler wizard.';
+                      } else if (activeTab === 'Favorites') {
+                        title = 'No Favorites';
+                        desc = 'Star your most relevant statement versions for instant access.';
+                      } else if (activeTab === 'Archived') {
+                        title = 'No Archived Reports';
+                        desc = 'View your active files index or archive outdated reports.';
+                      }
+                      return (
+                        <>
+                          <div style={{ fontSize: '1rem', fontWeight: 700, color: '#2A1628', marginBottom: '0.25rem' }}>{title}</div>
+                          <p style={{ margin: '0 0 1.25rem 0', fontSize: '0.75rem', color: 'rgba(42,22,40,0.5)' }}>{desc}</p>
+                          <button
+                            type="button"
+                            onClick={() => setPopup({ type: 'generate' })}
+                            style={{ padding: '0.5rem 1rem', background: '#2a1628', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                          >
+                            Generate Report
+                          </button>
+                        </>
+                      );
+                    })()}
                   </td>
                 </tr>
-              ))}
+              ) : (
+                pagedData.map((item, idx) => {
+                  const isSelected = selectedIds.includes(item.id);
+                  return (
+                    <tr
+                      key={item.id}
+                      style={{
+                        borderBottom: idx < pagedData.length - 1 ? '1px solid rgba(42,22,40,0.04)' : 'none',
+                        background: isSelected ? 'rgba(232,118,10,0.02)' : 'transparent',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(42,22,40,0.01)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = isSelected ? 'rgba(232,118,10,0.02)' : 'transparent')}
+                    >
+                      <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', position: 'sticky', left: 0, background: isSelected ? '#FAF4EE' : '#ffffff', zIndex: 9 }} onClick={(e) => e.stopPropagation()}>
+                        <input type="checkbox" checked={isSelected} onChange={() => handleSelectRow(item.id)} />
+                      </td>
+
+                      <td
+                        style={{
+                          padding: '0.625rem 1rem',
+                          position: 'sticky',
+                          left: '48px',
+                          background: isSelected ? '#FAF4EE' : '#ffffff',
+                          zIndex: 9,
+                          borderRight: '1px solid rgba(42,22,40,0.06)',
+                          cursor: 'pointer',
+                        }}
+                        onClick={() => setDrawerTxId(item.id)}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', whiteSpace: 'nowrap' }}>
+                          <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(232, 118, 10, 0.08)', color: '#E8760A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, flexShrink: 0 }}>
+                            {item.name.split(' ').map((x) => x[0]).join('').substr(0, 2)}
+                          </div>
+                          <div style={{ fontWeight: 700, color: '#2A1628' }}>{item.name}</div>
+                        </div>
+                      </td>
+
+                      <td style={{ padding: '0.625rem 1rem', color: 'rgba(42,22,40,0.75)', fontWeight: 500 }}>{item.category}</td>
+                      <td style={{ padding: '0.625rem 1rem', fontWeight: 600, color: '#2A1628', whiteSpace: 'nowrap' }}>{item.client}</td>
+                      <td style={{ padding: '0.625rem 1rem', color: '#2A1628', fontWeight: 600, textAlign: 'center' }}>{item.period}</td>
+                      <td style={{ padding: '0.625rem 1rem', color: 'rgba(42,22,40,0.75)', fontWeight: 500 }}>{item.version || 'v1.0'}</td>
+                      <td style={{ padding: '0.625rem 1rem', fontWeight: 600, color: '#2A1628', textAlign: 'center' }}>{item.exportCount ?? 0}</td>
+                      <td style={{ padding: '0.625rem 1rem', fontWeight: 600, color: '#2A1628' }}>{item.fileSize || '--'}</td>
+                      <td style={{ padding: '0.625rem 1rem', color: 'rgba(42,22,40,0.75)', fontWeight: 500 }}>{item.lastDownloaded || '--'}</td>
+                      <td style={{ padding: '0.625rem 1rem' }}>
+                        {item.sharedWith && item.sharedWith.length > 0 ? (
+                          <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+                            {item.sharedWith.map((u, i) => (
+                              <span key={i} style={{ fontSize: '0.65rem', background: 'rgba(42,22,40,0.04)', padding: '0.1rem 0.35rem', borderRadius: '4px', color: '#2A1628' }}>{u}</span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span style={{ color: 'rgba(42,22,40,0.3)' }}>Private</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '0.625rem 1rem', color: '#2A1628', fontWeight: 600 }}>{item.generatedBy}</td>
+                      <td style={{ padding: '0.625rem 1rem', color: 'rgba(42,22,40,0.75)', fontWeight: 500 }}>{item.generatedDate}</td>
+                      <td style={{ padding: '0.625rem 1rem' }}>
+                        <span style={{ fontSize: '0.6875rem', padding: '0.15rem 0.5rem', borderRadius: '4px', background: item.status === 'Completed' ? 'rgba(19,115,51,0.1)' : item.status === 'Pending' ? 'rgba(26,115,232,0.1)' : 'rgba(197,34,31,0.1)', color: item.status === 'Completed' ? '#137333' : item.status === 'Pending' ? '#1A73E8' : '#C5221F', fontWeight: 700 }}>
+                          {item.status}
+                        </span>
+                      </td>
+
+                      <td style={{ padding: '0.625rem 1rem', textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          className="action-btn-trigger"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMenuPos({ top: e.pageY + 10, left: e.pageX });
+                            setMenuItem(item);
+                          }}
+                          style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '4px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(42,22,40,0.6)" strokeWidth="2.5" style={{ pointerEvents: 'none' }}>
+                            <circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/>
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
+        <Pagination totalItems={filteredData.length} currentPage={currentPage} rowsPerPage={rowsPerPage} onPageChange={setCurrentPage} onRowsPerPageChange={setRowsPerPage} itemLabel="reports" />
+      </div>
 
-        {/* ── PAGINATION FOOTER ── */}
-        <div style={{
-          background: '#FAF8F5',
-          border: '1px solid rgba(42,22,40,0.06)',
-          borderRadius: '0 0 16px 16px',
-          padding: '0.75rem 1.5rem',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          fontSize: '0.75rem',
-          color: 'rgba(42,22,40,0.6)',
-          marginTop: '-1px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span>Rows per page:</span>
-            <div style={{ position: 'relative' }}>
-              <button
-                onClick={() => setRowsPerPageOpen(o => !o)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '0.3rem',
-                  border: '1px solid #DDD0C4', borderRadius: '6px',
-                  padding: '0.2rem 0.5rem', background: '#fff',
-                  fontSize: '0.75rem', color: '#2A1628', cursor: 'pointer',
-                  fontFamily: 'var(--font-sans), Inter, sans-serif'
-                }}
-              >
-                {rowsPerPage}
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
-              </button>
-              {rowsPerPageOpen && (
-                <div style={{
-                  position: 'absolute', bottom: 'calc(100% + 4px)', left: 0,
-                  background: '#fff', border: '1px solid #DDD0C4',
-                  borderRadius: '8px', boxShadow: '0 4px 16px rgba(42,22,40,0.1)',
-                  zIndex: 100, minWidth: '60px', overflow: 'hidden'
-                }}>
-                  {[10, 20, 50].map(n => (
-                    <div
-                      key={n}
-                      onClick={() => { setRowsPerPage(n); setRowsPerPageOpen(false); }}
-                      style={{
-                        padding: '0.4rem 0.75rem',
-                        fontSize: '0.75rem',
-                        cursor: 'pointer',
-                        color: rowsPerPage === n ? '#E8760A' : '#2A1628',
-                        background: rowsPerPage === n ? 'rgba(232,118,10,0.06)' : 'transparent',
-                        fontWeight: rowsPerPage === n ? 600 : 400
-                      }}
-                      onMouseEnter={e => { if (rowsPerPage !== n) (e.currentTarget as HTMLDivElement).style.background = 'rgba(232,118,10,0.04)'; }}
-                      onMouseLeave={e => { if (rowsPerPage !== n) (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
-                    >
-                      {n}
-                    </div>
-                  ))}
-                </div>
-              )}
+      {/* ── 6.5 EXECUTIVE DASHBOARD ANALYTICS SECTION (MAJOR) ── */}
+      <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span style={{ width: '4px', height: '14px', borderRadius: '2px', background: '#E8760A', display: 'inline-block' }} />
+          <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#2A1628', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            Executive Dashboard Analytics
+          </h3>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
+          {/* Chart 1: Revenue & Expenses Trend */}
+          <div style={{ background: '#ffffff', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '12px', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', boxShadow: '0 4px 12px rgba(42,22,40,0.01)' }}>
+            <div>
+              <h4 style={{ margin: 0, fontSize: '0.8125rem', fontWeight: 700, color: '#2A1628' }}>Revenue &amp; Expenses Trend</h4>
+              <span style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.45)' }}>Q1–Q4 Comparison</span>
+            </div>
+            <svg width="100%" height="80" viewBox="0 0 100 50" preserveAspectRatio="none">
+              <path d="M0 45 L25 30 L50 20 L75 35 L100 15" fill="none" stroke="#E8760A" strokeWidth="1.5" />
+              <path d="M0 48 L25 40 L50 32 L75 42 L100 30" fill="none" stroke="#2A1628" strokeWidth="1.2" strokeDasharray="2 1" />
+            </svg>
+            <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.65rem', fontWeight: 600 }}>
+              <span style={{ color: '#E8760A' }}>● Revenue</span>
+              <span style={{ color: '#2A1628' }}>● Expenses</span>
             </div>
           </div>
-          
-          <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-            <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', opacity: 0.5 }}>◀</button>
-            <button style={{ background: '#2A1628', color: '#fff', border: 'none', borderRadius: '4px', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600 }}>1</button>
-            <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', width: '24px', height: '24px' }}>2</button>
-            <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', width: '24px', height: '24px' }}>3</button>
-            <span style={{ padding: '0 0.25rem' }}>...</span>
-            <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', width: '24px', height: '24px' }}>27</button>
-            <button style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>▶</button>
+
+          {/* Chart 2: Net Profit & Cash Flow */}
+          <div style={{ background: '#ffffff', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '12px', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', boxShadow: '0 4px 12px rgba(42,22,40,0.01)' }}>
+            <div>
+              <h4 style={{ margin: 0, fontSize: '0.8125rem', fontWeight: 700, color: '#2A1628' }}>Net Profit Margin</h4>
+              <span style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.45)' }}>Annual margin target comparison</span>
+            </div>
+            <svg width="100%" height="80" viewBox="0 0 100 50" preserveAspectRatio="none">
+              <rect x="5" y="15" width="10" height="35" fill="#E8760A" rx="1" />
+              <rect x="25" y="10" width="10" height="40" fill="#2A1628" rx="1" />
+              <rect x="45" y="25" width="10" height="25" fill="#E8760A" rx="1" />
+              <rect x="65" y="5" width="10" height="45" fill="#137333" rx="1" />
+              <rect x="85" y="18" width="10" height="32" fill="#E8760A" rx="1" />
+            </svg>
+            <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.65rem', fontWeight: 600 }}>
+              <span style={{ color: '#E8760A' }}>● Profit</span>
+              <span style={{ color: '#137333' }}>● Target Peak</span>
+            </div>
+          </div>
+
+          {/* Chart 3: Category Distribution */}
+          <div style={{ background: '#ffffff', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '12px', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', boxShadow: '0 4px 12px rgba(42,22,40,0.01)' }}>
+            <div>
+              <h4 style={{ margin: 0, fontSize: '0.8125rem', fontWeight: 700, color: '#2A1628' }}>Category Distribution</h4>
+              <span style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.45)' }}>Volume segmented by classification</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', height: '80px' }}>
+              <svg width="60" height="60" viewBox="0 0 36 36" style={{ flexShrink: 0 }}>
+                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#DDD0C4" strokeWidth="5"/>
+                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#E8760A" strokeWidth="5" strokeDasharray="50 50" strokeDashoffset="25"/>
+                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#2A1628" strokeWidth="5" strokeDasharray="30 70" strokeDashoffset="75"/>
+              </svg>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', fontSize: '0.6rem', fontWeight: 600 }}>
+                <span style={{ color: '#E8760A' }}>50% Financials</span>
+                <span style={{ color: '#2A1628' }}>30% VAT Audits</span>
+                <span style={{ color: 'rgba(42,22,40,0.45)' }}>20% Compliance</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Chart 4: Report Generation Activity */}
+          <div style={{ background: '#ffffff', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '12px', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', boxShadow: '0 4px 12px rgba(42,22,40,0.01)' }}>
+            <div>
+              <h4 style={{ margin: 0, fontSize: '0.8125rem', fontWeight: 700, color: '#2A1628' }}>Export Activity Trend</h4>
+              <span style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.45)' }}>Daily generated and pulled records</span>
+            </div>
+            <svg width="100%" height="80" viewBox="0 0 100 50" preserveAspectRatio="none">
+              <path d="M0 40 Q25 15 50 35 T100 10" fill="none" stroke="#137333" strokeWidth="1.5"/>
+              <path d="M0 45 L100 45" stroke="rgba(42,22,40,0.1)" strokeWidth="0.5"/>
+            </svg>
+            <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.65rem', fontWeight: 600 }}>
+              <span style={{ color: '#137333' }}>● Export Rate (Peak)</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ── 1. REPORT SETTINGS MODAL ── */}
-      {settingsOpen && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(42,22,40,0.3)', backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 1000, padding: '1rem'
-        }}>
-          <div style={{
-            background: '#ffffff', borderRadius: '18px', border: '1px solid rgba(42,22,40,0.08)',
-            boxShadow: '0 24px 50px rgba(42,22,40,0.12)', width: '100%', maxWidth: '440px',
-            padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.25rem',
-            fontFamily: 'var(--font-sans), Inter, sans-serif'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5">
-                  <circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                </svg>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#2A1628' }}>Report Settings</h3>
+      {/* ── 7. ACTIONS POPUP CONTEXT MENU ── */}
+      {menuPos && menuItem && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={() => setMenuPos(null)} />
+          <div
+            style={{
+              position: 'fixed',
+              top: Math.min(menuPos.top, window.innerHeight - 280),
+              left: Math.min(menuPos.left - 210, window.innerWidth - 220),
+              background: '#ffffff',
+              border: '1px solid #DDD0C4',
+              boxShadow: '0 8px 24px rgba(42,22,40,0.15)',
+              borderRadius: '12px',
+              padding: '4px',
+              zIndex: 1000,
+              minWidth: '200px',
+              fontFamily: 'var(--font-sans), Inter, sans-serif',
+              maxHeight: '260px',
+              overflowY: 'auto',
+            }}
+          >
+            {[
+              { key: 'preview', label: 'Preview Report', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> },
+              { key: 'regenerate', label: 'Generate Again', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> },
+              { key: 'downloadPdf', label: 'Download PDF', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> },
+              { key: 'downloadExcel', label: 'Download Excel', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> },
+              { key: 'downloadCsv', label: 'Download CSV', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="16" y1="13" x2="8" y2="13"/></svg> },
+              { key: 'history', label: 'View History', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
+              { key: 'duplicate', label: 'Duplicate Report', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> },
+              { key: 'share', label: 'Share', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg> },
+              { key: 'email', label: 'Email Report', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> },
+              { key: 'schedule', label: 'Schedule Delivery', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg> },
+              { key: 'openClient', label: 'Open Client', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
+              { key: 'auditLog', label: 'Audit Log', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> },
+              { key: 'archive', label: 'Archive Report', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 8v13H3V8M1 3h22v5H1z"/><line x1="10" y1="12" x2="14" y2="12"/></svg> },
+              { key: 'delete', label: 'Delete Report', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>, danger: true }
+            ].map((mi, idx) => (
+              <div
+                key={idx}
+                onClick={() => {
+                  handleMenuAction(mi.key);
+                  setMenuPos(null);
+                }}
+                style={{
+                  padding: '0.45rem 0.75rem',
+                  fontSize: '0.775rem',
+                  cursor: 'pointer',
+                  borderRadius: '8px',
+                  color: mi.danger ? '#EF4444' : '#2A1628',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  fontWeight: 550,
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = mi.danger ? 'rgba(239,68,68,0.06)' : 'rgba(232,118,10,0.06)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px', color: mi.danger ? '#EF4444' : '#E8760A' }}>{mi.icon}</span>
+                {mi.label}
               </div>
-              <button onClick={() => setSettingsOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'rgba(42,22,40,0.4)' }}>✕</button>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', fontSize: '0.8125rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>Auto-export on completion</span>
-                <input type="checkbox" defaultChecked />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>Compress generated zip archives</span>
-                <input type="checkbox" />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>Include audit trails in headers</span>
-                <input type="checkbox" defaultChecked />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
-              <button onClick={() => setSettingsOpen(false)} style={{ padding: '0.55rem 1.25rem', border: '1px solid #DDD0C4', borderRadius: '8px', background: '#fff', color: '#2A1628', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-              <button onClick={() => { alert('Settings saved successfully!'); setSettingsOpen(false); }} style={{ padding: '0.55rem 1.25rem', border: 'none', borderRadius: '8px', background: '#2A1628', color: '#fff', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Save Settings</button>
-            </div>
+            ))}
           </div>
-        </div>
+        </>
       )}
 
-      {/* ── 2. SCHEDULE REPORT MODAL ── */}
-      {scheduleOpen && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(42,22,40,0.3)', backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 1000, padding: '1rem'
-        }}>
-          <div style={{
-            background: '#ffffff', borderRadius: '18px', border: '1px solid rgba(42,22,40,0.08)',
-            boxShadow: '0 24px 50px rgba(42,22,40,0.12)', width: '100%', maxWidth: '440px',
-            padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.25rem',
-            fontFamily: 'var(--font-sans), Inter, sans-serif'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5">
-                  <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
-                </svg>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#2A1628' }}>Schedule Auto-Report</h3>
+      {drawerTxId && activeTx && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,22,40,0.2)', zIndex: 10000, display: 'flex', justifyContent: 'flex-end' }} onClick={() => setDrawerTxId(null)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: '580px', background: '#ffffff', height: '100vh', display: 'flex', flexDirection: 'column', boxShadow: '-8px 0 32px rgba(42,22,40,0.15)', animation: 'drawerSlide 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+            {/* Drawer Header */}
+            <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid rgba(42,22,40,0.06)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Report Detail View</span>
+                <button type="button" onClick={() => setDrawerTxId(null)} style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: 'rgba(42,22,40,0.4)' }}>✕</button>
               </div>
-              <button onClick={() => setScheduleOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'rgba(42,22,40,0.4)' }}>✕</button>
+              <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 300, color: '#2A1628', fontFamily: 'var(--font-serif), Georgia, serif' }}>
+                {activeTx.name}
+              </h2>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ position: 'relative' }}>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.3rem' }}>Frequency</label>
-                <button
-                  onClick={() => setModalFrequencyOpen(o => !o)}
-                  style={{
-                    width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '0.6rem 0.85rem', border: '1px solid #DDD0C4', borderRadius: '8px',
-                    background: '#FAF8F5', color: '#2A1628', fontSize: '0.8125rem', cursor: 'pointer',
-                    fontFamily: 'inherit', fontWeight: 500
-                  }}
-                >
-                  {scheduleFrequency}
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
-                </button>
-                {modalFrequencyOpen && (
-                  <div style={{
-                    position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px',
-                    background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px',
-                    boxShadow: '0 4px 16px rgba(42,22,40,0.1)', zIndex: 110, padding: '4px'
-                  }}>
-                    {['Every Monday', '1st of Every Month', 'Quarterly'].map(f => (
-                      <div
-                        key={f}
-                        onClick={() => {
-                          setScheduleFrequency(f);
-                          setModalFrequencyOpen(false);
-                        }}
-                        style={{
-                          padding: '0.45rem 0.65rem', fontSize: '0.75rem', color: '#2A1628',
-                          cursor: 'pointer', borderRadius: '6px',
-                          background: scheduleFrequency === f ? 'rgba(232, 118, 10, 0.06)' : 'transparent',
-                          fontWeight: scheduleFrequency === f ? 600 : 400
-                        }}
-                      >
-                        {f}
+            {/* Drawer Segment tabs */}
+            <div style={{ display: 'flex', gap: '1.25rem', borderBottom: '1px solid rgba(42,22,40,0.06)', padding: '0 2rem', overflowX: 'auto' }} className="hide-scrollbar">
+              {[
+                { key: 'overview' as const, label: 'overview' },
+                { key: 'charts' as const, label: 'charts' },
+                { key: 'transactions' as const, label: 'transactions' },
+                { key: 'attachments' as const, label: 'attachments' },
+                { key: 'history' as const, label: 'history' },
+                { key: 'sharing' as const, label: 'sharing' },
+                { key: 'export' as const, label: 'export' },
+                { key: 'notes' as const, label: 'notes' }
+              ].map((tab) => {
+                const isActive = drawerTab === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setDrawerTab(tab.key)}
+                    style={{
+                      padding: '0.6rem 0',
+                      border: 'none',
+                      background: 'transparent',
+                      color: isActive ? '#E8760A' : 'rgba(42,22,40,0.5)',
+                      fontSize: '0.8125rem',
+                      fontWeight: isActive ? 700 : 600,
+                      cursor: 'pointer',
+                      borderBottom: isActive ? '2px solid #E8760A' : 'none',
+                      whiteSpace: 'nowrap',
+                      fontFamily: 'inherit',
+                      textTransform: 'capitalize'
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Drawer Content */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '2rem' }} className="hide-scrollbar">
+              {drawerTab === 'overview' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: '#FAF8F5', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(42,22,40,0.04)' }}>
+                    {[
+                      { label: 'Client / Company', val: activeTx.client },
+                      { label: 'Reporting Period', val: activeTx.period },
+                      { label: 'Financial Year', val: activeTx.financialYear },
+                      { label: 'Generated By', val: activeTx.generatedBy },
+                      { label: 'Generated Date', val: activeTx.generatedDate },
+                      { label: 'Compilation Status', val: activeTx.status }
+                    ].map((itm, idx) => (
+                      <div key={idx}>
+                        <span style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.45)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.04em' }}>{itm.label}</span>
+                        <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#2A1628', marginTop: '0.15rem' }}>{itm.val}</div>
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.3rem' }}>Email Recipients</label>
-                <input type="text" placeholder="recipients@company.com" style={{ width: '100%', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.6rem 0.85rem', fontSize: '0.8125rem', background: '#FAF8F5', color: '#2A1628', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
-              </div>
-            </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
-              <button onClick={() => setScheduleOpen(false)} style={{ padding: '0.55rem 1.25rem', border: '1px solid #DDD0C4', borderRadius: '8px', background: '#fff', color: '#2A1628', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-              <button onClick={() => { alert('Schedule established successfully!'); setScheduleOpen(false); }} style={{ padding: '0.55rem 1.25rem', border: 'none', borderRadius: '8px', background: '#2A1628', color: '#fff', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Establish Schedule</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── 3. NEW REPORT MODAL ── */}
-      {newReportOpen && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(42,22,40,0.3)', backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 1000, padding: '1rem'
-        }}>
-          <div style={{
-            background: '#ffffff', borderRadius: '18px', border: '1px solid rgba(42,22,40,0.08)',
-            boxShadow: '0 24px 50px rgba(42,22,40,0.12)', width: '100%', maxWidth: '480px',
-            padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.25rem',
-            fontFamily: 'var(--font-sans), Inter, sans-serif'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5">
-                  <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#2A1628' }}>Generate New Report</h3>
-              </div>
-              <button onClick={() => setNewReportOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'rgba(42,22,40,0.4)', padding: 0 }}>✕</button>
-            </div>
-
-            <p style={{ margin: 0, fontSize: '0.8125rem', color: 'rgba(42,22,40,0.6)' }}>
-              Select report details to build a new financial log.
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
-              {/* Client Selector */}
-              <div style={{ position: 'relative' }}>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.3rem' }}>Client / Company</label>
-                <button
-                  onClick={() => setModalClientOpen(o => !o)}
-                  style={{
-                    width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '0.6rem 0.85rem', border: '1px solid #DDD0C4', borderRadius: '8px',
-                    background: '#FAF8F5', color: '#2A1628', fontSize: '0.8125rem', cursor: 'pointer',
-                    fontFamily: 'inherit', fontWeight: 500
-                  }}
-                >
-                  {newReportForm.client}
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
-                </button>
-                {modalClientOpen && (
-                  <div style={{
-                    position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px',
-                    background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px',
-                    boxShadow: '0 4px 16px rgba(42,22,40,0.1)', zIndex: 110, padding: '4px',
-                    maxHeight: '160px', overflowY: 'auto'
-                  }}>
-                    {['ABC Trading LLC', 'XYZ Holdings Limited', 'Alpha Tech FZCO', 'Delta Properties FZCO', 'Beta Industries LLC'].map(c => (
-                      <div
-                        key={c}
-                        onClick={() => {
-                          setNewReportForm({ ...newReportForm, client: c });
-                          setModalClientOpen(false);
-                        }}
-                        style={{
-                          padding: '0.45rem 0.65rem', fontSize: '0.75rem', color: '#2A1628',
-                          cursor: 'pointer', borderRadius: '6px',
-                          background: newReportForm.client === c ? 'rgba(232, 118, 10, 0.06)' : 'transparent',
-                          fontWeight: newReportForm.client === c ? 600 : 400
-                        }}
-                      >
-                        {c}
-                      </div>
-                    ))}
+                  {/* Summary positions card - Grid of 6 granular summaries */}
+                  <div>
+                    <h3 style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', fontWeight: 700, color: '#2A1628', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Report Position Summary</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                      {[
+                        { label: 'Revenue Base', val: 'AED 4,250,000', highlightColor: '#2A1628' },
+                        { label: 'Expenses (Deductibles)', val: 'AED 3,120,000', highlightColor: '#2A1628' },
+                        { label: 'Net Profit Base', val: 'AED 1,130,000', highlightColor: '#E8760A' },
+                        { label: 'Gross Margin', val: '74.2%', highlightColor: '#E8760A' },
+                        { label: 'Net Cash Flow', val: '+ AED 850,000', highlightColor: '#137333' },
+                        { label: 'Tax Liability', val: 'AED 101,700', highlightColor: '#C5221F' }
+                      ].map((item, idx) => (
+                        <div key={idx} style={{ padding: '0.75rem 1rem', border: '1px solid #F3DEC9', background: '#FAF2EC', borderRadius: '10px' }}>
+                          <span style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.04em' }}>{item.label}</span>
+                          <div style={{ fontSize: '0.95rem', fontWeight: 700, color: item.highlightColor, marginTop: '0.2rem' }}>
+                            {item.val}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                )}
-              </div>
 
-              {/* Report Type Selector */}
-              <div style={{ position: 'relative' }}>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.3rem' }}>Report Type</label>
-                <button
-                  onClick={() => setModalTypeOpen(o => !o)}
-                  style={{
-                    width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '0.6rem 0.85rem', border: '1px solid #DDD0C4', borderRadius: '8px',
-                    background: '#FAF8F5', color: '#2A1628', fontSize: '0.8125rem', cursor: 'pointer',
-                    fontFamily: 'inherit', fontWeight: 500
-                  }}
-                >
-                  {newReportForm.type}
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
-                </button>
-                {modalTypeOpen && (
-                  <div style={{
-                    position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px',
-                    background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px',
-                    boxShadow: '0 4px 16px rgba(42,22,40,0.1)', zIndex: 110, padding: '4px'
-                  }}>
-                    {['Profit & Loss Statement', 'Balance Sheet', 'Cash Flow Statement', 'VAT Return Report', 'Corporate Tax Report'].map(t => (
-                      <div
-                        key={t}
-                        onClick={() => {
-                          setNewReportForm({ ...newReportForm, type: t });
-                          setModalTypeOpen(false);
-                        }}
-                        style={{
-                          padding: '0.45rem 0.65rem', fontSize: '0.75rem', color: '#2A1628',
-                          cursor: 'pointer', borderRadius: '6px',
-                          background: newReportForm.type === t ? 'rgba(232, 118, 10, 0.06)' : 'transparent',
-                          fontWeight: newReportForm.type === t ? 600 : 400
-                        }}
-                      >
-                        {t}
-                      </div>
-                    ))}
+                  {/* Performance Trend SVG Chart Block */}
+                  <div style={{ background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.04)', borderRadius: '12px', padding: '1.25rem' }}>
+                    <h3 style={{ margin: '0 0 1rem', fontSize: '0.875rem', fontWeight: 700, color: '#2A1628', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Monthly Performance Trend</h3>
+                    <svg width="100%" height="120" viewBox="0 0 400 100" preserveAspectRatio="none">
+                      <path d="M0 80 Q100 20 200 60 T400 10 L400 100 L0 100 Z" fill="rgba(232, 118, 10, 0.08)"/>
+                      <path d="M0 80 Q100 20 200 60 T400 10" fill="none" stroke="#E8760A" strokeWidth="2"/>
+                    </svg>
                   </div>
-                )}
-              </div>
 
-              {/* Period Selector */}
-              <div style={{ position: 'relative' }}>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.3rem' }}>Period</label>
-                <button
-                  onClick={() => setModalPeriodOpen(o => !o)}
-                  style={{
-                    width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '0.6rem 0.85rem', border: '1px solid #DDD0C4', borderRadius: '8px',
-                    background: '#FAF8F5', color: '#2A1628', fontSize: '0.8125rem', cursor: 'pointer',
-                    fontFamily: 'inherit', fontWeight: 500
-                  }}
-                >
-                  {newReportForm.period}
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
-                </button>
-                {modalPeriodOpen && (
-                  <div style={{
-                    position: 'absolute', bottom: 'calc(100% + 4px)', left: 0, right: 0,
-                    background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px',
-                    boxShadow: '0 -4px 16px rgba(42,22,40,0.1)', zIndex: 110, padding: '4px'
-                  }}>
-                    {['Apr 2026', 'Q1 2026', 'FY 2025'].map(p => (
-                      <div
-                        key={p}
-                        onClick={() => {
-                          setNewReportForm({ ...newReportForm, period: p });
-                          setModalPeriodOpen(false);
-                        }}
-                        style={{
-                          padding: '0.45rem 0.65rem', fontSize: '0.75rem', color: '#2A1628',
-                          cursor: 'pointer', borderRadius: '6px',
-                          background: newReportForm.period === p ? 'rgba(232, 118, 10, 0.06)' : 'transparent',
-                          fontWeight: newReportForm.period === p ? 600 : 400
-                        }}
-                      >
-                        {p}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Format selection */}
-              <div>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Output Format</label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
-                  {['xlsx', 'pdf', 'csv'].map(fmt => (
+                  {/* Actions buttons */}
+                  <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.25rem' }}>
                     <button
-                      key={fmt}
-                      onClick={() => setNewReportForm({ ...newReportForm, format: fmt })}
+                      type="button"
+                      onClick={() => setPopup({ type: 'reportPreview', tx: activeTx })}
                       style={{
-                        padding: '0.55rem', borderRadius: '8px', border: `1px solid ${newReportForm.format === fmt ? '#E8760A' : '#DDD0C4'}`,
-                        background: newReportForm.format === fmt ? 'rgba(232,118,10,0.04)' : '#ffffff',
-                        color: newReportForm.format === fmt ? '#E8760A' : '#2A1628', fontWeight: 600,
-                        fontSize: '0.8125rem', cursor: 'pointer', textTransform: 'uppercase',
-                        fontFamily: 'inherit', transition: 'all 150ms ease'
+                        flex: 1,
+                        background: '#2A1628',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '0.625rem 1.25rem',
+                        fontSize: '0.8125rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 12px rgba(42,22,40,0.12)',
+                        fontFamily: 'inherit',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.35rem'
                       }}
                     >
-                      {fmt}
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      Preview Report
                     </button>
-                  ))}
+                    <button
+                      type="button"
+                      onClick={() => setPopup({ type: 'exportCenter' })}
+                      style={{
+                        flex: 1,
+                        background: '#ffffff',
+                        color: '#2A1628',
+                        border: '1px solid #DDD0C4',
+                        borderRadius: '8px',
+                        padding: '0.625rem 1.25rem',
+                        fontSize: '0.8125rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.35rem'
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                      Export Report
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {drawerTab === 'charts' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  {/* Revenue / Expenses Trend Line */}
+                  <div style={{ background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.04)', borderRadius: '12px', padding: '1.25rem' }}>
+                    <h3 style={{ margin: '0 0 1rem', fontSize: '0.875rem', fontWeight: 700, color: '#2A1628', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Revenue &amp; Expense Trends</h3>
+                    <svg width="100%" height="120" viewBox="0 0 400 100" preserveAspectRatio="none">
+                      {/* Revenue line */}
+                      <path d="M0 80 Q100 20 200 60 T400 10" fill="none" stroke="#E8760A" strokeWidth="2.5"/>
+                      {/* Expense line */}
+                      <path d="M0 90 Q100 45 200 70 T400 30" fill="none" stroke="#2A1628" strokeWidth="2" strokeDasharray="4 2"/>
+                    </svg>
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', fontSize: '0.75rem', fontWeight: 600 }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#E8760A' }}><span style={{ width: '8px', height: '8px', background: '#E8760A', borderRadius: '50%' }}/>Revenue Trend</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#2A1628' }}><span style={{ width: '8px', height: '8px', background: '#2A1628', borderRadius: '50%' }}/>Expense Trend</span>
+                    </div>
+                  </div>
+
+                  {/* Category Breakdown Pie/Donut Chart representation */}
+                  <div style={{ background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.04)', borderRadius: '12px', padding: '1.25rem' }}>
+                    <h3 style={{ margin: '0 0 1rem', fontSize: '0.875rem', fontWeight: 700, color: '#2A1628', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Compliance Category Breakdown</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+                      <svg width="90" height="90" viewBox="0 0 36 36">
+                        <circle cx="18" cy="18" r="15.915" fill="none" stroke="#DDD0C4" strokeWidth="4"/>
+                        <circle cx="18" cy="18" r="15.915" fill="none" stroke="#E8760A" strokeWidth="4" strokeDasharray="70 30" strokeDashoffset="25"/>
+                        <circle cx="18" cy="18" r="15.915" fill="none" stroke="#2A1628" strokeWidth="4" strokeDasharray="20 80" strokeDashoffset="95"/>
+                      </svg>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.75rem', fontWeight: 600 }}>
+                        <span style={{ color: '#E8760A' }}>70% Financial Auditing</span>
+                        <span style={{ color: '#2A1628' }}>20% Corporate Tax Adjustments</span>
+                        <span style={{ color: 'rgba(42,22,40,0.45)' }}>10% Other Deductibles</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {drawerTab === 'transactions' && (() => {
+                const transactions = [
+                  { name: 'Dubai Mall Retail Sales - POS 3 Summary', date: '2026-05-15', ref: 'POS-260515-03', amount: '+ AED 10,500', type: 'ledger', isPositive: true },
+                  { name: 'Al Maya Wholesale Supplies Invoice', date: '2026-05-16', ref: 'INV-2026-5412', amount: '+ AED 31,500', type: 'invoice', isPositive: true },
+                  { name: 'Office Rental Lease Payment - JLT Sector', date: '2026-05-17', ref: 'EXP-JLT-8951', amount: '- AED 12,600', type: 'bill', isPositive: false },
+                  { name: 'Aramex International Freight Charges', date: '2026-05-18', ref: 'SHP-9982751', amount: '- AED 4,200', type: 'bill', isPositive: false },
+                  { name: 'Standard Chartered Loan Amortization', date: '2026-05-19', ref: 'JV-2026-004', amount: '- AED 15,000', type: 'journal', isPositive: false },
+                  { name: 'Quarterly Depreciation Tax Adjustment', date: '2026-05-20', ref: 'ADJ-2026-01', amount: '- AED 8,500', type: 'adjustment', isPositive: false }
+                ];
+                const filteredTx = transactions.filter(t => drawerTxSubTab === 'all' || t.type === drawerTxSubTab);
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {/* Search and Action filters */}
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <div style={{ position: 'relative', flex: 1 }}>
+                        <input
+                          type="text"
+                          placeholder="Search transactions..."
+                          style={{
+                            width: '100%',
+                            padding: '0.5rem 0.75rem',
+                            borderRadius: '8px',
+                            border: '1px solid #DDD0C4',
+                            fontSize: '0.8125rem',
+                            outline: 'none',
+                            boxSizing: 'border-box',
+                            fontFamily: 'inherit'
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Sub tabs filtering pills */}
+                    <div style={{ display: 'flex', gap: '0.25rem', overflowX: 'auto', paddingBottom: '0.25rem' }} className="hide-scrollbar">
+                      {[
+                        { key: 'all' as const, label: 'All' },
+                        { key: 'journal' as const, label: 'Journal Entries' },
+                        { key: 'invoice' as const, label: 'Invoices' },
+                        { key: 'payment' as const, label: 'Payments' },
+                        { key: 'bill' as const, label: 'Bills' },
+                        { key: 'ledger' as const, label: 'Ledger' },
+                        { key: 'adjustment' as const, label: 'Adjustments' }
+                      ].map((pill) => {
+                        const isPillActive = drawerTxSubTab === pill.key;
+                        return (
+                          <button
+                            key={pill.key}
+                            type="button"
+                            onClick={() => setDrawerTxSubTab(pill.key)}
+                            style={{
+                              padding: '0.25rem 0.6rem',
+                              borderRadius: '6px',
+                              border: isPillActive ? '1px solid #E8760A' : '1px solid rgba(42,22,40,0.15)',
+                              background: isPillActive ? 'rgba(232,118,10,0.06)' : 'transparent',
+                              color: isPillActive ? '#E8760A' : 'rgba(42,22,40,0.6)',
+                              fontSize: '0.7rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap',
+                              fontFamily: 'inherit'
+                            }}
+                          >
+                            {pill.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Transaction items list */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {filteredTx.length === 0 ? (
+                        <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.4)', textAlign: 'center', padding: '1rem' }}>No records match the filter.</div>
+                      ) : (
+                        filteredTx.map((tx, idx) => (
+                          <div key={idx} style={{ background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.03)', borderRadius: '12px', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <div style={{ fontWeight: 700, fontSize: '0.875rem', color: '#2A1628', fontFamily: 'var(--font-sans), Inter, sans-serif' }}>{tx.name}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.4)', marginTop: '0.25rem' }}>
+                                {tx.date} • Ref: {tx.ref} • <span style={{ textTransform: 'uppercase', fontWeight: 700, color: '#E8760A', fontSize: '0.65rem' }}>{tx.type}</span>
+                              </div>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                              <div style={{ fontWeight: 700, fontSize: '0.875rem', color: tx.isPositive ? '#137333' : '#C5221F' }}>
+                                {tx.amount}
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {drawerTab === 'attachments' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <h3 style={{ margin: '0', fontSize: '0.875rem', fontWeight: 700, color: '#2A1628', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Attached Documents</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {[
+                      { name: 'Audited_Financial_Statement_FY25.pdf', size: '2.4 MB', date: '2026-05-10' },
+                      { name: 'Trial_Balance_Ledger_Extract.xlsx', size: '1.2 MB', date: '2026-05-09' }
+                    ].map((doc, idx) => (
+                      <div key={idx} style={{ padding: '0.75rem', border: '1px solid #DDD0C4', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: '#2A1628' }}>{doc.name}</div>
+                          <div style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.45)', marginTop: '0.15rem' }}>Size: {doc.size} • Uploaded: {doc.date}</div>
+                        </div>
+                        <button type="button" onClick={() => pushToast(`Downloading ${doc.name}`, 'info')} style={{ padding: '0.4rem 0.6rem', border: '1px solid #DDD0C4', borderRadius: '6px', background: '#fff', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', color: '#2A1628', fontFamily: 'inherit' }}>Download</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {drawerTab === 'history' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <h3 style={{ margin: '0', fontSize: '0.875rem', fontWeight: 700, color: '#2A1628', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Audit Trail &amp; History</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingLeft: '0.5rem' }}>
+                    {[
+                      { action: 'Report Exported (PDF)', user: 'Priya Nair', time: '2026-06-09 14:23', color: '#137333' },
+                      { action: 'Review notes added', user: 'Mahesh Maddu', time: '2026-06-08 09:12', color: '#E8760A' },
+                      { action: 'Report generated successfully', user: 'System Worker', time: '2026-05-15 16:30', color: '#2A1628' }
+                    ].map((step, idx) => (
+                      <div key={idx} style={{ display: 'flex', gap: '1rem', position: 'relative' }}>
+                        {idx < 2 && <div style={{ position: 'absolute', left: '11px', top: '24px', bottom: '-20px', width: '1px', background: 'rgba(42,22,40,0.1)' }} />}
+                        <div style={{ width: '23px', height: '23px', borderRadius: '50%', background: step.color, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, marginTop: '2px', flexShrink: 0 }}>
+                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fff' }}/>
+                        </div>
+                        <div>
+                          <strong style={{ fontSize: '0.8125rem', display: 'block', color: '#2A1628' }}>{step.action}</strong>
+                          <span style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.45)' }}>by {step.user} • {step.time}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {drawerTab === 'sharing' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <h3 style={{ margin: '0', fontSize: '0.875rem', fontWeight: 700, color: '#2A1628', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Collaborator Access Control</h3>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <input type="email" placeholder="Enter colleague's email address..." style={{ flex: 1, padding: '0.5rem', borderRadius: '8px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', outline: 'none' }} />
+                    <button type="button" onClick={() => pushToast('Access invitation transmitted.', 'success')} style={{ background: '#2A1628', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.5rem 1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>Invite</button>
+                  </div>
+                  <div style={{ borderTop: '1px solid rgba(42,22,40,0.06)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {activeTx.sharedWith && activeTx.sharedWith.length > 0 ? (
+                      activeTx.sharedWith.map((col, idx) => (
+                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', background: '#FAF8F5', borderRadius: '8px' }}>
+                          <span style={{ fontSize: '0.8125rem', color: '#2A1628', fontWeight: 600 }}>{col}</span>
+                          <span style={{ fontSize: '0.7rem', color: '#137333', fontWeight: 700 }}>Can Edit</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.4)', textAlign: 'center', padding: '1rem' }}>This compilation is currently private to your profile.</div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {drawerTab === 'export' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <h3 style={{ margin: '0', fontSize: '0.875rem', fontWeight: 700, color: '#2A1628', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Export Compilation Options</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
+                    {[
+                      { fmt: 'PDF Format Document', size: '2.4 MB', type: 'PDF' },
+                      { fmt: 'Excel Workbook File', size: '1.2 MB', type: 'XLSX' },
+                      { fmt: 'CSV Data Sheet Extract', size: '420 KB', type: 'CSV' },
+                      { fmt: 'Audit XML Ledger Packet', size: '890 KB', type: 'XML' }
+                    ].map((e, idx) => (
+                      <div key={idx} style={{ padding: '1rem', border: '1px solid #DDD0C4', borderRadius: '12px', background: '#ffffff', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <div>
+                          <strong style={{ fontSize: '0.8125rem', color: '#2A1628', display: 'block' }}>{e.fmt}</strong>
+                          <span style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.45)' }}>File Size: {e.size}</span>
+                        </div>
+                        <button type="button" onClick={() => pushToast(`${e.type} export package download started.`, 'success')} style={{ background: '#2A1628', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.4rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>Download {e.type}</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {drawerTab === 'notes' && (() => {
+                const list = [
+                  { user: 'Priya Nair', role: 'Reviewer', date: '2026-06-08', text: 'Verified non-deductible addbacks. Audit documentation matches standards.', tag: 'reviewer' },
+                  { user: 'System Agent', role: 'Auditbot', date: '2026-06-08', text: 'Financial compliance check passed. Data validated successfully.', tag: 'ai' },
+                  { user: 'Mahesh Maddu', role: 'Tax Lead', date: '2026-06-07', text: 'Draft matching updated. Internal calculations pinned for review.', tag: 'pinned' },
+                  { user: 'Priya Nair', role: 'Tax Lead', date: '2026-06-05', text: 'VAT submission matched perfectly with local returns ledger.', tag: 'audit' }
+                ];
+                const filteredNotes = list.filter(n => drawerNoteTag === 'all' || n.tag === drawerNoteTag);
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <textarea placeholder="Write review summary notes here..." style={{ width: '100%', minHeight: '80px', padding: '0.625rem', borderRadius: '10px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
+                      <button
+                        type="button"
+                        onClick={() => pushToast('Note added successfully.', 'success')}
+                        style={{
+                          background: '#E8760A',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '0.5rem 1rem',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          alignSelf: 'flex-end',
+                          fontFamily: 'inherit'
+                        }}
+                      >
+                        Add Note
+                      </button>
+                    </div>
+
+                    {/* Note Tag Filtering Pills */}
+                    <div style={{ display: 'flex', gap: '0.25rem', overflowX: 'auto', paddingBottom: '0.25rem' }} className="hide-scrollbar">
+                      {[
+                        { key: 'all' as const, label: 'All Notes' },
+                        { key: 'internal' as const, label: 'Internal' },
+                        { key: 'ai' as const, label: 'AI Summary' },
+                        { key: 'audit' as const, label: 'Audit Notes' },
+                        { key: 'pinned' as const, label: 'Pinned Notes' },
+                        { key: 'reviewer' as const, label: 'Reviewer Notes' }
+                      ].map((pill) => {
+                        const isPillActive = drawerNoteTag === pill.key;
+                        return (
+                          <button
+                            key={pill.key}
+                            type="button"
+                            onClick={() => setDrawerNoteTag(pill.key)}
+                            style={{
+                              padding: '0.25rem 0.6rem',
+                              borderRadius: '6px',
+                              border: isPillActive ? '1px solid #E8760A' : '1px solid rgba(42,22,40,0.15)',
+                              background: isPillActive ? 'rgba(232,118,10,0.06)' : 'transparent',
+                              color: isPillActive ? '#E8760A' : 'rgba(42,22,40,0.6)',
+                              fontSize: '0.7rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap',
+                              fontFamily: 'inherit'
+                            }}
+                          >
+                            {pill.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div style={{ borderTop: '1px solid rgba(42,22,40,0.06)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {filteredNotes.map((note, idx) => (
+                        <div key={idx} style={{ padding: '0.75rem', background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.03)', borderRadius: '8px', fontSize: '0.75rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'rgba(42,22,40,0.5)', marginBottom: '0.25rem', fontSize: '0.7rem' }}>
+                            <span style={{ fontWeight: 600 }}>{note.user} ({note.role})</span>
+                            <span style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                              <span>{note.date}</span>
+                              <span style={{ fontSize: '0.6rem', padding: '0.05rem 0.25rem', borderRadius: '4px', background: 'rgba(232,118,10,0.1)', color: '#E8760A', textTransform: 'uppercase', fontWeight: 700 }}>{note.tag}</span>
+                            </span>
+                          </div>
+                          <div style={{ color: '#2A1628', lineHeight: 1.3 }}>{note.text}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 9. MODALS & POPUPS ── */}
+      {popup.type === 'generate' && (
+        <ModalShell
+          onClose={() => setPopup({ type: null })}
+          eyebrow="Reports Center"
+          titlePlain="Generate"
+          titleAccent="Financial Report"
+          footer={
+            <>
+              <button type="button" onClick={() => setPopup({ type: null })} style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, color: '#2A1628', cursor: 'pointer' }}>Cancel</button>
+              <button type="button" onClick={handleGenerateSubmit} style={{ background: '#E8760A', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 12px rgba(232,118,10,0.2)' }}>Compile & Generate</button>
+            </>
+          }
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Report Template</label>
+              <CustomSelect value={genReportTemplate} onChange={setGenReportTemplate} options={['Profit & Loss', 'Balance Sheet', 'Cash Flow', 'VAT Summary', 'Corporate Tax']} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Reporting Period</label>
+                <CustomSelect value={genReportingPeriod} onChange={setGenReportingPeriod} options={['Q1 2026', 'Apr 2026', 'FY 2025']} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Financial Year</label>
+                <CustomSelect value={genFinYear} onChange={setGenFinYear} options={['2026', '2025']} />
+              </div>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Company / Client</label>
+              <CustomSelect value={genClientName} onChange={setGenClientName} options={['ABC Trading LLC', 'XYZ Holdings Limited', 'Alpha Tech FZCO']} />
+            </div>
+          </div>
+        </ModalShell>
+      )}
+
+      {popup.type === 'schedule' && (
+        <ModalShell
+          onClose={() => setPopup({ type: null })}
+          eyebrow="Reports Center"
+          titlePlain="Schedule"
+          titleAccent="Filing Delivery"
+          footer={
+            <>
+              <button type="button" onClick={() => setPopup({ type: null })} style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, color: '#2A1628', cursor: 'pointer' }}>Cancel</button>
+              <button type="button" onClick={handleScheduleSubmit} style={{ background: '#2a1628', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}>Confirm Schedule</button>
+            </>
+          }
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Frequency</label>
+                <CustomSelect value={schFrequency} onChange={setSchFrequency} options={['Daily', 'Weekly', 'Monthly', 'Quarterly']} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Format</label>
+                <CustomSelect value={schFormat} onChange={setSchFormat} options={['pdf', 'excel', 'csv']} />
+              </div>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Recipients Email</label>
+              <input type="text" value={schRecipients} onChange={(e) => setSchRecipients(e.target.value)} placeholder="recipients@domain.com" style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #DDD0C4', borderRadius: '8px', fontSize: '0.8125rem' }} />
+            </div>
+          </div>
+        </ModalShell>
+      )}
+
+      {popup.type === 'exportCenter' && (
+        <ModalShell
+          onClose={() => setPopup({ type: null })}
+          eyebrow="Reports Center"
+          titlePlain="Export"
+          titleAccent="Compilations"
+          maxWidth="500px"
+          bodyStyle={{ padding: '1.5rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}
+          footer={
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+              <span style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.45)', fontWeight: 500 }}>
+                Exporting as <strong style={{ color: '#2A1628' }}>.{exportFormat === 'excel' ? 'XLSX' : exportFormat.toUpperCase()}</strong>
+              </span>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setPopup({ type: null })}
+                  style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', color: '#2A1628', fontFamily: 'inherit' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPopup({ type: null });
+                    pushToast(`${exportFormat === 'excel' ? 'XLSX' : exportFormat.toUpperCase()} compilation export started successfully.`, 'success');
+                  }}
+                  style={{ background: '#E8760A', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'inherit', boxShadow: '0 4px 12px rgba(232,118,10,0.25)' }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+                  Download Export
+                </button>
+              </div>
+            </div>
+          }
+        >
+          {/* Scope selection */}
+          <div>
+            <p style={{ margin: '0 0 0.75rem', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              Which returns to export?
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {[
+                { key: 'all' as const, label: 'All Compilations', sublabel: 'Export all records in the Reports center register', count: data.length },
+                { key: 'filtered' as const, label: 'Filtered Results', sublabel: 'Only records matching current active filters', count: data.length }, // matching filtered view
+                { key: 'selected' as const, label: 'Selected Returns', sublabel: 'Only the returns you have checked', count: selectedIds.length }
+              ].map((opt) => {
+                const isSelected = exportScope === opt.key;
+                return (
+                  <div
+                    key={opt.key}
+                    onClick={() => setExportScope(opt.key)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      padding: '0.75rem 1rem',
+                      borderRadius: '10px',
+                      border: `1.5px solid ${isSelected ? '#E8760A' : '#DDD0C4'}`,
+                      background: isSelected ? 'rgba(232,118,10,0.04)' : '#ffffff',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {/* Custom radio circle */}
+                    <div style={{
+                      width: '18px',
+                      height: '18px',
+                      borderRadius: '50%',
+                      border: `2px solid ${isSelected ? '#E8760A' : '#DDD0C4'}`,
+                      background: isSelected ? '#E8760A' : 'transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      {isSelected && <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#ffffff' }} />}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: '#2A1628' }}>{opt.label}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.5)', marginTop: '0.15rem' }}>{opt.sublabel}</div>
+                    </div>
+                    {/* Count badge */}
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: isSelected ? '#E8760A' : 'rgba(42,22,40,0.4)', background: isSelected ? 'rgba(232,118,10,0.08)' : 'rgba(42,22,40,0.04)', borderRadius: '4px', padding: '0.15rem 0.5rem', whiteSpace: 'nowrap' }}>
+                      {opt.count} returns
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Format selector */}
+          <div>
+            <p style={{ margin: '0 0 0.75rem', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              Select Format
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem' }}>
+              {[
+                { key: 'excel' as const, label: '.XLSX' },
+                { key: 'csv' as const, label: '.CSV' },
+                { key: 'pdf' as const, label: '.PDF' },
+                { key: 'print' as const, label: 'PRINT' }
+              ].map((fmt) => {
+                const isActive = exportFormat === fmt.key;
+                return (
+                  <button
+                    key={fmt.key}
+                    type="button"
+                    onClick={() => setExportFormat(fmt.key)}
+                    style={{
+                      padding: '0.625rem',
+                      borderRadius: '8px',
+                      border: `1.5px solid ${isActive ? '#E8760A' : '#DDD0C4'}`,
+                      background: isActive ? 'rgba(232,118,10,0.04)' : '#ffffff',
+                      color: isActive ? '#E8760A' : 'rgba(42,22,40,0.6)',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      fontFamily: 'inherit'
+                    }}
+                  >
+                    {fmt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </ModalShell>
+      )}
+
+      {popup.type === 'confirmDelete' && popup.tx && (
+        <ModalShell
+          onClose={() => setPopup({ type: null })}
+          eyebrow="Reports Center"
+          titlePlain="Delete"
+          titleAccent="Report"
+          footer={
+            <>
+              <button type="button" onClick={() => setPopup({ type: null })} style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, color: '#2A1628', cursor: 'pointer' }}>Cancel</button>
+              <button type="button" onClick={() => { setData((prev) => prev.filter((x) => x.id !== popup.tx!.id)); setPopup({ type: null }); pushToast('Report deleted.', 'danger'); }} style={{ background: '#DC2626', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
+            </>
+          }
+        >
+          <div style={{ fontSize: '0.875rem', color: '#2A1628', lineHeight: 1.4 }}>
+            Are you sure you want to delete the report: <strong>{popup.tx.name}</strong>? This action is permanent.
+          </div>
+        </ModalShell>
+      )}
+
+      {popup.type === 'confirmArchive' && popup.tx && (
+        <ModalShell
+          onClose={() => setPopup({ type: null })}
+          eyebrow="Reports Center"
+          titlePlain="Archive"
+          titleAccent="Report"
+          footer={
+            <>
+              <button type="button" onClick={() => setPopup({ type: null })} style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, color: '#2A1628', cursor: 'pointer' }}>Cancel</button>
+              <button type="button" onClick={() => { setData((prev) => prev.map((x) => (x.id === popup.tx!.id ? { ...x, archived: true } : x))); setPopup({ type: null }); pushToast('Report archived.', 'warning'); }} style={{ background: '#B06000', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}>Archive</button>
+            </>
+          }
+        >
+          <div style={{ fontSize: '0.875rem', color: '#2A1628', lineHeight: 1.4 }}>
+            Are you sure you want to archive the report: <strong>{popup.tx.name}</strong>?
+          </div>
+        </ModalShell>
+      )}
+
+      {popup.type === 'confirmGenerate' && popup.tx && (
+        <ModalShell
+          onClose={() => setPopup({ type: null })}
+          eyebrow="Reports Center"
+          titlePlain="Regenerate"
+          titleAccent="Report"
+          footer={
+            <>
+              <button type="button" onClick={() => setPopup({ type: null })} style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, color: '#2A1628', cursor: 'pointer' }}>Cancel</button>
+              <button type="button" onClick={() => { setPopup({ type: null }); pushToast('Report compilation successfully queued.', 'success'); }} style={{ background: '#E8760A', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}>Regenerate</button>
+            </>
+          }
+        >
+          <div style={{ fontSize: '0.875rem', color: '#2A1628', lineHeight: 1.4 }}>
+            Do you want to compile and regenerate: <strong>{popup.tx.name}</strong>?
+          </div>
+        </ModalShell>
+      )}
+
+      {popup.type === 'confirmCancelSchedule' && (
+        <ModalShell
+          onClose={() => setPopup({ type: null })}
+          eyebrow="Scheduler"
+          titlePlain="Cancel"
+          titleAccent="Scheduled Delivery"
+          footer={
+            <>
+              <button type="button" onClick={() => setPopup({ type: null })} style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, color: '#2A1628', cursor: 'pointer' }}>Keep Schedule</button>
+              <button type="button" onClick={() => { setPopup({ type: null }); pushToast('Scheduled delivery plan cancelled.', 'danger'); }} style={{ background: '#DC2626', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}>Cancel Schedule</button>
+            </>
+          }
+        >
+          <div style={{ fontSize: '0.875rem', color: '#2A1628', lineHeight: 1.4 }}>
+            Are you sure you want to cancel the automated filing delivery schedule? You will no longer receive weekly compiles.
+          </div>
+        </ModalShell>
+      )}
+
+      {popup.type === 'reportPreview' && popup.tx && (
+        <ModalShell
+          onClose={() => setPopup({ type: null })}
+          eyebrow="PDF Viewer"
+          titlePlain="Preview"
+          titleAccent={popup.tx.name}
+          maxWidth="720px"
+          footer={
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+              {/* Zoom tools */}
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <button type="button" onClick={() => setPreviewZoom(z => Math.max(50, z - 10))} style={{ background: '#fff', border: '1px solid #DDD0C4', padding: '0.25rem 0.5rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>−</button>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, minWidth: '40px', textAlign: 'center' }}>{previewZoom}%</span>
+                <button type="button" onClick={() => setPreviewZoom(z => Math.min(200, z + 10))} style={{ background: '#fff', border: '1px solid #DDD0C4', padding: '0.25rem 0.5rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>+</button>
+              </div>
+
+              {/* Page Navigation */}
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <button type="button" disabled={previewPage === 1} onClick={() => setPreviewPage(1)} style={{ background: 'transparent', border: 'none', cursor: previewPage === 1 ? 'not-allowed' : 'pointer', opacity: previewPage === 1 ? 0.3 : 0.8 }}>◀</button>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Page {previewPage} of 3</span>
+                <button type="button" disabled={previewPage === 3} onClick={() => setPreviewPage(3)} style={{ background: 'transparent', border: 'none', cursor: previewPage === 3 ? 'not-allowed' : 'pointer', opacity: previewPage === 3 ? 0.3 : 0.8 }}>▶</button>
+              </div>
+
+                {/* Action download / print buttons */}
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button type="button" onClick={() => pushToast('PDF directed to system printer.', 'info')} style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.4rem 0.75rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', color: '#2A1628' }}>Print</button>
+                  <button type="button" onClick={() => pushToast('PDF download initiated.', 'success')} style={{ background: '#E8760A', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.4rem 0.75rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>Download</button>
                 </div>
               </div>
+            }
+          >
+            <div style={{ background: '#E5E7EB', padding: '1.5rem', borderRadius: '12px', display: 'flex', justifyContent: 'center', overflow: 'auto', maxHeight: '420px' }} className="hide-scrollbar">
+              <div style={{
+                background: '#ffffff',
+                width: '100%',
+                maxWidth: '480px',
+                padding: '2.5rem',
+                boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                transform: `scale(${previewZoom / 100})`,
+                transformOrigin: 'top center',
+                transition: 'transform 0.15s ease',
+                boxSizing: 'border-box'
+              }}>
+                {/* Mock Page Content layout matching page index */}
+                <div style={{ borderBottom: '2px solid #E8760A', paddingBottom: '0.75rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#2A1628', fontFamily: 'serif' }}>{popup.tx.client}</h3>
+                    <span style={{ fontSize: '0.65rem', color: 'rgba(0,0,0,0.45)' }}>Filing Year: {popup.tx.financialYear}</span>
+                  </div>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#E8760A' }}>{popup.tx.period} Report</span>
+                </div>
 
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-              <button onClick={() => setNewReportOpen(false)} style={{ padding: '0.55rem 1.25rem', border: '1px solid #DDD0C4', borderRadius: '8px', background: '#fff', color: '#2A1628', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-              <button onClick={() => { alert('New report generation queued successfully!'); setNewReportOpen(false); }} style={{ padding: '0.55rem 1.25rem', border: 'none', borderRadius: '8px', background: '#2A1628', color: '#fff', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 12px rgba(42,22,40,0.15)' }}>Generate</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── 4. POPULAR REPORT GENERATOR MODAL ── */}
-      {generateModalOpen && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(42,22,40,0.3)', backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 1000, padding: '1rem'
-        }}>
-          <div style={{
-            background: '#ffffff', borderRadius: '18px', border: '1px solid rgba(42,22,40,0.08)',
-            boxShadow: '0 24px 50px rgba(42,22,40,0.12)', width: '100%', maxWidth: '460px',
-            padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.25rem',
-            fontFamily: 'var(--font-sans), Inter, sans-serif'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                </svg>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#2A1628' }}>Generate {generateForm.reportName}</h3>
-              </div>
-              <button onClick={() => setGenerateModalOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'rgba(42,22,40,0.4)', padding: 0 }}>✕</button>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
-              {/* Report Type Display */}
-              <div>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.3rem' }}>Selected Report</label>
-                <input
-                  type="text"
-                  readOnly
-                  value={generateForm.reportName}
-                  style={{ width: '100%', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.6rem 0.85rem', fontSize: '0.8125rem', background: '#FAF8F5', color: '#2A1628', outline: 'none', boxSizing: 'border-box', fontWeight: 600 }}
-                />
-              </div>
-
-              {/* Company selection */}
-              <div style={{ position: 'relative' }}>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.3rem' }}>Company Name</label>
-                <button
-                  onClick={() => setGenClientDropdownOpen(o => !o)}
-                  style={{
-                    width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '0.6rem 0.85rem', border: '1px solid #DDD0C4', borderRadius: '8px',
-                    background: '#FAF8F5', color: generateForm.client ? '#2A1628' : 'rgba(42,22,40,0.4)', fontSize: '0.8125rem', cursor: 'pointer',
-                    fontFamily: 'inherit', fontWeight: 500
-                  }}
-                >
-                  {generateForm.client || 'Select Company...'}
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
-                </button>
-                {genClientDropdownOpen && (
-                  <div style={{
-                    position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px',
-                    background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px',
-                    boxShadow: '0 4px 16px rgba(42,22,40,0.1)', zIndex: 110, padding: '4px'
-                  }}>
-                    {['ABC Trading LLC', 'XYZ Holdings Limited', 'Alpha Tech FZCO', 'Delta Properties FZCO', 'Beta Industries LLC'].map(c => (
-                      <div
-                        key={c}
-                        onClick={() => {
-                          setGenerateForm({ ...generateForm, client: c });
-                          setGenClientDropdownOpen(false);
-                        }}
-                        style={{
-                          padding: '0.45rem 0.65rem', fontSize: '0.75rem', color: '#2A1628',
-                          cursor: 'pointer', borderRadius: '6px',
-                          background: generateForm.client === c ? 'rgba(232, 118, 10, 0.06)' : 'transparent',
-                          fontWeight: generateForm.client === c ? 600 : 400
-                        }}
-                      >
-                        {c}
-                      </div>
-                    ))}
+                {previewPage === 1 && (
+                  <div>
+                    <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: '#2A1628', borderBottom: '1px solid #E5E7EB', paddingBottom: '0.25rem' }}>1. Executive Position Summary</h4>
+                    <p style={{ fontSize: '0.75rem', color: 'rgba(0,0,0,0.6)', lineHeight: 1.4, margin: '0 0 1rem 0' }}>
+                      This compiled financial statement outlines the operational returns, gross margins, and net deductibles prepared in compliance with UAE VAT and Corporate Tax directives.
+                    </p>
+                    <table style={{ width: '100%', fontSize: '0.7rem', borderCollapse: 'collapse' }}>
+                      <tbody>
+                        <tr style={{ borderBottom: '1px solid #F3F4F6' }}><td style={{ padding: '0.4rem 0', color: 'rgba(0,0,0,0.5)' }}>Gross Revenue</td><td style={{ textAlign: 'right', fontWeight: 700 }}>AED 4,250,000</td></tr>
+                        <tr style={{ borderBottom: '1px solid #F3F4F6' }}><td style={{ padding: '0.4rem 0', color: 'rgba(0,0,0,0.5)' }}>Allowable Deductibles</td><td style={{ textAlign: 'right', fontWeight: 700 }}>AED (3,120,000)</td></tr>
+                        <tr style={{ borderBottom: '1px solid #2A1628' }}><td style={{ padding: '0.4rem 0', color: 'rgba(0,0,0,0.5)', fontWeight: 700 }}>Net Position Value</td><td style={{ textAlign: 'right', fontWeight: 700, color: '#E8760A' }}>AED 1,130,000</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {previewPage === 2 && (
+                  <div>
+                    <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: '#2A1628', borderBottom: '1px solid #E5E7EB', paddingBottom: '0.25rem' }}>2. Ledger Adjustments</h4>
+                    <p style={{ fontSize: '0.75rem', color: 'rgba(0,0,0,0.6)', lineHeight: 1.4, margin: '0 0 1rem 0' }}>
+                      Depreciation schedules and standard pos ledger summaries were aggregated. All values conform with direct invoice reporting limits.
+                    </p>
+                  </div>
+                )}
+                {previewPage === 3 && (
+                  <div>
+                    <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: '#2A1628', borderBottom: '1px solid #E5E7EB', paddingBottom: '0.25rem' }}>3. Audit Validation</h4>
+                    <p style={{ fontSize: '0.75rem', color: 'rgba(0,0,0,0.6)', lineHeight: 1.4, margin: '0 0 1rem 0' }}>
+                      Double entry verification checks are complete. Prepared by Mahesh Maddu, verified by senior audit staff.
+                    </p>
                   </div>
                 )}
               </div>
-
-              {/* Generated By Selection */}
-              <div style={{ position: 'relative' }}>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.3rem' }}>Generated By</label>
-                <button
-                  onClick={() => setGenByDropdownOpen(o => !o)}
-                  style={{
-                    width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '0.6rem 0.85rem', border: '1px solid #DDD0C4', borderRadius: '8px',
-                    background: '#FAF8F5', color: generateForm.generatedBy ? '#2A1628' : 'rgba(42,22,40,0.4)', fontSize: '0.8125rem', cursor: 'pointer',
-                    fontFamily: 'inherit', fontWeight: 500
-                  }}
-                >
-                  {generateForm.generatedBy || 'Select User...'}
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
-                </button>
-                {genByDropdownOpen && (
-                  <div style={{
-                    position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px',
-                    background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px',
-                    boxShadow: '0 4px 16px rgba(42,22,40,0.1)', zIndex: 110, padding: '4px'
-                  }}>
-                    {[
-                      { name: 'Mahesh Maddu', init: 'MM' },
-                      { name: 'Priya Nair', init: 'PN' },
-                      { name: 'Sneha Iyer', init: 'SI' },
-                      { name: 'Rohit Sharma', init: 'RS' }
-                    ].map(u => (
-                      <div
-                        key={u.name}
-                        onClick={() => {
-                          setGenerateForm({ ...generateForm, generatedBy: u.name, generatedByInitials: u.init });
-                          setGenByDropdownOpen(false);
-                        }}
-                        style={{
-                          padding: '0.45rem 0.65rem', fontSize: '0.75rem', color: '#2A1628',
-                          cursor: 'pointer', borderRadius: '6px',
-                          background: generateForm.generatedBy === u.name ? 'rgba(232, 118, 10, 0.06)' : 'transparent',
-                          fontWeight: generateForm.generatedBy === u.name ? 600 : 400
-                        }}
-                      >
-                        {u.name}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Period selection */}
-              <div style={{ position: 'relative' }}>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.3rem' }}>Period</label>
-                <button
-                  onClick={() => setGenPeriodDropdownOpen(o => !o)}
-                  style={{
-                    width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '0.6rem 0.85rem', border: '1px solid #DDD0C4', borderRadius: '8px',
-                    background: '#FAF8F5', color: generateForm.period ? '#2A1628' : 'rgba(42,22,40,0.4)', fontSize: '0.8125rem', cursor: 'pointer',
-                    fontFamily: 'inherit', fontWeight: 500
-                  }}
-                >
-                  {generateForm.period || 'Select Period...'}
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
-                </button>
-                {genPeriodDropdownOpen && (
-                  <div style={{
-                    position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px',
-                    background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px',
-                    boxShadow: '0 4px 16px rgba(42,22,40,0.1)', zIndex: 110, padding: '4px'
-                  }}>
-                    {['Apr 2026', 'Q1 2026', 'FY 2025'].map(p => (
-                      <div
-                        key={p}
-                        onClick={() => {
-                          setGenerateForm({ ...generateForm, period: p });
-                          setGenPeriodDropdownOpen(false);
-                        }}
-                        style={{
-                          padding: '0.45rem 0.65rem', fontSize: '0.75rem', color: '#2A1628',
-                          cursor: 'pointer', borderRadius: '6px',
-                          background: generateForm.period === p ? 'rgba(232, 118, 10, 0.06)' : 'transparent',
-                          fontWeight: generateForm.period === p ? 600 : 400
-                        }}
-                      >
-                        {p}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Status selection */}
-              <div style={{ position: 'relative' }}>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.3rem' }}>Filing Status</label>
-                <button
-                  onClick={() => setGenStatusDropdownOpen(o => !o)}
-                  style={{
-                    width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '0.6rem 0.85rem', border: '1px solid #DDD0C4', borderRadius: '8px',
-                    background: '#FAF8F5', color: generateForm.status ? '#2A1628' : 'rgba(42,22,40,0.4)', fontSize: '0.8125rem', cursor: 'pointer',
-                    fontFamily: 'inherit', fontWeight: 500
-                  }}
-                >
-                  {generateForm.status || 'Select Status...'}
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
-                </button>
-                {genStatusDropdownOpen && (
-                  <div style={{
-                    position: 'absolute', bottom: 'calc(100% + 4px)', left: 0, right: 0,
-                    background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px',
-                    boxShadow: '0 -4px 16px rgba(42,22,40,0.1)', zIndex: 110, padding: '4px'
-                  }}>
-                    {['Completed', 'Failed'].map(s => (
-                      <div
-                        key={s}
-                        onClick={() => {
-                          setGenerateForm({ ...generateForm, status: s as 'Completed' | 'Failed' });
-                          setGenStatusDropdownOpen(false);
-                        }}
-                        style={{
-                          padding: '0.45rem 0.65rem', fontSize: '0.75rem', color: '#2A1628',
-                          cursor: 'pointer', borderRadius: '6px',
-                          background: generateForm.status === s ? 'rgba(232, 118, 10, 0.06)' : 'transparent',
-                          fontWeight: generateForm.status === s ? 600 : 400
-                        }}
-                      >
-                        {s}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
             </div>
+          </ModalShell>
+        )}
 
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-              <button onClick={() => setGenerateModalOpen(false)} style={{ padding: '0.55rem 1.25rem', border: '1px solid #DDD0C4', borderRadius: '8px', background: '#fff', color: '#2A1628', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-              <button 
-                onClick={() => {
-                  // Determine appropriate icon/badge details
-                  let shortType = 'P&L';
-                  let tColor = '#1E3A8A';
-                  let tBg = '#EFF6FF';
-                  let iconNode = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>;
-                  
-                  if (generateForm.reportName.includes('Balance Sheet')) {
-                    shortType = 'Balance Sheet';
-                    tColor = '#065F46';
-                    tBg = '#ECFDF5';
-                    iconNode = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>;
-                  } else if (generateForm.reportName.includes('Cash Flow')) {
-                    shortType = 'Cash Flow';
-                    tColor = '#92400E';
-                    tBg = '#FEF3C7';
-                    iconNode = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" /></svg>;
-                  } else if (generateForm.reportName.includes('VAT')) {
-                    shortType = 'VAT';
-                    tColor = '#581C87';
-                    tBg = '#F3E8FF';
-                    iconNode = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>;
-                  } else if (generateForm.reportName.includes('Corporate Tax')) {
-                    shortType = 'Corporate Tax';
-                    tColor = '#1E3A8A';
-                    tBg = '#F0F6FC';
-                    iconNode = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" /></svg>;
-                  } else if (generateForm.reportName.includes('Ledger')) {
-                    shortType = 'General Ledger';
-                    tColor = '#2A1628';
-                    tBg = '#FAF8F5';
-                    iconNode = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>;
-                  }
-
-                  const newReportItem: ReportItem = {
-                    id: String(reports.length + 1),
-                    name: generateForm.reportName,
-                    desc: `${generateForm.reportName.replace(' Report', '').replace(' Statement', '')} summary`,
-                    type: shortType,
-                    typeBg: tBg,
-                    typeColor: tColor,
-                    client: generateForm.client,
-                    period: generateForm.period,
-                    generatedOn: new Date().toLocaleString('en-US', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }),
-                    status: generateForm.status,
-                    generatedBy: generateForm.generatedBy,
-                    generatedByInitials: generateForm.generatedByInitials,
-                    icon: iconNode,
-                    iconBg: '#FAF2EC'
-                  };
-
-                  setReports([newReportItem, ...reports]);
-                  setGenerateModalOpen(false);
-                }}
-                style={{ padding: '0.55rem 1.25rem', border: 'none', borderRadius: '8px', background: '#2A1628', color: '#fff', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 12px rgba(42,22,40,0.15)' }}
-              >
-                Generate Report
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
+      {/* Styled JSX injected for dynamic animations */}
+      <style jsx global>{`
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none !important;
+        }
+        .hide-scrollbar {
+          -ms-overflow-style: none !important;
+          scrollbar-width: none !important;
+        }
+        @keyframes drawerSlide {
+          from {
+            transform: translateX(100%);
+          }
+          to {
+            transform: translateX(0);
+          }
+        }
+        @keyframes slideIn {
+          from {
+            transform: translateY(-1rem);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+      `}</style>
     </div>
   );
 }
