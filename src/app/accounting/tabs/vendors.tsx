@@ -363,9 +363,10 @@ function CustomSelect({ value, onChange, options, placeholder = 'Select...', ico
 interface VendorImportModalProps {
   onClose: () => void;
   onImport: (fileName: string) => void;
+  onToast: (message: string, tone: 'success' | 'danger' | 'info' | 'warning') => void;
 }
 
-function VendorImportModal({ onClose, onImport }: VendorImportModalProps) {
+function VendorImportModal({ onClose, onImport, onToast }: VendorImportModalProps) {
   const [importTab, setImportTab] = useState<'local' | 'gdrive' | 'onedrive'>('local');
   const [importFile, setImportFile] = useState('');
 
@@ -479,25 +480,118 @@ function VendorImportModal({ onClose, onImport }: VendorImportModalProps) {
             </div>
           </div>
         ) : (
-          <div style={{ border: '1.5px dashed #DDD0C4', borderRadius: '12px', padding: '2.5rem 1.25rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', textAlign: 'center', background: '#FAF8F5' }}>
-            <div style={{ width: '56px', height: '56px', background: importTab === 'gdrive' ? 'rgba(66,133,244,0.05)' : 'rgba(0,120,212,0.05)', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 17V9l6 4-6 4z" /></svg>
-            </div>
-            <div>
-              <h4 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#2A1628' }}>
-                {importTab === 'gdrive' ? 'Connect Google Drive' : 'Connect OneDrive'}
-              </h4>
-              <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'rgba(42,22,40,0.5)' }}>
-                Link cloud storage accounts to browse and import active vendors profiles.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setImportFile(importTab === 'gdrive' ? 'Google_Drive_Vendors_Registry.csv' : 'OneDrive_Vendors_Registry.csv')}
-              style={{ background: '#2A1628', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
-            >
-              Sign In & Select File
-            </button>
+          <div style={{
+            border: '1.5px dashed #DDD0C4',
+            borderRadius: '12px',
+            padding: '2.5rem 1.25rem',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '1rem',
+            textAlign: 'center',
+            background: '#FAF8F5'
+          }}>
+            {importFile ? (
+              <>
+                <div style={{
+                  width: '56px',
+                  height: '56px',
+                  background: importTab === 'gdrive' ? 'rgba(66,133,244,0.05)' : 'rgba(0,120,212,0.05)',
+                  borderRadius: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  {importTab === 'gdrive' ? (
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                      <rect x="3" y="3" width="8" height="8" rx="1.5" fill="#4285F4" />
+                      <rect x="13" y="3" width="8" height="8" rx="1.5" fill="#34A853" />
+                      <rect x="3" y="13" width="8" height="8" rx="1.5" fill="#FBBC05" />
+                      <rect x="13" y="13" width="8" height="8" rx="1.5" fill="#EA4335" />
+                    </svg>
+                  ) : (
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                      <rect x="3" y="3" width="8" height="8" rx="1.5" fill="#0078D4" />
+                      <rect x="13" y="3" width="8" height="8" rx="1.5" fill="#00B7C3" />
+                      <rect x="3" y="13" width="8" height="8" rx="1.5" fill="#0078D4" />
+                      <rect x="13" y="13" width="8" height="8" rx="1.5" fill="#0078D4" />
+                    </svg>
+                  )}
+                </div>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.7rem', fontWeight: 700, color: '#137333', background: '#E6F4EA', borderRadius: '999px', padding: '0.25rem 0.6rem' }}>
+                  Account connected
+                </span>
+                <p style={{ margin: 0, fontSize: '0.8125rem', fontWeight: 700, color: '#047857' }}>✓ {importFile}</p>
+              </>
+            ) : (
+              <>
+                <div style={{
+                  width: '56px',
+                  height: '56px',
+                  background: importTab === 'gdrive' ? 'rgba(66,133,244,0.05)' : 'rgba(0,120,212,0.05)',
+                  borderRadius: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  {importTab === 'gdrive' ? (
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                      <rect x="3" y="3" width="8" height="8" rx="1.5" fill="#4285F4" />
+                      <rect x="13" y="3" width="8" height="8" rx="1.5" fill="#34A853" />
+                      <rect x="3" y="13" width="8" height="8" rx="1.5" fill="#FBBC05" />
+                      <rect x="13" y="13" width="8" height="8" rx="1.5" fill="#EA4335" />
+                    </svg>
+                  ) : (
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                      <rect x="3" y="3" width="8" height="8" rx="1.5" fill="#0078D4" />
+                      <rect x="13" y="3" width="8" height="8" rx="1.5" fill="#00B7C3" />
+                      <rect x="3" y="13" width="8" height="8" rx="1.5" fill="#0078D4" />
+                      <rect x="13" y="13" width="8" height="8" rx="1.5" fill="#0078D4" />
+                    </svg>
+                  )}
+                </div>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#2A1628' }}>
+                    {importTab === 'gdrive' ? 'Connect Google Drive' : 'Connect OneDrive'}
+                  </h4>
+                  <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'rgba(42,22,40,0.5)', maxWidth: '300px' }}>
+                    {importTab === 'gdrive'
+                      ? 'Sign in with Google to browse and pick an Excel sheet from your Drive'
+                      : 'Sign in with Microsoft to browse and pick an Excel sheet from your OneDrive'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImportFile(importTab === 'gdrive' ? 'Google_Drive_Vendors_Registry.csv' : 'OneDrive_Vendors_Registry.csv');
+                    onToast(importTab === 'gdrive' ? 'Google Drive connected.' : 'OneDrive connected.', 'success');
+                  }}
+                  style={{
+                    background: importTab === 'gdrive' ? '#4285F4' : '#0078D4',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '0.625rem 1.5rem',
+                    fontSize: '0.8125rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    fontFamily: 'inherit',
+                    boxShadow: importTab === 'gdrive' ? '0 4px 12px rgba(66,133,244,0.2)' : '0 4px 12px rgba(0,120,212,0.2)'
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                    <rect x="3" y="3" width="8" height="8" rx="1" fill="#fff" fillOpacity="0.9" />
+                    <rect x="13" y="3" width="8" height="8" rx="1" fill="#fff" fillOpacity="0.9" />
+                    <rect x="3" y="13" width="8" height="8" rx="1" fill="#fff" fillOpacity="0.9" />
+                    <rect x="13" y="13" width="8" height="8" rx="1" fill="#fff" fillOpacity="0.9" />
+                  </svg>
+                  {importTab === 'gdrive' ? 'Sign in with Google' : 'Sign in with Microsoft'}
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -1193,26 +1287,36 @@ export default function VendorsTab() {
       </div>
 
       {/* ── 6. ENTERPRISE VENDORS TABLE ── */}
-      <div style={{ background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 12px rgba(42,22,40,0.02)' }}>
-        <div style={{ overflowX: 'auto' }} className="hide-scrollbar">
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem', textAlign: 'left', fontFamily: 'var(--font-sans), Inter, sans-serif' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div className="client-table-scroll" style={{ background: '#ffffff', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '16px', overflowX: 'auto', overflowY: 'visible', boxShadow: '0 4px 12px rgba(42,22,40,0.01)', position: 'relative' }}>
+          <style>{`
+            .client-table-scroll::-webkit-scrollbar { height: 6px; }
+            .client-table-scroll::-webkit-scrollbar-track { background: rgba(42,22,40,0.03); border-radius: 4px; }
+            .client-table-scroll::-webkit-scrollbar-thumb { background: rgba(42,22,40,0.15); border-radius: 4px; }
+            .client-table-scroll::-webkit-scrollbar-thumb:hover { background: rgba(42,22,40,0.25); }
+            .hide-scrollbar::-webkit-scrollbar { display: none; }
+            .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+          `}</style>
+          <table style={{ width: '100%', minWidth: '1200px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8125rem' }}>
             <thead>
-              <tr style={{ background: '#FAF8F5', borderBottom: '1px solid rgba(42,22,40,0.06)', color: 'rgba(42,22,40,0.5)', fontWeight: 700, fontSize: '0.7rem', letterSpacing: '0.04em' }}>
-                <th style={{ padding: '0.75rem 1rem', width: '32px', textAlign: 'center' }}>
+              <tr style={{ background: '#FAF8F5', borderBottom: '1px solid rgba(42,22,40,0.06)', color: 'rgba(42,22,40,0.5)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                <th style={{ padding: '1rem 0.75rem', width: '48px', textAlign: 'center', position: 'sticky', left: 0, background: '#FAF8F5', zIndex: 10 }}>
                   <input type="checkbox" onChange={handleSelectAll} checked={pagedData.length > 0 && selectedIds.length === filteredData.length} />
                 </th>
-                <th style={{ padding: '0.75rem 1rem', cursor: 'pointer' }} onClick={() => { setSortCol('name'); setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); }}>VENDOR</th>
-                <th style={{ padding: '0.75rem 1rem' }}>VENDOR ID</th>
-                <th style={{ padding: '0.75rem 1rem' }}>CATEGORY</th>
-                <th style={{ padding: '0.75rem 1rem' }}>COUNTRY</th>
-                <th style={{ padding: '0.75rem 1rem' }}>CONTACT</th>
-                <th style={{ padding: '0.75rem 1rem' }}>TERMS</th>
-                <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>OUTSTANDING</th>
-                <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>TOTAL SPEND</th>
-                <th style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>COMPLIANCE</th>
-                <th style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>STATUS</th>
-                <th style={{ padding: '0.75rem 1rem' }}>MANAGER</th>
-                <th style={{ padding: '0.75rem 1rem', width: '50px', textAlign: 'center' }}>ACTIONS</th>
+                <th style={{ padding: '1rem', position: 'sticky', left: '48px', background: '#FAF8F5', zIndex: 10, borderRight: '1px solid #DDD0C4', cursor: 'pointer', userSelect: 'none' }} onClick={() => { setSortCol('name'); setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); }}>
+                  VENDOR {sortCol === 'name' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                </th>
+                <th style={{ padding: '1rem', userSelect: 'none' }}>VENDOR ID</th>
+                <th style={{ padding: '1rem', userSelect: 'none' }}>CATEGORY</th>
+                <th style={{ padding: '1rem', userSelect: 'none' }}>COUNTRY</th>
+                <th style={{ padding: '1rem', userSelect: 'none' }}>CONTACT</th>
+                <th style={{ padding: '1rem', userSelect: 'none' }}>TERMS</th>
+                <th style={{ padding: '1rem', textAlign: 'right', userSelect: 'none' }}>OUTSTANDING</th>
+                <th style={{ padding: '1rem', textAlign: 'right', userSelect: 'none' }}>TOTAL SPEND</th>
+                <th style={{ padding: '1rem', textAlign: 'center', userSelect: 'none' }}>COMPLIANCE</th>
+                <th style={{ padding: '1rem', textAlign: 'center', userSelect: 'none' }}>STATUS</th>
+                <th style={{ padding: '1rem', userSelect: 'none' }}>MANAGER</th>
+                <th style={{ padding: '1rem', width: '50px', textAlign: 'center' }}>ACTIONS</th>
               </tr>
             </thead>
             <tbody>
@@ -1237,46 +1341,76 @@ export default function VendorsTab() {
                     <tr
                       key={item.id}
                       style={{ borderBottom: idx < pagedData.length - 1 ? '1px solid rgba(42,22,40,0.04)' : 'none', background: isSelected ? 'rgba(232,118,10,0.02)' : 'transparent' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(42,22,40,0.01)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = isSelected ? 'rgba(232,118,10,0.02)' : 'transparent')}
                     >
-                      <td style={{ padding: '0.625rem 1rem', textAlign: 'center' }}>
+                      <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', position: 'sticky', left: 0, background: isSelected ? '#FAF4EE' : '#ffffff', zIndex: 9 }} onClick={(e) => e.stopPropagation()}>
                         <input type="checkbox" checked={isSelected} onChange={() => handleSelectRow(item.id)} />
                       </td>
-                      <td style={{ padding: '0.625rem 1rem', fontWeight: 700, color: '#2A1628', cursor: 'pointer' }} onClick={() => { setDrawerTxId(item.id); setDrawerTab('overview'); }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span style={{ color: item.isPreferred ? '#E8760A' : 'transparent', fontSize: '0.75rem' }}>★</span>
-                          {item.name}
+                      <td style={{ padding: '0.625rem 1rem', position: 'sticky', left: '48px', background: isSelected ? '#FAF4EE' : '#ffffff', zIndex: 9, borderRight: '1px solid rgba(42,22,40,0.06)' }} onClick={() => { setDrawerTxId(item.id); setDrawerTab('overview'); }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', whiteSpace: 'nowrap' }}>
+                          <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(232, 118, 10, 0.08)', color: '#E8760A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, flexShrink: 0 }}>
+                            {item.name.split(' ').map((x) => x[0]).join('').substr(0, 2)}
+                          </div>
+                          <div style={{ overflow: 'hidden' }}>
+                            <div style={{ fontWeight: 700, color: '#2A1628', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                              {item.name}
+                            </div>
+                            <div style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.45)', marginTop: '0.1rem', whiteSpace: 'nowrap' }}>{item.vendorType}</div>
+                          </div>
                         </div>
                       </td>
-                      <td style={{ padding: '0.625rem 1rem', color: 'rgba(42,22,40,0.7)' }}>{item.vendorId}</td>
-                      <td style={{ padding: '0.625rem 1rem' }}>
+                      <td style={{ padding: '0.625rem 1rem', color: 'rgba(42,22,40,0.75)', fontWeight: 500, whiteSpace: 'nowrap' }}>{item.vendorId}</td>
+                      <td style={{ padding: '0.625rem 1rem', whiteSpace: 'nowrap' }}>
                         <span style={{ fontSize: '0.6875rem', padding: '0.15rem 0.5rem', borderRadius: '4px', background: item.categoryBg, color: item.categoryColor, fontWeight: 700 }}>
                           {item.category}
                         </span>
                       </td>
-                      <td style={{ padding: '0.625rem 1rem' }}>{item.country}</td>
-                      <td style={{ padding: '0.625rem 1rem' }}>
-                        <div>{item.contactPerson}</div>
+                      <td style={{ padding: '0.625rem 1rem', whiteSpace: 'nowrap' }}>{item.country}</td>
+                      <td style={{ padding: '0.625rem 1rem', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontWeight: 600 }}>{item.contactPerson}</div>
                         <div style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.45)' }}>{item.email}</div>
                       </td>
-                      <td style={{ padding: '0.625rem 1rem' }}>{item.terms}</td>
-                      <td style={{ padding: '0.625rem 1rem', textAlign: 'right', fontWeight: 600, color: item.outstandingBalance > 0 ? '#C5221F' : '#2A1628' }}>
+                      <td style={{ padding: '0.625rem 1rem', whiteSpace: 'nowrap' }}>{item.terms}</td>
+                      <td style={{ padding: '0.625rem 1rem', textAlign: 'right', fontWeight: 600, color: item.outstandingBalance > 0 ? '#C5221F' : '#2A1628', whiteSpace: 'nowrap' }}>
                         AED {item.outstandingBalance.toLocaleString()}
                       </td>
-                      <td style={{ padding: '0.625rem 1rem', textAlign: 'right', fontWeight: 600 }}>
+                      <td style={{ padding: '0.625rem 1rem', textAlign: 'right', fontWeight: 600, whiteSpace: 'nowrap' }}>
                         AED {item.totalSpend.toLocaleString()}
                       </td>
-                      <td style={{ padding: '0.625rem 1rem', textAlign: 'center' }}>
+                      <td style={{ padding: '0.625rem 1rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
                         <span style={{ fontWeight: 700, color: item.complianceScore >= 90 ? '#137333' : item.complianceScore >= 75 ? '#E8760A' : '#C5221F' }}>
                           {item.complianceScore}%
                         </span>
                       </td>
-                      <td style={{ padding: '0.625rem 1rem', textAlign: 'center' }}>
-                        <span style={{ fontSize: '0.6875rem', padding: '0.15rem 0.5rem', borderRadius: '4px', background: item.status === 'Verified' ? 'rgba(19,115,51,0.1)' : item.status === 'High Risk' ? 'rgba(197,34,31,0.1)' : 'rgba(42,22,40,0.08)', color: item.status === 'Verified' ? '#137333' : item.status === 'High Risk' ? '#C5221F' : '#2A1628', fontWeight: 700 }}>
+                      <td style={{ padding: '0.625rem 1rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                        <span style={{
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: '4px',
+                          background:
+                            item.status === 'Verified'
+                              ? '#E6F4EA'
+                              : item.status === 'High Risk'
+                              ? '#FEE2E2'
+                              : item.status === 'Pending'
+                              ? '#E8F0FE'
+                              : '#F1F3F4',
+                          color:
+                            item.status === 'Verified'
+                              ? '#137333'
+                              : item.status === 'High Risk'
+                              ? '#D32F2F'
+                              : item.status === 'Pending'
+                              ? '#1A73E8'
+                              : '#5F6368',
+                        }}>
                           {item.status}
                         </span>
                       </td>
-                      <td style={{ padding: '0.625rem 1rem' }}>{item.manager}</td>
-                      <td style={{ padding: '0.625rem 1rem', textAlign: 'center' }}>
+                      <td style={{ padding: '0.625rem 1rem', color: '#2A1628', fontWeight: 600, whiteSpace: 'nowrap' }}>{item.manager}</td>
+                      <td style={{ padding: '0.625rem 1rem', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
                           className="action-btn-trigger"
@@ -1433,7 +1567,7 @@ export default function VendorsTab() {
           <div
             role="dialog"
             onClick={(e) => e.stopPropagation()}
-            style={{ width: '100%', maxWidth: '640px', background: '#ffffff', height: '100%', boxShadow: '-10px 0 40px rgba(42,22,40,0.15)', display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-sans), Inter, sans-serif' }}
+            style={{ width: '100%', maxWidth: '560px', background: '#ffffff', height: '100%', boxShadow: '-10px 0 40px rgba(42,22,40,0.15)', display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-sans), Inter, sans-serif' }}
           >
             {/* Drawer Header */}
             <div style={{ padding: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexShrink: 0 }}>
@@ -1477,22 +1611,54 @@ export default function VendorsTab() {
               })}
             </div>
 
-            {/* Tab Body */}
+             {/* Tab Body */}
             <div className="hide-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 2rem' }}>
               {drawerTab === 'overview' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
                     {[
                       { lbl: 'Vendor Name', val: activeTx.name },
                       { lbl: 'Vendor ID', val: activeTx.vendorId },
-                      { lbl: 'Risk Status', val: activeTx.status, highlight: true },
+                      {
+                        lbl: 'Risk Status',
+                        val: (
+                          <span style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            padding: '0.25rem 0.5rem',
+                            borderRadius: '4px',
+                            background:
+                              activeTx.status === 'Verified' ? '#E6F4EA' :
+                              activeTx.status === 'High Risk' ? '#FEE2E2' :
+                              activeTx.status === 'Pending' ? '#E8F0FE' :
+                              activeTx.status === 'Active' ? '#E6F4EA' :
+                              activeTx.status === 'Blacklisted' ? '#FEE2E2' : '#F1F3F4',
+                            color:
+                              activeTx.status === 'Verified' ? '#137333' :
+                              activeTx.status === 'High Risk' ? '#D32F2F' :
+                              activeTx.status === 'Pending' ? '#1A73E8' :
+                              activeTx.status === 'Active' ? '#137333' :
+                              activeTx.status === 'Blacklisted' ? '#D32F2F' : '#5F6368',
+                          }}>
+                            {activeTx.status}
+                          </span>
+                        )
+                      },
                       { lbl: 'Compliance Score', val: `${activeTx.complianceScore}%` },
                       { lbl: 'Account Manager', val: activeTx.manager },
-                      { lbl: 'Outstanding Balance', val: `AED ${activeTx.outstandingBalance.toLocaleString()}` }
+                      { lbl: 'Outstanding Balance', val: `AED ${activeTx.outstandingBalance.toLocaleString()}` },
+                      { lbl: 'Vendor Since', val: '2023-04-12' },
+                      { lbl: 'Last Payment', val: '2026-05-01 (AED 12,000)' },
+                      { lbl: 'Total Purchase Orders', val: '18 Approved' },
+                      { lbl: 'Last Invoice', val: 'INV-2026-0498' },
+                      { lbl: 'Currency', val: 'AED (United Arab Emirates Dirham)' },
+                      { lbl: 'Tax Number (TRN)', val: activeTx.name.includes('Alpha') ? '100556789600003' : '100556789600012' },
+                      { lbl: 'Payment Method', val: 'Bank Wire Transfer' },
+                      { lbl: 'Vendor Rating', val: '⭐⭐⭐⭐★ (4.8/5)' }
                     ].map((row, idx) => (
                       <div key={idx}>
                         <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase' }}>{row.lbl}</label>
-                        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: row.highlight ? '#C5221F' : '#2A1628', marginTop: '0.2rem' }}>{row.val}</div>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#2A1628', marginTop: '0.2rem' }}>{row.val}</div>
                       </div>
                     ))}
                   </div>
@@ -1501,10 +1667,7 @@ export default function VendorsTab() {
 
                   {/* Summary Box */}
                   <div style={{ background: 'rgba(232,118,10,0.04)', border: '1px solid rgba(232,118,10,0.12)', borderRadius: '12px', padding: '1rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                      <span style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.6)' }}>Sync Summary statistics</span>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginTop: '0.5rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
                       <div><strong style={{ fontSize: '1.15rem', color: '#2A1628', display: 'block' }}>AED {activeTx.totalSpend.toLocaleString()}</strong><span style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.5)' }}>Total Spend</span></div>
                       <div><strong style={{ fontSize: '1.15rem', color: '#2A1628', display: 'block' }}>{activeTx.terms}</strong><span style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.5)' }}>Payment Terms</span></div>
                       <div><strong style={{ fontSize: '1.15rem', color: '#2A1628', display: 'block' }}>{activeTx.lastTransaction}</strong><span style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.5)' }}>Last Activity</span></div>
@@ -1521,7 +1684,8 @@ export default function VendorsTab() {
                       <li>Registration Status: <span style={{ color: '#137333', fontWeight: 700 }}>Active</span></li>
                       <li>Region Location: <strong>{activeTx.country}</strong></li>
                       <li>Category Type: <strong>{activeTx.category}</strong></li>
-                      <li>Procurement Representative: <strong>{activeTx.contactPerson}</strong></li>
+                      <li>Trade License No: <strong>TL-239482-B</strong></li>
+                      <li>Registered Address: <strong>Business Bay, Tower B, Office 1204, Dubai, UAE</strong></li>
                     </ul>
                   </div>
                 </div>
@@ -1530,8 +1694,12 @@ export default function VendorsTab() {
               {drawerTab === 'contacts' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   <div style={{ padding: '0.75rem', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '10px' }}>
-                    <div style={{ fontWeight: 700, fontSize: '0.8rem' }}>Primary contact</div>
-                    <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.6)' }}>{activeTx.contactPerson} • {activeTx.email} • {activeTx.phone}</div>
+                    <div style={{ fontWeight: 700, fontSize: '0.8rem', color: '#2A1628' }}>Primary Account Manager</div>
+                    <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.6)', marginTop: '0.25rem' }}>
+                      Name: <strong>{activeTx.contactPerson}</strong><br />
+                      Email: <strong>{activeTx.email}</strong><br />
+                      Phone: <strong>{activeTx.phone}</strong>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1539,8 +1707,12 @@ export default function VendorsTab() {
               {drawerTab === 'bank' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   <div style={{ padding: '0.75rem', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '10px' }}>
-                    <div style={{ fontWeight: 700, fontSize: '0.8rem' }}>Bank Transfer Details</div>
-                    <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.6)' }}>IBAN: AE23049823094820394820 • SWIFT: ABCAEADXXX</div>
+                    <div style={{ fontWeight: 700, fontSize: '0.8rem', color: '#2A1628' }}>Corporate Bank Account</div>
+                    <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.6)', marginTop: '0.25rem' }}>
+                      Bank: <strong>Emirates NBD</strong><br />
+                      IBAN: <strong>AE23049823094820394820</strong><br />
+                      SWIFT: <strong>EBILAEADXXX</strong>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1549,10 +1721,12 @@ export default function VendorsTab() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.25rem' }}>
                     <input type="text" placeholder="Search transactions..." style={{ flex: 1, padding: '0.4rem 0.75rem', borderRadius: '8px', border: '1px solid #DDD0C4', outline: 'none', fontSize: '0.75rem' }} />
+                    <button style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.4rem 0.75rem', fontSize: '0.75rem', cursor: 'pointer', color: '#2A1628' }}>Filter</button>
+                    <button style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.4rem 0.75rem', fontSize: '0.75rem', cursor: 'pointer', color: '#2A1628' }}>Export</button>
                   </div>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
                     <thead>
-                      <tr style={{ background: '#FAF8F5', borderBottom: '1px solid rgba(42,22,40,0.06)' }}>
+                      <tr style={{ background: '#FAF8F5', borderBottom: '1px solid rgba(42,22,40,0.06)', color: 'rgba(42,22,40,0.5)' }}>
                         <th style={{ padding: '0.5rem', textAlign: 'left' }}>Date</th>
                         <th style={{ padding: '0.5rem', textAlign: 'left' }}>Ref</th>
                         <th style={{ padding: '0.5rem', textAlign: 'right' }}>Debit</th>
@@ -1573,17 +1747,39 @@ export default function VendorsTab() {
 
               {drawerTab === 'po' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <div style={{ fontSize: '0.75rem', padding: '0.5rem', background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '6px' }}>
-                    <strong>PO-9912</strong> • 2026-05-01 • Pending Delivery • Approved
-                  </div>
+                  {[
+                    { poNum: 'PO-2026-0091', date: '2026-05-01', amount: 15400, status: 'Approved', delivery: 'Pending' },
+                    { poNum: 'PO-2026-0042', date: '2026-04-12', amount: 8900, status: 'Delivered', delivery: 'Complete' }
+                  ].map((p, idx) => (
+                    <div key={idx} style={{ padding: '0.75rem', background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '8px', fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <strong>{p.poNum}</strong> • {p.date} • {p.delivery}<br />
+                        <span style={{ color: 'rgba(42,22,40,0.5)' }}>Amount: AED {p.amount.toLocaleString()}</span>
+                      </div>
+                      <span style={{ fontSize: '0.65rem', padding: '0.2rem 0.4rem', borderRadius: '4px', background: p.status === 'Approved' ? '#E6F4EA' : '#F1F3F4', color: p.status === 'Approved' ? '#137333' : '#5F6368', fontWeight: 700 }}>
+                        {p.status}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               )}
 
               {drawerTab === 'bills' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <div style={{ fontSize: '0.75rem', padding: '0.5rem', background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '6px' }}>
-                    <strong>BILL-4412</strong> • AED {activeTx.outstandingBalance.toLocaleString()} Outstanding • Due Q2
-                  </div>
+                  {[
+                    { billNum: 'BILL-4412', outstanding: activeTx.outstandingBalance, status: 'Overdue', due: '2026-06-15', method: 'Bank Wire' },
+                    { billNum: 'BILL-4310', outstanding: 0, status: 'Paid', due: '2026-04-20', method: 'Corporate Card' }
+                  ].map((b, idx) => (
+                    <div key={idx} style={{ padding: '0.75rem', background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '8px', fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <strong>{b.billNum}</strong> • Due: {b.due} • {b.method}<br />
+                        <span style={{ color: 'rgba(42,22,40,0.5)' }}>Outstanding: AED {b.outstanding.toLocaleString()}</span>
+                      </div>
+                      <span style={{ fontSize: '0.65rem', padding: '0.2rem 0.4rem', borderRadius: '4px', background: b.status === 'Paid' ? '#E6F4EA' : '#FEE2E2', color: b.status === 'Paid' ? '#137333' : '#D32F2F', fontWeight: 700 }}>
+                        {b.status}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               )}
 
@@ -1592,34 +1788,72 @@ export default function VendorsTab() {
                   <div style={{ border: '1.5px dashed #DDD0C4', borderRadius: '12px', padding: '1rem', textAlign: 'center', background: '#FAF8F5', cursor: 'pointer' }} onClick={() => pushToast('File selector opened.', 'info')}>
                     <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#E8760A' }}>+ Upload New Document</span>
                   </div>
+                  {[
+                    { name: 'Trade_License_2026.pdf', size: '2.4 MB', date: '2026-01-12', user: 'Mahesh Maddu' },
+                    { name: 'VAT_Certificate.pdf', size: '1.1 MB', date: '2026-01-14', user: 'System Agent' }
+                  ].map((doc, idx) => (
+                    <div key={idx} style={{ padding: '0.75rem', border: '1px solid #DDD0C4', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff', fontSize: '0.75rem' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600 }}>{doc.name}</div>
+                        <div style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.45)', marginTop: '0.15rem' }}>Size: {doc.size} • Uploaded by {doc.user} on {doc.date}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.35rem' }}>
+                        <button type="button" onClick={() => pushToast(`Previewing ${doc.name}`, 'info')} style={{ padding: '0.3rem 0.5rem', border: '1px solid #DDD0C4', borderRadius: '4px', background: '#fff', fontSize: '0.65rem', fontWeight: 700, cursor: 'pointer', color: '#2A1628' }}>Preview</button>
+                        <button type="button" onClick={() => pushToast(`Downloading ${doc.name}`, 'info')} style={{ padding: '0.3rem 0.5rem', border: '1px solid #DDD0C4', borderRadius: '4px', background: '#fff', fontSize: '0.65rem', fontWeight: 700, cursor: 'pointer', color: '#2A1628' }}>Download</button>
+                        <button type="button" onClick={() => pushToast(`Deleted ${doc.name}`, 'warning')} style={{ padding: '0.3rem 0.5rem', border: '1px solid #FCE8E6', borderRadius: '4px', background: '#fff', fontSize: '0.65rem', fontWeight: 700, cursor: 'pointer', color: '#C5221F' }}>Delete</button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
 
               {drawerTab === 'compliance' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <div style={{ padding: '0.75rem', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '10px' }}>
-                    <div>Compliance Level: <strong>Excellent</strong></div>
-                    <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.6)' }}>Score: {activeTx.complianceScore}% • KYC Verified</div>
+                  <div style={{ padding: '0.75rem', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '10px', background: '#FAF8F5' }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.8rem', color: '#2A1628', marginBottom: '0.5rem' }}>Compliance & Risk Score Checks</div>
+                    <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.75rem', color: 'rgba(42,22,40,0.8)', lineHeight: 1.6 }}>
+                      <li>KYC Verification: <span style={{ color: '#137333', fontWeight: 700 }}>✓ Verified</span></li>
+                      <li>AML Screening: <span style={{ color: '#137333', fontWeight: 700 }}>✓ Cleared</span></li>
+                      <li>Trade License Expiry: <strong>2027-01-12</strong></li>
+                      <li>VAT Registration Status: <strong>Registered</strong></li>
+                      <li>Overall AML Risk Score: <strong>Low Risk (98%)</strong></li>
+                    </ul>
                   </div>
                 </div>
               )}
 
               {drawerTab === 'timeline' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderLeft: '2px solid rgba(232,118,10,0.2)', paddingLeft: '1rem', marginLeft: '0.5rem' }}>
-                  <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: 'calc(-1rem - 6px)', top: '4px', width: '10px', height: '10px', borderRadius: '50%', background: '#137333', border: '2px solid #fff' }} />
-                    <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#2A1628' }}>Filing registration cycle complete</div>
-                    <div style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.45)', margin: '0.15rem 0' }}>2026-05-01</div>
-                  </div>
+                  {[
+                    { event: 'Payment Released', date: '2026-05-01', desc: 'Outstanding paid via bank wire transfer' },
+                    { event: 'PO Approved', date: '2026-04-12', desc: 'Purchase order PO-2026-0042 approved' },
+                    { event: 'Bank Updated', date: '2026-02-14', desc: 'Emirates NBD bank account IBAN updated' },
+                    { event: 'Vendor Created', date: '2023-04-12', desc: 'Supplier database profile initialized' }
+                  ].map((step, idx) => (
+                    <div key={idx} style={{ position: 'relative' }}>
+                      <span style={{ position: 'absolute', left: 'calc(-1rem - 6px)', top: '4px', width: '10px', height: '10px', borderRadius: '50%', background: '#E8760A', border: '2px solid #fff' }} />
+                      <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#2A1628' }}>{step.event}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.6)' }}>{step.desc}</div>
+                      <div style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.45)', marginTop: '0.15rem' }}>{step.date}</div>
+                    </div>
+                  ))}
                 </div>
               )}
 
               {drawerTab === 'activity' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <div style={{ padding: '0.75rem', background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.03)', borderRadius: '8px', fontSize: '0.75rem' }}>
-                    <div style={{ fontWeight: 700 }}>Profile configurations updated</div>
-                    <div style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.45)' }}>Mahesh Maddu • IP: 192.168.1.1</div>
-                  </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {[
+                    { action: 'IBAN details modified', user: 'Mahesh Maddu', ip: '194.28.1.19', device: 'Chrome / Windows', location: 'Dubai, UAE', time: '2026-02-14 09:12' },
+                    { action: 'Vendor onboarding approved', user: 'System Agent', ip: '10.0.4.12', device: 'Cron Engine', location: 'Dubai, UAE', time: '2023-04-12 10:00' }
+                  ].map((act, idx) => (
+                    <div key={idx} style={{ padding: '0.75rem', background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.03)', borderRadius: '8px', fontSize: '0.75rem' }}>
+                      <div style={{ fontWeight: 700, color: '#2A1628' }}>{act.action}</div>
+                      <div style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.45)', marginTop: '0.2rem' }}>
+                        User: {act.user} • IP: {act.ip} • Device: {act.device}<br />
+                        Location: {act.location} • Time: {act.time}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
 
@@ -1631,18 +1865,18 @@ export default function VendorsTab() {
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      <textarea placeholder="Write notes here..." style={{ width: '100%', minHeight: '80px', padding: '0.625rem', borderRadius: '10px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', fontFamily: 'inherit' }} />
+                      <textarea placeholder="Write internal notes here..." style={{ width: '100%', minHeight: '80px', padding: '0.625rem', borderRadius: '10px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', fontFamily: 'inherit' }} />
                       <button type="button" onClick={() => pushToast('Note added.', 'success')} style={{ background: '#E8760A', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.5rem 1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', alignSelf: 'flex-end' }}>Add Note</button>
                     </div>
 
                     <div style={{ borderTop: '1px solid rgba(42,22,40,0.06)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                       {filteredNotes.map((note, idx) => (
                         <div key={idx} style={{ padding: '0.75rem', background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.03)', borderRadius: '8px', fontSize: '0.75rem' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'rgba(42,22,40,0.5)' }}>
-                            <strong>{note.user}</strong>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'rgba(42,22,40,0.5)', marginBottom: '0.25rem' }}>
+                            <strong>{note.user} ({note.role}) {note.pinned && '📌'}</strong>
                             <span>{note.date}</span>
                           </div>
-                          <div>{note.text}</div>
+                          <div style={{ color: '#2A1628' }}>{note.text}</div>
                         </div>
                       ))}
                     </div>
@@ -1714,6 +1948,7 @@ export default function VendorsTab() {
             setPopup({ type: null });
             pushToast(`Imported ledgers from file: ${fileName}`, 'success');
           }}
+          onToast={pushToast}
         />
       )}
 
