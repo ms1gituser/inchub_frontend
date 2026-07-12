@@ -590,6 +590,32 @@ export default function AiQueueTab() {
         ))}
       </div>
 
+      {/* ── QUEUE STATUS TABS ── */}
+      <div className="no-scrollbar" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
+        {[
+          { id: 'All Jobs', label: 'All Jobs', count: queueList.length },
+          { id: 'Uploaded', label: 'Uploaded', count: queueList.filter(c => c.stage === 'Uploaded').length },
+          { id: 'OCR Processing', label: 'OCR Processing', count: queueList.filter(c => c.stage === 'OCR Processing').length },
+          { id: 'AI Extraction', label: 'AI Extraction', count: queueList.filter(c => c.stage === 'AI Extraction').length },
+          { id: 'Ledger Mapping', label: 'Ledger Mapping', count: queueList.filter(c => c.stage === 'Ledger Mapping').length },
+          { id: 'Review Required', label: 'Review Required', count: queueList.filter(c => c.stage === 'Review Required').length },
+          { id: 'Approved', label: 'Approved', count: queueList.filter(c => c.stage === 'Approved').length },
+          { id: 'Rejected', label: 'Rejected', count: queueList.filter(c => c.stage === 'Rejected').length },
+          { id: 'Exceptions', label: 'Exceptions', count: queueList.filter(c => c.stage === 'Exceptions').length },
+          { id: 'Ready For Reconciliation', label: 'Ready For Reconciliation', count: queueList.filter(c => c.stage === 'Ready For Reconciliation').length },
+          { id: 'Completed', label: 'Completed', count: queueList.filter(c => c.stage === 'Completed').length }
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setCurrentTab(tab.id as 'All Jobs' | 'Uploaded' | 'OCR Processing' | 'AI Extraction' | 'Ledger Mapping' | 'Review Required' | 'Approved' | 'Rejected' | 'Exceptions' | 'Ready For Reconciliation' | 'Completed')}
+            style={{ padding: '0.375rem 0.875rem', borderRadius: '20px', border: currentTab === tab.id ? '1.5px solid #E8760A' : '1px solid #DDD0C4', background: currentTab === tab.id ? 'rgba(232,118,10,0.06)' : '#ffffff', color: currentTab === tab.id ? '#E8760A' : 'rgba(42,22,40,0.6)', fontWeight: currentTab === tab.id ? 700 : 500, fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.35rem', transition: 'all 150ms ease', fontFamily: 'Inter, sans-serif' }}
+          >
+            {tab.label}
+            <span style={{ background: currentTab === tab.id ? '#E8760A' : 'rgba(42,22,40,0.08)', color: currentTab === tab.id ? '#fff' : 'rgba(42,22,40,0.5)', fontSize: '0.6rem', fontWeight: 700, padding: '1px 5px', borderRadius: '10px', lineHeight: 1.5 }}>{tab.count}</span>
+          </button>
+        ))}
+      </div>
+
       {/* ── SMART FILTER BAR ── */}
       <div style={{ background: '#ffffff', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '12px', padding: '0.75rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', boxShadow: '0 4px 12px rgba(42,22,40,0.01)' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
@@ -620,7 +646,7 @@ export default function AiQueueTab() {
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 150ms ease' }}><polyline points="6 9 12 15 18 9"/></svg>
                 </button>
                 {isOpen && (
-                  <div className="no-scrollbar" style={{ position: 'absolute', top: '100%', left: 0, marginTop: '4px', background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: '8px', boxShadow: '0 8px 24px rgba(42,22,40,0.08)', zIndex: 100, minWidth: '160px', padding: '4px', maxHeight: '180px', overflowY: 'auto' }}>
+                   <div className="no-scrollbar" style={{ position: 'absolute', top: '100%', left: 0, marginTop: '4px', background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: '8px', boxShadow: '0 8px 24px rgba(42,22,40,0.08)', zIndex: 100, minWidth: '160px', padding: '4px', maxHeight: '180px', overflowY: 'auto' }}>
                     {options.map((opt) => (
                       <div key={opt} onClick={() => { setFilters({ ...filters, [f.key]: opt }); setActiveDropdown(null); }} style={{ padding: '0.4rem 0.625rem', fontSize: '0.75rem', color: '#2A1628', cursor: 'pointer', borderRadius: '6px', background: selectedVal === opt ? 'rgba(232, 118, 10, 0.06)' : 'transparent', fontWeight: selectedVal === opt ? 600 : 400 }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(232, 118, 10, 0.06)'; e.currentTarget.style.color = '#E8760A'; }} onMouseLeave={e => { e.currentTarget.style.background = selectedVal === opt ? 'rgba(232, 118, 10, 0.06)' : 'transparent'; e.currentTarget.style.color = '#2A1628'; }}>{opt}</div>
                     ))}
@@ -633,32 +659,6 @@ export default function AiQueueTab() {
           <button onClick={() => { setSearch(''); setFilters({ client: 'All', manager: 'All', bookkeeper: 'All', industry: 'All', entityType: 'All', country: 'All', financialYear: 'All', priority: 'All', stage: 'All', documentType: 'All', aiConfidence: 'All', processingStatus: 'All', reviewer: 'All', qbStatus: 'All', exceptionType: 'All' }); }} style={{ padding: '0.45rem 1rem', fontSize: '0.75rem', border: '1px solid #DDD0C4', borderRadius: '8px', background: '#FAF8F5', color: 'rgba(42,22,40,0.5)', cursor: 'pointer', fontWeight: 600 }}>Reset Filters</button>
           <button onClick={() => { triggerToast('Smart View saved to toolbar.', 'success'); }} style={{ padding: '0.45rem 1rem', fontSize: '0.75rem', border: '1px solid #E8760A', borderRadius: '8px', background: 'rgba(232,118,10,0.06)', color: '#E8760A', cursor: 'pointer', fontWeight: 700, marginLeft: 'auto' }}>Save View</button>
         </div>
-      </div>
-
-      {/* ── QUEUE STATUS TABS ── */}
-      <div className="no-scrollbar" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
-        {[
-          { id: 'All Jobs', label: 'All Jobs', count: queueList.length },
-          { id: 'Uploaded', label: 'Uploaded', count: queueList.filter(c => c.stage === 'Uploaded').length },
-          { id: 'OCR Processing', label: 'OCR Processing', count: queueList.filter(c => c.stage === 'OCR Processing').length },
-          { id: 'AI Extraction', label: 'AI Extraction', count: queueList.filter(c => c.stage === 'AI Extraction').length },
-          { id: 'Ledger Mapping', label: 'Ledger Mapping', count: queueList.filter(c => c.stage === 'Ledger Mapping').length },
-          { id: 'Review Required', label: 'Review Required', count: queueList.filter(c => c.stage === 'Review Required').length },
-          { id: 'Approved', label: 'Approved', count: queueList.filter(c => c.stage === 'Approved').length },
-          { id: 'Rejected', label: 'Rejected', count: queueList.filter(c => c.stage === 'Rejected').length },
-          { id: 'Exceptions', label: 'Exceptions', count: queueList.filter(c => c.stage === 'Exceptions').length },
-          { id: 'Ready For Reconciliation', label: 'Ready For Reconciliation', count: queueList.filter(c => c.stage === 'Ready For Reconciliation').length },
-          { id: 'Completed', label: 'Completed', count: queueList.filter(c => c.stage === 'Completed').length }
-        ].map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setCurrentTab(tab.id as 'All Jobs' | 'Uploaded' | 'OCR Processing' | 'AI Extraction' | 'Ledger Mapping' | 'Review Required' | 'Approved' | 'Rejected' | 'Exceptions' | 'Ready For Reconciliation' | 'Completed')}
-            style={{ padding: '0.375rem 0.875rem', borderRadius: '20px', border: currentTab === tab.id ? '1.5px solid #E8760A' : '1px solid #DDD0C4', background: currentTab === tab.id ? 'rgba(232,118,10,0.06)' : '#ffffff', color: currentTab === tab.id ? '#E8760A' : 'rgba(42,22,40,0.6)', fontWeight: currentTab === tab.id ? 700 : 500, fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.35rem', transition: 'all 150ms ease', fontFamily: 'Inter, sans-serif' }}
-          >
-            {tab.label}
-            <span style={{ background: currentTab === tab.id ? '#E8760A' : 'rgba(42,22,40,0.08)', color: currentTab === tab.id ? '#fff' : 'rgba(42,22,40,0.5)', fontSize: '0.6rem', fontWeight: 700, padding: '1px 5px', borderRadius: '10px', lineHeight: 1.5 }}>{tab.count}</span>
-          </button>
-        ))}
       </div>
 
       {/* ── BULK ACTIONS TOOLBAR ── */}
@@ -895,19 +895,40 @@ export default function AiQueueTab() {
                           {activeDropdown === `row-${item.id}` && (
                             <div className="no-scrollbar" style={{ position: 'absolute', right: 0, top: '100%', marginTop: '4px', background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: '10px', boxShadow: '0 8px 32px rgba(42,22,40,0.15)', zIndex: 100, minWidth: '180px', padding: '6px', maxHeight: '240px', overflowY: 'auto' }}>
                               {[
-                                { label: 'Open Queue Details', onClick: () => { setSelectedItem(item); setDrawerTab('overview'); setDrawerOpen(true); } },
-                                { label: 'Preview Document', onClick: () => { setSelectedItem(item); setDrawerTab('document'); setDrawerOpen(true); } },
-                                { label: 'View OCR Extraction', onClick: () => { setSelectedItem(item); setDrawerTab('ocr'); setDrawerOpen(true); } },
-                                { label: 'View AI Fields', onClick: () => { setSelectedItem(item); setDrawerTab('ai'); setDrawerOpen(true); } },
-                                { label: 'View Ledger Mapping', onClick: () => { setSelectedItem(item); setDrawerTab('ledger'); setDrawerOpen(true); } },
-                                { label: 'Check Validation', onClick: () => { setSelectedItem(item); setDrawerTab('validation'); setDrawerOpen(true); } },
-                                { label: 'Approve Job', onClick: () => handleApprove(item.id) },
-                                { label: 'Reject Job', onClick: () => handleReject(item.id) },
-                                { label: 'Push to Recon', onClick: () => handleMoveToRecon(item.id) },
-                                { label: 'Retry OCR Processing', onClick: () => handleRetry(item.id) },
-                                { label: 'Audit Log Trail', onClick: () => { setSelectedItem(item); setDrawerTab('activity'); setDrawerOpen(true); } }
+                                { label: 'Open Queue Details', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>, onClick: () => { setSelectedItem(item); setDrawerTab('overview'); setDrawerOpen(true); } },
+                                { label: 'Preview Document', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>, onClick: () => { setSelectedItem(item); setDrawerTab('document'); setDrawerOpen(true); } },
+                                { label: 'View OCR Extraction', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, onClick: () => { setSelectedItem(item); setDrawerTab('ocr'); setDrawerOpen(true); } },
+                                { label: 'View AI Fields', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>, onClick: () => { setSelectedItem(item); setDrawerTab('ai'); setDrawerOpen(true); } },
+                                { label: 'View Ledger Mapping', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg>, onClick: () => { setSelectedItem(item); setDrawerTab('ledger'); setDrawerOpen(true); } },
+                                { label: 'Check Validation', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>, onClick: () => { setSelectedItem(item); setDrawerTab('validation'); setDrawerOpen(true); } },
+                                { label: 'Approve Job', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>, onClick: () => handleApprove(item.id) },
+                                { label: 'Reject Job', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>, danger: true, onClick: () => handleReject(item.id) },
+                                { label: 'Push to Recon', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>, onClick: () => handleMoveToRecon(item.id) },
+                                { label: 'Retry OCR Processing', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>, onClick: () => handleRetry(item.id) },
+                                { label: 'Audit Log Trail', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>, onClick: () => { setSelectedItem(item); setDrawerTab('activity'); setDrawerOpen(true); } }
                               ].map((act, aIdx) => (
-                                <div key={aIdx} onClick={() => { act.onClick(); setActiveDropdown(null); }} style={{ padding: '0.45rem 0.75rem', fontSize: '0.75rem', color: '#2A1628', cursor: 'pointer', borderRadius: '6px', textAlign: 'left' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(232,118,10,0.06)'; e.currentTarget.style.color = '#E8760A'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#2A1628'; }}>{act.label}</div>
+                                <div
+                                  key={aIdx}
+                                  onClick={() => { act.onClick(); setActiveDropdown(null); }}
+                                  style={{
+                                    padding: '0.45rem 0.75rem',
+                                    fontSize: '0.75rem',
+                                    color: act.danger ? '#EF4444' : '#2A1628',
+                                    cursor: 'pointer',
+                                    borderRadius: '6px',
+                                    textAlign: 'left',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    fontWeight: 500,
+                                    transition: 'background 150ms ease'
+                                  }}
+                                  onMouseEnter={e => { e.currentTarget.style.background = act.danger ? 'rgba(239,68,68,0.06)' : 'rgba(232,118,10,0.06)'; e.currentTarget.style.color = act.danger ? '#EF4444' : '#E8760A'; }}
+                                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = act.danger ? '#EF4444' : '#2A1628'; }}
+                                >
+                                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px', color: act.danger ? '#EF4444' : '#E8760A' }}>{act.icon}</span>
+                                  {act.label}
+                                </div>
                               ))}
                             </div>
                           )}
