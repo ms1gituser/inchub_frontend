@@ -90,7 +90,7 @@ interface DashboardStats {
 }
 
 export default function DashboardPage() {
-  const { currentBrand, setCurrentBrand, role } = usePermission();
+  const { currentBrand, setCurrentBrand, role, loading } = usePermission();
   const { showToast } = useNotification();
 
   const [kycAlert, setKycAlert] = useState<boolean>(false);
@@ -156,6 +156,11 @@ export default function DashboardPage() {
     }
     fetchDashboardStats();
   }, []);
+
+  // Wait for auth & user role profile resolution to finish
+  if (loading) {
+    return null;
+  }
 
   // Early return for client portal role
   if (role === UserRole.CLIENT) {

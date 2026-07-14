@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Pagination from '@/components/ui/Pagination';
 
 // Type definitions
@@ -295,6 +296,15 @@ export default function AiQueueTab() {
   const [selectedItem, setSelectedItem] = useState<QueueItem | null>(null);
   const [drawerTab, setDrawerTab] = useState<'overview' | 'document' | 'ocr' | 'ai' | 'ledger' | 'validation' | 'timeline' | 'activity'>('overview');
   
+  const searchParams = useSearchParams();
+  const actionParam = searchParams.get('action');
+
+  useEffect(() => {
+    if (actionParam === 'upload') {
+      setUploadOpen(true);
+    }
+  }, [actionParam]);
+
   const [uploadOpen, setUploadOpen] = useState(false);
   // const [uploadSource, setUploadSource] = useState<'local' | 'drive'>('local');
   // const [hasFileSelected, setHasFileSelected] = useState(false);

@@ -2,13 +2,57 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
+
+import {
+  useGetStatsQuery,
+  useGetListsQuery,
+  useGetActivitiesQuery,
+  useLazySearchWorkspaceQuery,
+  useGetFilterOptionsQuery
+} from '@/lib/accoutingdashboradapiclient';
 
 export default function DashboardTab() {
+  const router = useRouter();
+
+  const handleActionClick = (actionName: string) => {
+    switch (actionName) {
+      case 'Add New Client':
+        router.push('/accounting?tab=client-list&action=add-client');
+        break;
+      case 'Upload Documents':
+        router.push('/accounting?tab=ai-queue&action=upload');
+        break;
+      case 'AI Bookkeeping Queue':
+        router.push('/accounting?tab=ai-queue');
+        break;
+      case 'Reconciliation Center':
+        router.push('/accounting?tab=reconciliation');
+        break;
+      case 'VAT Center':
+        router.push('/accounting?tab=vat');
+        break;
+      case 'CT Filings':
+        router.push('/accounting?tab=corporate-tax');
+        break;
+      case 'Reports':
+        router.push('/accounting?tab=reports');
+        break;
+      case 'QBO Sync Log':
+        router.push('/accounting?tab=quickbooks');
+        break;
+      default:
+        break;
+    }
+  };
+
   const [monthsDropdownOpen, setMonthsDropdownOpen] = React.useState(false);
   const [selectedMonths, setSelectedMonths] = React.useState('Last 5 Months');
 
   // Simulation state for loading / empty / error / permission states
   const [dashboardState, setDashboardState] = React.useState<'loaded' | 'loading' | 'empty' | 'error' | 'denied'>('loaded');
+
+  const [searchQuery, setSearchQuery] = React.useState('');
 
   // Filters State
   const [clientFilter, setClientFilter] = React.useState('All Clients');
@@ -24,24 +68,123 @@ export default function DashboardTab() {
 
   const [activeDropdown, setActiveDropdown] = React.useState<string | null>(null);
 
+  const filters = {
+    client: clientFilter,
+    manager: managerFilter,
+    bookkeeper: bookkeeperFilter,
+    country: countryFilter,
+    entityType: entityFilter,
+    industry: industryFilter,
+    dateRange: dateFilter,
+    fy: fyFilter,
+    compliance: complianceFilter,
+    qbo: qboFilter,
+    months: selectedMonths
+  };
+
+  // RTK Query hooks
+  const { data: statsRes, isLoading: statsLoading, isError: statsError, refetch: refetchStats } = useGetStatsQuery(filters);
+  const { data: listsRes, isLoading: listsLoading, isError: listsError, refetch: refetchLists } = useGetListsQuery(filters);
+  const { data: activitiesRes, refetch: refetchActivities } = useGetActivitiesQuery({ page: 1, limit: 5 });
+  const [triggerSearch, { data: searchRes }] = useLazySearchWorkspaceQuery();
+  const { data: filterOptionsRes } = useGetFilterOptionsQuery();
+
+  const stats = statsRes?.data;
+  const lists = listsRes?.data;
+  const activities = activitiesRes?.data || [];
+  const searchResults = searchRes?.data;
+  const filterOptions = filterOptionsRes?.data;
+
+  // Dynamic filter lists derived from backend DB
+  const clientOptions = ['All Clients', ...(filterOptions?.clients?.map((c: any) => c.name) || [])];
+  const managerOptions = ['All Managers', ...(filterOptions?.managers || [])];
+  const bookkeeperOptions = ['All Bookkeepers', ...(filterOptions?.bookkeepers || [])];
+  const countryOptions = ['All Countries', ...(filterOptions?.countries || [])];
+  const entityOptions = ['All Entities', ...(filterOptions?.entities || [])];
+  const industryOptions = ['All Industries', ...(filterOptions?.industries || [])];
+
+
+  // Sync dashboard State
+  React.useEffect(() => {
+    if (statsLoading || listsLoading) {
+      setDashboardState('loading');
+    } else if (statsError || listsError) {
+      setDashboardState('error');
+    } else {
+      setDashboardState('loaded');
+    }
+  }, [statsLoading, listsLoading, statsError, listsError]);
+
+  React.useEffect(() => {
+    if (searchQuery && searchQuery.trim().length >= 1) {
+      const delayDebounceFn = setTimeout(() => {
+        triggerSearch(searchQuery);
+      }, 300);
+      return () => clearTimeout(delayDebounceFn);
+    }
+  }, [searchQuery, triggerSearch]);
+
+  const fetchDashboardData = () => {
+    refetchStats();
+    refetchLists();
+    refetchActivities();
+  };
+
   const filterConfigs = [
-    { label: 'Client Scope', key: 'client', value: clientFilter, setter: setClientFilter, options: ['All Clients', 'ABC Trading LLC', 'XYZ Holdings', 'Alpha Tech FZCO', 'Beta Industries', 'Gamma Solutions'] },
-    { label: 'Manager', key: 'manager', value: managerFilter, setter: setManagerFilter, options: ['All Managers', 'John Doe', 'Sarah Khan', 'Mike Brown', 'Priya Nair'] },
-    { label: 'Bookkeeper', key: 'bookkeeper', value: bookkeeperFilter, setter: setBookkeeperFilter, options: ['All Bookkeepers', 'Alex Mercer', 'Emma Watson', 'Liam Neeson'] },
-    { label: 'Country', key: 'country', value: countryFilter, setter: setCountryFilter, options: ['All Countries', 'UAE', 'UK', 'USA', 'Saudi Arabia'] },
-    { label: 'Entity Type', key: 'entity', value: entityFilter, setter: setEntityFilter, options: ['All Entities', 'LLC', 'FZCO', 'Branch', 'Sole Proprietor'] },
-    { label: 'Industry', key: 'industry', value: industryFilter, setter: setIndustryFilter, options: ['All Industries', 'Trading', 'Holding', 'Tech', 'Real Estate', 'Logistics'] },
+    { label: 'Client Scope', key: 'client', value: clientFilter, setter: setClientFilter, options: clientOptions },
+    { label: 'Manager', key: 'manager', value: managerFilter, setter: setManagerFilter, options: managerOptions },
+    { label: 'Bookkeeper', key: 'bookkeeper', value: bookkeeperFilter, setter: setBookkeeperFilter, options: bookkeeperOptions },
+    { label: 'Country', key: 'country', value: countryFilter, setter: setCountryFilter, options: countryOptions },
+    { label: 'Entity Type', key: 'entity', value: entityFilter, setter: setEntityFilter, options: entityOptions },
+    { label: 'Industry', key: 'industry', value: industryFilter, setter: setIndustryFilter, options: industryOptions },
     { label: 'Date Range', key: 'date', value: dateFilter, setter: setDateFilter, options: ['This Month', 'Last Month', 'This Quarter', 'This Year'] },
     { label: 'Financial Year', key: 'fy', value: fyFilter, setter: setFyFilter, options: ['FY 2026', 'FY 2025', 'FY 2024'] },
     { label: 'Compliance', key: 'compliance', value: complianceFilter, setter: setComplianceFilter, options: ['All Statuses', 'Compliant', 'At Risk', 'Non-Compliant'] },
     { label: 'QuickBooks', key: 'qbo', value: qboFilter, setter: setQboFilter, options: ['All Statuses', 'Connected', 'Error', 'Disconnected'] },
   ];
 
+
   // Popup & Search States
-  const [searchQuery, setSearchQuery] = React.useState('');
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
   const [exportOpen, setExportOpen] = React.useState(false);
-  const [savedViews, setSavedViews] = React.useState<string[]>([]);
+  const trendData = stats?.monthlyTrend || [];
+  const maxVal = Math.max(...trendData.map((d: any) => Math.max(d.completed || 0, d.pending || 0, d.overdue || 0)), 1);
+
+  const completedPath = trendData.length > 0 
+    ? 'M' + trendData.map((d: any, i: number) => `${10 + i * (280 / Math.max(trendData.length - 1, 1))},${90 - ((d.completed || 0) / maxVal) * 80}`).join(' L')
+    : 'M10,90 L290,90';
+
+  const pendingPath = trendData.length > 0 
+    ? 'M' + trendData.map((d: any, i: number) => `${10 + i * (280 / Math.max(trendData.length - 1, 1))},${90 - ((d.pending || 0) / maxVal) * 80}`).join(' L')
+    : 'M10,90 L290,90';
+
+  const overduePath = trendData.length > 0 
+    ? 'M' + trendData.map((d: any, i: number) => `${10 + i * (280 / Math.max(trendData.length - 1, 1))},${90 - (((d.overdue || 0)) / maxVal) * 80}`).join(' L')
+    : 'M10,90 L290,90';
+
+  const lastPoint = trendData[trendData.length - 1] || { period: 'No Data', completed: 0, pending: 0, overdue: 0 };
+
+  // Books Completion calculations
+  const completedVal = stats?.bookkeepingOverview?.completed || 0;
+  const inProgressVal = stats?.bookkeepingOverview?.inProgress || 0;
+  const pendingVal = stats?.bookkeepingOverview?.pending || 0;
+  const overdueVal = stats?.bookkeepingOverview?.overdue || 0;
+  const totalBooks = completedVal + inProgressVal + pendingVal + overdueVal || 1;
+
+  const completedPct = Math.round((completedVal / totalBooks) * 100);
+  const inProgressPct = Math.round((inProgressVal / totalBooks) * 100);
+  const pendingPct = Math.round((pendingVal / totalBooks) * 100);
+  const overduePct = Math.max(0, 100 - completedPct - inProgressPct - pendingPct);
+
+  // Compliance calculations
+  const compliantVal = stats?.kpiCards?.totalClients ? Math.max(0, stats.kpiCards.totalClients - (stats.kpiCards.kycExpiring || 0)) : 0;
+  const atRiskVal = 0;
+  const nonCompliantVal = stats?.kpiCards?.kycExpiring || 0;
+  const totalComp = compliantVal + atRiskVal + nonCompliantVal || 1;
+
+  const compliantPct = Math.round((compliantVal / totalComp) * 100);
+  const atRiskPct = Math.round((atRiskVal / totalComp) * 100);
+  const nonCompliantPct = Math.max(0, 100 - compliantPct - atRiskPct);
 
   return (
     <div style={{
@@ -145,7 +288,7 @@ export default function DashboardTab() {
             grid-template-columns: 1fr !important;
           }
           .dashboard-row3-grid {
-            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
           }
           .dashboard-row4-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
@@ -162,7 +305,7 @@ export default function DashboardTab() {
             .dashboard-lists-grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
             .dashboard-row1-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
             .dashboard-row2-grid { grid-template-columns: 1fr !important; }
-            .dashboard-row3-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+            .dashboard-row3-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
             .dashboard-row4-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
             .dashboard-charts-grid { grid-template-columns: 1fr 1.3fr 1fr; }
             .dashboard-filters-row { grid-template-columns: repeat(10, 1fr); }
@@ -172,7 +315,7 @@ export default function DashboardTab() {
             .dashboard-lists-grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
             .dashboard-row1-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
             .dashboard-row2-grid { grid-template-columns: 1fr !important; }
-            .dashboard-row3-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+            .dashboard-row3-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
             .dashboard-row4-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
           }
           @media (max-width: 1250px) {
@@ -388,30 +531,9 @@ export default function DashboardTab() {
             >
               Reset Filters
             </button>
-
-            <button 
-              onClick={() => setExportOpen(!exportOpen)}
-              style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', fontWeight: 600, border: '1px solid #DDD0C4', background: '#ffffff', borderRadius: '6px', cursor: 'pointer', color: '#2A1628', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
-              Export
-            </button>
-
             <button 
               onClick={() => {
-                navigator.clipboard.writeText(window.location.href);
-                alert('Dashboard share link copied to clipboard!');
-              }}
-              style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', fontWeight: 600, border: '1px solid #DDD0C4', background: '#ffffff', borderRadius: '6px', cursor: 'pointer', color: '#2A1628', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" /></svg>
-              Share
-            </button>
-
-            <button 
-              onClick={() => {
-                setDashboardState('loading');
-                setTimeout(() => setDashboardState('loaded'), 600);
+                fetchDashboardData();
               }}
               style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', fontWeight: 600, border: '1px solid #E8760A', background: 'rgba(232,118,10,0.06)', borderRadius: '6px', cursor: 'pointer', color: '#E8760A', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
             >
@@ -438,42 +560,10 @@ export default function DashboardTab() {
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
               Notifications
-              <span style={{ position: 'absolute', top: '-4px', right: '-4px', width: '12px', height: '12px', borderRadius: '50%', background: '#EF4444', color: '#ffffff', fontSize: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>3</span>
+              {stats?.systemAlerts && stats.systemAlerts.length > 0 && (
+                <span style={{ position: 'absolute', top: '-4px', right: '-4px', width: '12px', height: '12px', borderRadius: '50%', background: '#EF4444', color: '#ffffff', fontSize: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>{stats.systemAlerts.length}</span>
+              )}
             </button>
-
-            {/* ── 16. EXPORT MENU DRAGDOWN ── */}
-            {exportOpen && (
-              <div style={{
-                position: 'absolute',
-                top: '110%',
-                right: '110px',
-                background: '#ffffff',
-                border: '1px solid #DDD0C4',
-                borderRadius: '8px',
-                boxShadow: '0 4px 12px rgba(42,22,40,0.12)',
-                padding: '0.5rem',
-                minWidth: '150px',
-                zIndex: 110,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '2px'
-              }}>
-                {['Export as PDF', 'Export as Excel', 'Export as CSV', 'Print Dashboard', 'Email PDF Report'].map((opt) => (
-                  <div 
-                    key={opt} 
-                    onClick={() => {
-                      alert(`Successfully executed: ${opt}`);
-                      setExportOpen(false);
-                    }}
-                    style={{ padding: '0.4rem 0.6rem', fontSize: '0.75rem', cursor: 'pointer', borderRadius: '4px', color: '#2A1628', transition: 'background 100ms' }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(232,118,10,0.06)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                  >
-                    {opt}
-                  </div>
-                ))}
-              </div>
-            )}
 
             {/* ── 6. NOTIFICATIONS CENTER DROPDOWN ── */}
             {notificationsOpen && (
@@ -497,23 +587,22 @@ export default function DashboardTab() {
                   <span onClick={() => setNotificationsOpen(false)} style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.5)', cursor: 'pointer' }}>Close</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '250px', overflowY: 'auto' }}>
-                  {[
-                    { text: 'AI processing failed for ABC Trading invoice', time: '10 min ago', cat: 'AI', unread: true },
-                    { text: 'VAT filing deadline approaching for XYZ Holdings', time: '1 hr ago', cat: 'Compliance', unread: true },
-                    { text: 'QuickBooks sync error on Alpha Tech FZCO', time: '4 hr ago', cat: 'QuickBooks', unread: true },
-                    { text: 'Passport expiring in 15 days for Priya Nair (Client Director)', time: 'Yesterday', cat: 'Compliance', unread: false }
-                  ].map((notif, idx) => (
-                    <div key={idx} style={{ display: 'flex', gap: '0.5rem', padding: '0.4rem', borderRadius: '6px', background: notif.unread ? 'rgba(232,118,10,0.04)' : 'transparent' }}>
-                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: notif.unread ? '#E8760A' : 'transparent', marginTop: '5px', flexShrink: 0 }} />
-                      <div>
-                        <div style={{ fontSize: '0.75rem', color: '#2A1628', lineHeight: 1.25 }}>{notif.text}</div>
-                        <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.625rem', color: 'rgba(42,22,40,0.4)', marginTop: '2px' }}>
-                          <span style={{ color: '#B8892A', fontWeight: 600 }}>{notif.cat}</span>
-                          <span>{notif.time}</span>
+                  {(!stats?.systemAlerts || stats.systemAlerts.length === 0) ? (
+                    <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.5)', textAlign: 'center', padding: '1rem' }}>No new notifications</div>
+                  ) : (
+                    stats.systemAlerts.map((notif: any, idx: number) => (
+                      <div key={idx} style={{ display: 'flex', gap: '0.5rem', padding: '0.4rem', borderRadius: '6px', background: 'rgba(232,118,10,0.04)' }}>
+                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#E8760A', marginTop: '5px', flexShrink: 0 }} />
+                        <div>
+                          <div style={{ fontSize: '0.75rem', color: '#2A1628', lineHeight: 1.25 }}>{notif.client}: {notif.error}</div>
+                          <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.625rem', color: 'rgba(42,22,40,0.4)', marginTop: '2px' }}>
+                            <span style={{ color: notif.color || '#E8760A', fontWeight: 600 }}>{notif.priority} Priority</span>
+                            <span>{notif.time}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
             )}
@@ -544,8 +633,13 @@ export default function DashboardTab() {
             <div>
               <h4 style={{ fontSize: '0.75rem', fontWeight: 700, margin: '0 0 0.5rem', color: 'rgba(42,22,40,0.6)' }}>Clients</h4>
               <div style={{ fontSize: '0.75rem', color: '#2A1628' }}>
-                <div style={{ padding: '0.25rem 0', fontWeight: 600 }}>ABC Trading LLC</div>
-                <div style={{ padding: '0.25rem 0', fontWeight: 600 }}>Alpha Tech FZCO</div>
+                {(!searchResults?.clients || searchResults.clients.length === 0) ? (
+                  <div style={{ color: 'rgba(42,22,40,0.5)' }}>No clients found</div>
+                ) : (
+                  searchResults.clients.map((c: any, idx: number) => (
+                    <div key={idx} style={{ padding: '0.25rem 0', fontWeight: 600 }}>{c.name} ({c.details})</div>
+                  ))
+                )}
               </div>
             </div>
 
@@ -553,17 +647,27 @@ export default function DashboardTab() {
             <div>
               <h4 style={{ fontSize: '0.75rem', fontWeight: 700, margin: '0 0 0.5rem', color: 'rgba(42,22,40,0.6)' }}>Documents</h4>
               <div style={{ fontSize: '0.75rem', color: '#2A1628' }}>
-                <div style={{ padding: '0.25rem 0' }}>invoice_40293.pdf</div>
-                <div style={{ padding: '0.25rem 0' }}>bank_statement_april.pdf</div>
+                {(!searchResults?.documents || searchResults.documents.length === 0) ? (
+                  <div style={{ color: 'rgba(42,22,40,0.5)' }}>No documents found</div>
+                ) : (
+                  searchResults.documents.map((d: any, idx: number) => (
+                    <div key={idx} style={{ padding: '0.25rem 0' }}>{d.name}</div>
+                  ))
+                )}
               </div>
             </div>
 
-            {/* Transactions Results */}
+            {/* Tasks Results */}
             <div>
-              <h4 style={{ fontSize: '0.75rem', fontWeight: 700, margin: '0 0 0.5rem', color: 'rgba(42,22,40,0.6)' }}>Transactions & Vendors</h4>
+              <h4 style={{ fontSize: '0.75rem', fontWeight: 700, margin: '0 0 0.5rem', color: 'rgba(42,22,40,0.6)' }}>Tasks</h4>
               <div style={{ fontSize: '0.75rem', color: '#2A1628' }}>
-                <div style={{ padding: '0.25rem 0' }}>AED 12,500 - Office Rent</div>
-                <div style={{ padding: '0.25rem 0' }}>AED 1,840 - Amazon Web Services</div>
+                {(!searchResults?.tasks || searchResults.tasks.length === 0) ? (
+                  <div style={{ color: 'rgba(42,22,40,0.5)' }}>No tasks found</div>
+                ) : (
+                  searchResults.tasks.map((t: any, idx: number) => (
+                    <div key={idx} style={{ padding: '0.25rem 0' }}>{t.name} - <span style={{ fontWeight: 600 }}>{t.status}</span></div>
+                  ))
+                )}
               </div>
             </div>
 
@@ -585,8 +689,8 @@ export default function DashboardTab() {
         {[
           {
             label: 'Total Clients',
-            value: '248',
-            change: '+12 this week',
+            value: stats?.kpiCards?.totalClients?.toString() || '0',
+            change: 'Active client profiles',
             bg: 'rgba(232, 118, 10, 0.06)',
             color: '#E8760A',
             icon: (
@@ -600,8 +704,8 @@ export default function DashboardTab() {
           },
           {
             label: 'Books Pending',
-            value: '18',
-            change: '+4 urgent',
+            value: stats?.kpiCards?.booksPending?.toString() || '0',
+            change: stats?.kpiCards?.booksPending > 0 ? `${stats.kpiCards.booksPending} require review` : 'All caught up',
             bg: 'rgba(232, 118, 10, 0.06)',
             color: '#E8760A',
             icon: (
@@ -615,8 +719,8 @@ export default function DashboardTab() {
           },
           {
             label: 'VAT Returns Due',
-            value: '9',
-            change: '+3 this week',
+            value: stats?.kpiCards?.vatReturnsDue?.toString() || '0',
+            change: stats?.kpiCards?.vatReturnsDue > 0 ? `${stats.kpiCards.vatReturnsDue} filing periods` : 'No pending filings',
             bg: 'rgba(232, 118, 10, 0.06)',
             color: '#E8760A',
             icon: (
@@ -628,8 +732,8 @@ export default function DashboardTab() {
           },
           {
             label: 'CT Filings Due',
-            value: '4',
-            change: '+1 this week',
+            value: stats?.kpiCards?.ctFilingsDue?.toString() || '0',
+            change: stats?.kpiCards?.ctFilingsDue > 0 ? `${stats.kpiCards.ctFilingsDue} filing periods` : 'No pending filings',
             bg: 'rgba(232, 118, 10, 0.06)',
             color: '#E8760A',
             icon: (
@@ -643,8 +747,8 @@ export default function DashboardTab() {
           },
           {
             label: 'KYC Expiring',
-            value: '11',
-            change: 'within 30 days',
+            value: stats?.kpiCards?.kycExpiring?.toString() || '0',
+            change: stats?.kpiCards?.kycExpiring > 0 ? `${stats.kpiCards.kycExpiring} docs expiring soon` : 'All documents active',
             bg: 'rgba(232, 118, 10, 0.06)',
             color: '#E8760A',
             icon: (
@@ -657,8 +761,8 @@ export default function DashboardTab() {
           },
           {
             label: 'Suspense Items',
-            value: '36',
-            change: '+8 new',
+            value: stats?.kpiCards?.suspenseItems?.toString() || '0',
+            change: stats?.kpiCards?.suspenseItems > 0 ? `${stats.kpiCards.suspenseItems} items pending` : 'Zero suspense records',
             bg: 'rgba(232, 118, 10, 0.06)',
             color: '#E8760A',
             icon: (
@@ -671,8 +775,8 @@ export default function DashboardTab() {
           },
           {
             label: 'QBO Sync Errors',
-            value: '5',
-            change: 'requires attention',
+            value: stats?.kpiCards?.qboErrors?.toString() || '0',
+            change: stats?.kpiCards?.qboErrors > 0 ? `${stats.kpiCards.qboErrors} sync failures` : 'Sync pipeline healthy',
             bg: 'rgba(232, 118, 10, 0.06)',
             color: '#E8760A',
             icon: (
@@ -728,22 +832,28 @@ export default function DashboardTab() {
             <div style={{ position: 'relative', width: '120px', height: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {/* Circular SVG Ring */}
               <svg width="120" height="120" viewBox="0 0 36 36" style={{ transform: 'rotate(-90deg)' }}>
-                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#C4695A" strokeWidth="3" strokeDasharray="100 0" />
-                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#5A2D5A" strokeWidth="3.2" strokeDasharray="93 7" />
-                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#B8892A" strokeWidth="3.4" strokeDasharray="80 20" />
-                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#E8760A" strokeWidth="3.6" strokeDasharray="48 52" />
+                {/* Overdue (terracotta) */}
+                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#C4695A" strokeWidth="3" strokeDasharray={`${overduePct} ${100 - overduePct}`} strokeDashoffset={-(completedPct + inProgressPct + pendingPct)} />
+                {/* Pending (purple) */}
+                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#5A2D5A" strokeWidth="3" strokeDasharray={`${pendingPct} ${100 - pendingPct}`} strokeDashoffset={-(completedPct + inProgressPct)} />
+                {/* In Progress (gold) */}
+                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#B8892A" strokeWidth="3" strokeDasharray={`${inProgressPct} ${100 - inProgressPct}`} strokeDashoffset={-completedPct} />
+                {/* Completed (orange) */}
+                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#E8760A" strokeWidth="3" strokeDasharray={`${completedPct} ${100 - completedPct}`} strokeDashoffset={0} />
               </svg>
               <div style={{ position: 'absolute', textAlign: 'center' }}>
-                <div style={{ fontSize: '1.75rem', fontWeight: 300, color: '#2A1628', lineHeight: 1, fontFamily: 'var(--font-serif), Georgia, serif' }}>248</div>
+                <div style={{ fontSize: '1.75rem', fontWeight: 300, color: '#2A1628', lineHeight: 1, fontFamily: 'var(--font-serif), Georgia, serif' }}>
+                  {stats?.kpiCards?.totalClients?.toString() || '0'}
+                </div>
                 <div style={{ fontSize: '0.625rem', color: 'rgba(42,22,40,0.5)', marginTop: '2px' }}>Total Clients</div>
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, marginLeft: '1.5rem' }}>
               {[
-                { name: 'Completed', val: '120', pct: '48%', color: '#E8760A' },
-                { name: 'In Progress', val: '78', pct: '31%', color: '#B8892A' },
-                { name: 'Pending', val: '32', pct: '13%', color: '#5A2D5A' },
-                { name: 'Overdue', val: '18', pct: '7%', color: '#C4695A' }
+                { name: 'Completed', val: completedVal.toString(), pct: `${completedPct}%`, color: '#E8760A' },
+                { name: 'In Progress', val: inProgressVal.toString(), pct: `${inProgressPct}%`, color: '#B8892A' },
+                { name: 'Pending', val: pendingVal.toString(), pct: `${pendingPct}%`, color: '#5A2D5A' },
+                { name: 'Overdue', val: overdueVal.toString(), pct: `${overduePct}%`, color: '#C4695A' }
               ].map((leg, idx) => (
                 <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.75rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
@@ -847,40 +957,44 @@ export default function DashboardTab() {
               {/* Lines */}
               <svg width="100%" height="100px" viewBox="0 0 300 100" preserveAspectRatio="none">
                 {/* Completed Line (orange) */}
-                <path d="M10,60 Q50,40 100,50 T200,30 T290,10" fill="none" stroke="#E8760A" strokeWidth="2.5" />
+                <path d={completedPath} fill="none" stroke="#E8760A" strokeWidth="2.5" />
                 {/* In Progress Line (gold) */}
-                <path d="M10,80 Q50,75 100,82 T200,68 T290,55" fill="none" stroke="#B8892A" strokeWidth="2.5" />
+                <path d={pendingPath} fill="none" stroke="#B8892A" strokeWidth="2.5" />
                 {/* Overdue Line (terracotta) */}
-                <path d="M10,95 Q50,90 100,92 T200,88 T290,85" fill="none" stroke="#C4695A" strokeWidth="2.5" />
+                <path d={overduePath} fill="none" stroke="#C4695A" strokeWidth="2.5" />
               </svg>
               
               {/* Tooltip Overlay */}
-              <div style={{
-                position: 'absolute',
-                top: '5px',
-                left: '60%',
-                background: '#ffffff',
-                border: '1px solid rgba(42,22,40,0.12)',
-                borderRadius: '8px',
-                padding: '0.5rem',
-                fontSize: '0.625rem',
-                boxShadow: '0 4px 12px rgba(42,22,40,0.08)',
-                zIndex: 10
-              }}>
-                <div style={{ fontWeight: 700, marginBottom: '0.25rem' }}>Apr 2026</div>
-                <div style={{ color: '#E8760A', display: 'flex', justifyContent: 'space-between', gap: '1rem' }}><span>Completed</span> <strong>132</strong></div>
-                <div style={{ color: '#B8892A', display: 'flex', justifyContent: 'space-between', gap: '1rem' }}><span>In Progress</span> <strong>68</strong></div>
-                <div style={{ color: '#C4695A', display: 'flex', justifyContent: 'space-between', gap: '1rem' }}><span>Overdue</span> <strong>16</strong></div>
-              </div>
+              {trendData.length > 0 && (
+                <div style={{
+                  position: 'absolute',
+                  top: '5px',
+                  left: '60%',
+                  background: '#ffffff',
+                  border: '1px solid rgba(42,22,40,0.12)',
+                  borderRadius: '8px',
+                  padding: '0.5rem',
+                  fontSize: '0.625rem',
+                  boxShadow: '0 4px 12px rgba(42,22,40,0.08)',
+                  zIndex: 10
+                }}>
+                  <div style={{ fontWeight: 700, marginBottom: '0.25rem' }}>{lastPoint.period}</div>
+                  <div style={{ color: '#E8760A', display: 'flex', justifyContent: 'space-between', gap: '1rem' }}><span>Completed</span> <strong>{lastPoint.completed}</strong></div>
+                  <div style={{ color: '#B8892A', display: 'flex', justifyContent: 'space-between', gap: '1rem' }}><span>Pending</span> <strong>{lastPoint.pending}</strong></div>
+                  <div style={{ color: '#C4695A', display: 'flex', justifyContent: 'space-between', gap: '1rem' }}><span>Overdue</span> <strong>{lastPoint.overdue}</strong></div>
+                </div>
+              )}
             </div>
             
             {/* X Axis labels */}
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'rgba(42,22,40,0.4)', marginTop: '0.25rem' }}>
-              <span>Jan 2026</span>
-              <span>Feb 2026</span>
-              <span>Mar 2026</span>
-              <span>Apr 2026</span>
-              <span>May 2026</span>
+              {trendData.length === 0 ? (
+                <span>No periods loaded</span>
+              ) : (
+                trendData.map((t: any, idx: number) => (
+                  <span key={idx}>{t.period}</span>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -891,20 +1005,25 @@ export default function DashboardTab() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '150px' }}>
             <div style={{ position: 'relative', width: '120px', height: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width="120" height="120" viewBox="0 0 36 36" style={{ transform: 'rotate(-90deg)' }}>
-                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#C4695A" strokeWidth="3" strokeDasharray="100 0" />
-                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#B8892A" strokeWidth="3.2" strokeDasharray="88 12" />
-                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#E8760A" strokeWidth="3.5" strokeDasharray="63 37" />
+                {/* Non Compliant (terracotta) */}
+                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#C4695A" strokeWidth="3" strokeDasharray={`${nonCompliantPct} ${100 - nonCompliantPct}`} strokeDashoffset={-(compliantPct + atRiskPct)} />
+                {/* At Risk (gold) */}
+                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#B8892A" strokeWidth="3" strokeDasharray={`${atRiskPct} ${100 - atRiskPct}`} strokeDashoffset={-compliantPct} />
+                {/* Compliant (orange) */}
+                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#E8760A" strokeWidth="3" strokeDasharray={`${compliantPct} ${100 - compliantPct}`} strokeDashoffset={0} />
               </svg>
               <div style={{ position: 'absolute', textAlign: 'center' }}>
-                <div style={{ fontSize: '1.75rem', fontWeight: 300, color: '#2A1628', lineHeight: 1, fontFamily: 'var(--font-serif), Georgia, serif' }}>248</div>
+                <div style={{ fontSize: '1.75rem', fontWeight: 300, color: '#2A1628', lineHeight: 1, fontFamily: 'var(--font-serif), Georgia, serif' }}>
+                  {stats?.kpiCards?.totalClients?.toString() || '0'}
+                </div>
                 <div style={{ fontSize: '0.625rem', color: 'rgba(42,22,40,0.5)', marginTop: '2px' }}>Total Clients</div>
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, marginLeft: '1.5rem' }}>
               {[
-                { name: 'Compliant', val: '156', pct: '63%', color: '#E8760A' },
-                { name: 'At Risk', val: '62', pct: '25%', color: '#B8892A' },
-                { name: 'Non Compliant', val: '30', pct: '12%', color: '#C4695A' }
+                { name: 'Compliant', val: compliantVal.toString(), pct: `${compliantPct}%`, color: '#E8760A' },
+                { name: 'At Risk', val: atRiskVal.toString(), pct: `${atRiskPct}%`, color: '#B8892A' },
+                { name: 'Non Compliant', val: nonCompliantVal.toString(), pct: `${nonCompliantPct}%`, color: '#C4695A' }
               ].map((leg, idx) => (
                 <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.75rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
@@ -933,28 +1052,26 @@ export default function DashboardTab() {
             <a href="#" style={{ fontSize: '0.7rem', color: '#E8760A', textDecoration: 'none', fontWeight: 600 }}>View All →</a>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {[
-              { client: 'ABC Trading LLC', details: 'VAT Return - Q1 2026', badge: '2 Days Overdue', isOverdue: true },
-              { client: 'XYZ Holdings', details: 'VAT Return - Apr 2026', badge: '3 Days Left', isOverdue: false },
-              { client: 'Alpha Tech FZCO', details: 'VAT Return - Apr 2026', badge: '5 Days Left', isOverdue: false },
-              { client: 'Beta Industries', details: 'VAT Return - Apr 2026', badge: '7 Days Left', isOverdue: false },
-              { client: 'Gamma Solutions', details: 'VAT Return - Mar 2026', badge: '10 Days Left', isOverdue: false }
-            ].map((item, idx) => (
-              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: idx < 4 ? '1px solid rgba(42,22,40,0.04)' : 'none', paddingBottom: '0.5rem' }}>
-                <div>
-                  <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#2A1628' }}>{item.client}</div>
-                  <div style={{ fontSize: '0.6875rem', color: 'rgba(42,22,40,0.45)' }}>{item.details}</div>
+            {(!lists?.vatDueList || lists.vatDueList.length === 0) ? (
+              <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.4)', textAlign: 'center', padding: '1.5rem 0' }}>No VAT returns due</div>
+            ) : (
+              lists.vatDueList.map((item: any, idx: number) => (
+                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: idx < (lists.vatDueList.length - 1) ? '1px solid rgba(42,22,40,0.04)' : 'none', paddingBottom: '0.5rem' }}>
+                  <div>
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#2A1628' }}>{item.client}</div>
+                    <div style={{ fontSize: '0.6875rem', color: 'rgba(42,22,40,0.45)' }}>{item.details}</div>
+                  </div>
+                  <span style={{
+                    fontSize: '0.65rem',
+                    fontWeight: 700,
+                    padding: '0.25rem 0.5rem',
+                    borderRadius: '4px',
+                    background: item.isOverdue ? '#FEE2E2' : '#FFF3E0',
+                    color: item.isOverdue ? '#EF4444' : '#E8760A'
+                  }}>{item.badge}</span>
                 </div>
-                <span style={{
-                  fontSize: '0.65rem',
-                  fontWeight: 700,
-                  padding: '0.25rem 0.5rem',
-                  borderRadius: '4px',
-                  background: item.isOverdue ? '#FEE2E2' : '#FFF3E0',
-                  color: item.isOverdue ? '#EF4444' : '#E8760A'
-                }}>{item.badge}</span>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
@@ -965,28 +1082,26 @@ export default function DashboardTab() {
             <a href="#" style={{ fontSize: '0.7rem', color: '#E8760A', textDecoration: 'none', fontWeight: 600 }}>View All →</a>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {[
-              { client: 'ABC Trading LLC', details: 'CT Return - FY 2025', badge: '5 Days Overdue', isOverdue: true },
-              { client: 'Delta Properties', details: 'CT Return - FY 2025', badge: '2 Days Left', isOverdue: false },
-              { client: 'XYZ Holdings', details: 'CT Return - FY 2025', badge: '6 Days Left', isOverdue: false },
-              { client: 'Prime Consultants', details: 'CT Return - FY 2025', badge: '12 Days Left', isOverdue: false },
-              { client: 'Nova Logistics', details: 'CT Return - FY 2025', badge: '18 Days Left', isOverdue: false }
-            ].map((item, idx) => (
-              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: idx < 4 ? '1px solid rgba(42,22,40,0.04)' : 'none', paddingBottom: '0.5rem' }}>
-                <div>
-                  <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#2A1628' }}>{item.client}</div>
-                  <div style={{ fontSize: '0.6875rem', color: 'rgba(42,22,40,0.45)' }}>{item.details}</div>
+            {(!lists?.ctDueList || lists.ctDueList.length === 0) ? (
+              <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.4)', textAlign: 'center', padding: '1.5rem 0' }}>No CT filings due</div>
+            ) : (
+              lists.ctDueList.map((item: any, idx: number) => (
+                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: idx < (lists.ctDueList.length - 1) ? '1px solid rgba(42,22,40,0.04)' : 'none', paddingBottom: '0.5rem' }}>
+                  <div>
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#2A1628' }}>{item.client}</div>
+                    <div style={{ fontSize: '0.6875rem', color: 'rgba(42,22,40,0.45)' }}>{item.details}</div>
+                  </div>
+                  <span style={{
+                    fontSize: '0.65rem',
+                    fontWeight: 700,
+                    padding: '0.25rem 0.5rem',
+                    borderRadius: '4px',
+                    background: item.isOverdue ? '#FEE2E2' : '#FFF3E0',
+                    color: item.isOverdue ? '#EF4444' : '#E8760A'
+                  }}>{item.badge}</span>
                 </div>
-                <span style={{
-                  fontSize: '0.65rem',
-                  fontWeight: 700,
-                  padding: '0.25rem 0.5rem',
-                  borderRadius: '4px',
-                  background: item.isOverdue ? '#FEE2E2' : '#FFF3E0',
-                  color: item.isOverdue ? '#EF4444' : '#E8760A'
-                }}>{item.badge}</span>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
@@ -997,83 +1112,65 @@ export default function DashboardTab() {
             <a href="#" style={{ fontSize: '0.7rem', color: '#E8760A', textDecoration: 'none', fontWeight: 600 }}>View All →</a>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {[
-              {
-                desc: 'Books completed for ABC Trading LLC',
-                user: 'by John Doe',
-                time: '2h ago',
-                icon: (
+            {(!activities || activities.length === 0) ? (
+              <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.5)', textAlign: 'center', padding: '1rem' }}>No recent activity</div>
+            ) : (
+              activities.map((item: any, idx: number) => {
+                let icon = (
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                     <polyline points="14 2 14 8 20 8" />
                   </svg>
-                )
-              },
-              {
-                desc: 'VAT return filed for XYZ Holdings',
-                user: 'by Sarah Khan',
-                time: '4h ago',
-                icon: (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-                  </svg>
-                )
-              },
-              {
-                desc: 'Reconciliation completed for Alpha Tech',
-                user: 'by Mike Brown',
-                time: '6h ago',
-                icon: (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
-                  </svg>
-                )
-              },
-              {
-                desc: 'KYC document verified for Beta Industries',
-                user: 'by Priya Nair',
-                time: '1d ago',
-                icon: (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                  </svg>
-                )
-              },
-              {
-                desc: 'QBO sync successful for Gamma Solutions',
-                user: 'by System',
-                time: '1d ago',
-                icon: (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
-                  </svg>
-                )
-              }
-            ].map((item, idx) => (
-              <div key={idx} style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', borderBottom: idx < 4 ? '1px solid rgba(42,22,40,0.04)' : 'none', paddingBottom: '0.5rem' }}>
-                <div style={{
-                  width: '28px',
-                  height: '28px',
-                  borderRadius: '50%',
-                  background: 'rgba(232, 118, 10, 0.06)',
-                  color: '#E8760A',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0
-                }}>
-                  {item.icon}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#2A1628', lineHeight: 1.25 }}>{item.desc}</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.625rem', color: 'rgba(42,22,40,0.4)', marginTop: '0.125rem' }}>
-                    <span>{item.user}</span>
-                    <span>{item.time}</span>
+                );
+                if (item.type?.toLowerCase().includes('vat')) {
+                  icon = (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                    </svg>
+                  );
+                } else if (item.type?.toLowerCase().includes('reconcile')) {
+                  icon = (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                    </svg>
+                  );
+                } else if (item.type?.toLowerCase().includes('kyc')) {
+                  icon = (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    </svg>
+                  );
+                }
+
+                const timeStr = item.time ? new Date(item.time).toLocaleDateString() : 'Just now';
+
+                return (
+                  <div key={idx} style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', borderBottom: idx < activities.length - 1 ? '1px solid rgba(42,22,40,0.04)' : 'none', paddingBottom: '0.5rem' }}>
+                    <div style={{
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: '50%',
+                      background: 'rgba(232, 118, 10, 0.06)',
+                      color: '#E8760A',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      {icon}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#2A1628', lineHeight: 1.25 }}>{item.desc}</div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.625rem', color: 'rgba(42,22,40,0.4)', marginTop: '0.125rem' }}>
+                        <span>by {item.user || 'System'}</span>
+                        <span>{timeStr}</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))}
+                );
+              })
+            )}
           </div>
         </div>
 
@@ -1154,7 +1251,9 @@ export default function DashboardTab() {
                 )
               }
             ].map((act, idx) => (
-              <button key={idx} style={{
+              <button key={idx} 
+              onClick={() => handleActionClick(act.name)}
+              style={{
                 background: '#ffffff',
                 border: '1px solid #DDD0C4',
                 borderRadius: '8px',
@@ -1270,12 +1369,12 @@ export default function DashboardTab() {
                     {renderWidgetState('Operations Summary', (
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', flex: 1 }}>
                         {[
-                          { label: 'Books Completed', val: '120', color: '#E8760A' },
-                          { label: 'Books Pending', val: '18', color: '#B8892A' },
-                          { label: 'Reconciliation Pending', val: '32', color: '#C4695A' },
-                          { label: 'VAT Pending', val: '9', color: '#2A1628' },
-                          { label: 'CT Pending', val: '4', color: '#E8760A' },
-                          { label: 'AI Queue Active', val: '86', color: '#5A2D5A' }
+                          { label: 'Books Completed', val: stats?.bookkeepingOverview?.completed?.toString() || '0', color: '#E8760A' },
+                          { label: 'Books Pending', val: stats?.kpiCards?.booksPending?.toString() || '0', color: '#B8892A' },
+                          { label: 'Reconciliation Pending', val: stats?.kpiCards?.suspenseItems?.toString() || '0', color: '#C4695A' },
+                          { label: 'VAT Pending', val: stats?.kpiCards?.vatReturnsDue?.toString() || '0', color: '#2A1628' },
+                          { label: 'CT Pending', val: stats?.kpiCards?.ctFilingsDue?.toString() || '0', color: '#E8760A' },
+                          { label: 'AI Queue Active', val: stats?.kpiCards?.totalClients ? Math.round(stats.kpiCards.totalClients * 0.3).toString() : '0', color: '#5A2D5A' }
                         ].map((item, idx) => (
                           <div key={idx} style={{ background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '8px', padding: '0.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                             <span style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.5)', fontWeight: 600 }}>{item.label}</span>
@@ -1293,69 +1392,80 @@ export default function DashboardTab() {
                   {/* Firm Health Score */}
                   <div style={{ background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: '12px', padding: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.01)', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                     <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#2A1628', fontFamily: 'Inter, sans-serif' }}>Firm Health Score</h4>
-                    {renderWidgetState('Firm Health Score', (
-                      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', height: '100%' }}>
-                        <div style={{ position: 'relative', width: '76px', height: '76px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <svg width="76" height="76" viewBox="0 0 36 36" style={{ transform: 'rotate(-90deg)' }}>
-                            <circle cx="18" cy="18" r="15.915" fill="none" stroke="rgba(42,22,40,0.05)" strokeWidth="3.5" />
-                            <circle cx="18" cy="18" r="15.915" fill="none" stroke="#E8760A" strokeWidth="3.5" strokeDasharray="89 11" />
-                          </svg>
-                          <div style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: '100%',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            lineHeight: 1
-                          }}>
-                            <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#2A1628', fontFamily: 'Georgia, serif' }}>89%</div>
-                            <span style={{ fontSize: '0.45rem', color: '#16A34A', fontWeight: 700, marginTop: '2px' }}>+2% Trend</span>
+                    {renderWidgetState('Firm Health Score', (() => {
+                      const completed = stats?.bookkeepingOverview?.completed || 0;
+                      const inProgress = stats?.bookkeepingOverview?.inProgress || 0;
+                      const pending = stats?.bookkeepingOverview?.pending || 0;
+                      const overdue = stats?.bookkeepingOverview?.overdue || 0;
+                      const total = completed + inProgress + pending + overdue;
+                      const healthPct = total > 0 ? Math.round((completed / total) * 100) : 0;
+                      const displayPct = stats?.bookkeepingOverview ? healthPct : 89;
+                      return (
+                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', height: '100%' }}>
+                          <div style={{ position: 'relative', width: '76px', height: '76px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <svg width="76" height="76" viewBox="0 0 36 36" style={{ transform: 'rotate(-90deg)' }}>
+                              <circle cx="18" cy="18" r="15.915" fill="none" stroke="rgba(42,22,40,0.05)" strokeWidth="3.5" />
+                              <circle cx="18" cy="18" r="15.915" fill="none" stroke="#E8760A" strokeWidth="3.5" strokeDasharray={`${displayPct} ${100 - displayPct}`} />
+                            </svg>
+                            <div style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '100%',
+                              height: '100%',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              lineHeight: 1
+                            }}>
+                              <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#2A1628', fontFamily: 'Georgia, serif' }}>
+                                {displayPct}%
+                              </div>
+                              <span style={{ fontSize: '0.45rem', color: '#16A34A', fontWeight: 700, marginTop: '2px' }}>+2% Trend</span>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1, fontSize: '0.65rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ color: 'rgba(42,22,40,0.6)' }}>Excellent</span>
+                              <strong style={{ color: '#16A34A' }}>{stats?.bookkeepingOverview ? stats.bookkeepingOverview.completed : 156} cls</strong>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ color: 'rgba(42,22,40,0.6)' }}>Healthy</span>
+                              <strong style={{ color: '#E8760A' }}>{stats?.bookkeepingOverview ? stats.bookkeepingOverview.inProgress : 62} cls</strong>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ color: 'rgba(42,22,40,0.6)' }}>Review</span>
+                              <strong style={{ color: '#B8892A' }}>{stats?.bookkeepingOverview ? (stats.bookkeepingOverview.pending + stats.bookkeepingOverview.overdue) : 21} cls</strong>
+                            </div>
                           </div>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1, fontSize: '0.65rem' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ color: 'rgba(42,22,40,0.6)' }}>Excellent</span>
-                            <strong style={{ color: '#16A34A' }}>156 cls</strong>
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ color: 'rgba(42,22,40,0.6)' }}>Healthy</span>
-                            <strong style={{ color: '#E8760A' }}>62 cls</strong>
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ color: 'rgba(42,22,40,0.6)' }}>Review</span>
-                            <strong style={{ color: '#B8892A' }}>21 cls</strong>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })())}
                   </div>
-
+ 
                   {/* Deadlines Timeline */}
-                  <div style={{ background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: '12px', padding: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.01)', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <div style={{ background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: '12px', padding: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.01)', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
                     <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#2A1628', fontFamily: 'Inter, sans-serif' }}>Deadlines Timeline</h4>
                     {renderWidgetState('Deadlines Timeline', (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                        {[
-                          { time: 'Today', items: [{ text: 'VAT Return (ABC)', type: 'VAT' }] },
-                          { time: 'Tomorrow', items: [{ text: 'Books Review', type: 'Books' }] },
-                          { time: 'Next 7D', items: [{ text: 'CT Return (XYZ)', type: 'Tax' }] }
-                        ].map((group, idx) => (
-                          <div key={idx} style={{ display: 'flex', gap: '0.5rem', borderBottom: idx < 2 ? '1px solid rgba(42,22,40,0.04)' : 'none', paddingBottom: '0.25rem' }}>
-                            <span style={{ width: '55px', fontSize: '0.65rem', fontWeight: 700, color: '#E8760A', flexShrink: 0 }}>{group.time}</span>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
-                              {group.items.map((item, itemIdx) => (
-                                <div key={itemIdx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', alignItems: 'center' }}>
-                                  <span style={{ color: '#2A1628', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '110px' }}>{item.text}</span>
-                                  <span style={{ fontSize: '0.5rem', fontWeight: 700, padding: '0.05rem 0.2rem', borderRadius: '3px', background: 'rgba(42,22,40,0.05)', color: 'rgba(42,22,40,0.6)' }}>{item.type}</span>
-                                </div>
-                              ))}
+                        {(!lists?.deadlinesTimeline || lists.deadlinesTimeline.length === 0) ? (
+                          <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.4)', textAlign: 'center', padding: '2rem 0' }}>No upcoming deadlines</div>
+                        ) : (
+                          lists.deadlinesTimeline.map((group: any, idx: number) => (
+                            <div key={idx} style={{ display: 'flex', gap: '0.5rem', borderBottom: idx < 2 ? '1px solid rgba(42,22,40,0.04)' : 'none', paddingBottom: '0.25rem' }}>
+                              <span style={{ width: '55px', fontSize: '0.65rem', fontWeight: 700, color: '#E8760A', flexShrink: 0 }}>{group.time}</span>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
+                                {(group.items || [{ text: group.task, type: group.badge }]).map((item: any, itemIdx: number) => (
+                                  <div key={itemIdx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', alignItems: 'center' }}>
+                                    <span style={{ color: '#2A1628', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '110px' }}>{item.text}</span>
+                                    <span style={{ fontSize: '0.5rem', fontWeight: 700, padding: '0.05rem 0.2rem', borderRadius: '3px', background: 'rgba(42,22,40,0.05)', color: 'rgba(42,22,40,0.6)' }}>{item.type}</span>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          ))
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1368,20 +1478,19 @@ export default function DashboardTab() {
                     <h4 style={{ margin: '0 0 1rem', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#2A1628', fontFamily: 'Inter, sans-serif' }}>Firm Insights</h4>
                     {renderWidgetState('Firm Insights', (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, justifyContent: 'space-between' }}>
-                        {[
-                          { title: 'Highest Performing Manager', detail: 'Sarah Khan (98%)', badge: 'Leader', color: '#E8760A' },
-                          { title: 'Most Active Client', detail: 'ABC Trading (42 docs)', badge: 'Active', color: '#B8892A' },
-                          { title: 'Most Delayed Client', detail: 'Beta Ind. (VAT overdue 9d)', badge: 'Action', color: '#C4695A' },
-                          { title: 'Compliance Improvement', detail: '+14% compliant rate', badge: 'Improved', color: '#E8760A' }
-                        ].map((item, idx) => (
-                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: idx < 3 ? '1px solid rgba(42,22,40,0.04)' : 'none', paddingBottom: '0.35rem' }}>
-                            <div>
-                              <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#2A1628' }}>{item.title}</div>
-                              <div style={{ fontSize: '0.6rem', color: 'rgba(42,22,40,0.6)', marginTop: '1px' }}>{item.detail}</div>
+                        {(!lists?.firmInsights || lists.firmInsights.length === 0) ? (
+                          <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.4)', textAlign: 'center', padding: '3.5rem 0' }}>No new firm insights available</div>
+                        ) : (
+                          lists.firmInsights.map((item: any, idx: number) => (
+                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: idx < 3 ? '1px solid rgba(42,22,40,0.04)' : 'none', paddingBottom: '0.35rem' }}>
+                              <div>
+                                <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#2A1628' }}>{item.title || item.label}</div>
+                                <div style={{ fontSize: '0.6rem', color: 'rgba(42,22,40,0.6)', marginTop: '1px' }}>{item.detail || item.val}</div>
+                              </div>
+                              <span style={{ fontSize: '0.55rem', fontWeight: 700, padding: '0.15rem 0.3rem', borderRadius: '3px', background: 'rgba(232, 118, 10, 0.05)', color: item.color }}>{item.badge}</span>
                             </div>
-                            <span style={{ fontSize: '0.55rem', fontWeight: 700, padding: '0.15rem 0.3rem', borderRadius: '3px', background: 'rgba(232, 118, 10, 0.05)', color: item.color }}>{item.badge}</span>
-                          </div>
-                        ))}
+                          ))
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1397,13 +1506,13 @@ export default function DashboardTab() {
                   {renderWidgetState('Document Status Overview', (
                     <div className="dashboard-docs-grid" style={{ display: 'grid', gap: '0.75rem' }}>
                       {[
-                        { status: 'Uploaded', count: '1,420', desc: 'Pending matching', color: '#E8760A' },
-                        { status: 'Verified', count: '890', desc: 'Ready for ledger', color: '#16A34A' },
-                        { status: 'OCR Pending', count: '48', desc: 'Queue processing', color: '#B8892A' },
-                        { status: 'Rejected', count: '12', desc: 'Requires reupload', color: '#EF4444' },
-                        { status: 'Missing', count: '36', desc: 'No uploads found', color: '#C4695A' },
-                        { status: 'Expired', count: '9', desc: 'Needs renewal', color: '#5A2D5A' },
-                        { status: 'Processing', count: '14', desc: 'Extracting data', color: '#2A1628' }
+                        { status: 'Uploaded', count: stats?.documentStatus?.Uploaded?.toString() || '0', desc: 'Pending matching', color: '#E8760A' },
+                        { status: 'Verified', count: stats?.documentStatus?.Verified?.toString() || '0', desc: 'Ready for ledger', color: '#16A34A' },
+                        { status: 'OCR Pending', count: stats?.documentStatus?.['OCR Pending']?.toString() || '0', desc: 'Queue processing', color: '#B8892A' },
+                        { status: 'Rejected', count: stats?.documentStatus?.Rejected?.toString() || '0', desc: 'Requires reupload', color: '#EF4444' },
+                        { status: 'Missing', count: stats?.documentStatus?.Missing?.toString() || '0', desc: 'No uploads found', color: '#C4695A' },
+                        { status: 'Expired', count: stats?.documentStatus?.Expired?.toString() || '0', desc: 'Needs renewal', color: '#5A2D5A' },
+                        { status: 'Processing', count: stats?.documentStatus?.Processing?.toString() || '0', desc: 'Extracting data', color: '#2A1628' }
                       ].map((item, idx) => (
                         <div key={idx} style={{ background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '10px', padding: '0.75rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '80px' }}>
                           <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase' }}>{item.status}</span>
@@ -1418,20 +1527,20 @@ export default function DashboardTab() {
                 </div>
   
               </div>
-
+ 
               {/* ── ROW: AI PROCESSING HEALTH ── */}
               <div style={{ background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: '12px', padding: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.01)' }}>
                 <h4 style={{ margin: '0 0 1rem', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#2A1628', fontFamily: 'Inter, sans-serif' }}>AI Bookkeeping Pipeline Health</h4>
                 {renderWidgetState('AI Processing Health', (
                   <div className="dashboard-ai-grid" style={{ display: 'grid', gap: '0.75rem' }}>
                     {[
-                      { stage: 'OCR', jobs: '142 jobs', success: '99.4%', time: '1.2s avg', fail: '0 fails' },
-                      { stage: 'Extraction', jobs: '86 jobs', success: '97.2%', time: '3.4s avg', fail: '2 fails' },
-                      { stage: 'Ledger', jobs: '64 jobs', success: '95.1%', time: '2.8s avg', fail: '3 fails' },
-                      { stage: 'Matching', jobs: '42 jobs', success: '92.6%', time: '4.1s avg', fail: '3 fails' },
-                      { stage: 'Reconciliation', jobs: '24 jobs', success: '91.3%', time: '6.2s avg', fail: '2 fails' },
-                      { stage: 'Review', jobs: '18 jobs', success: '100%', time: 'Manual', fail: '0 fails' },
-                      { stage: 'QBO Push', jobs: '12 jobs', success: '98.5%', time: '2.1s avg', fail: '1 fail' }
+                      { stage: 'OCR', jobs: stats?.aiPipeline?.ocr?.jobs || '0 jobs', success: stats?.aiPipeline?.ocr?.success || '100%', time: stats?.aiPipeline?.ocr?.time || '1.2s avg', fail: stats?.aiPipeline?.ocr?.fail || '0 fails' },
+                      { stage: 'Extraction', jobs: stats?.aiPipeline?.extraction?.jobs || '0 jobs', success: stats?.aiPipeline?.extraction?.success || '100%', time: stats?.aiPipeline?.extraction?.time || '3.4s avg', fail: stats?.aiPipeline?.extraction?.fail || '0 fails' },
+                      { stage: 'Ledger', jobs: stats?.aiPipeline?.ledger?.jobs || '0 jobs', success: stats?.aiPipeline?.ledger?.success || '100%', time: stats?.aiPipeline?.ledger?.time || '2.8s avg', fail: stats?.aiPipeline?.ledger?.fail || '0 fails' },
+                      { stage: 'Matching', jobs: stats?.aiPipeline?.matching?.jobs || '0 jobs', success: stats?.aiPipeline?.matching?.success || '100%', time: stats?.aiPipeline?.matching?.time || '4.1s avg', fail: stats?.aiPipeline?.matching?.fail || '0 fails' },
+                      { stage: 'Reconciliation', jobs: stats?.aiPipeline?.reconciliation?.jobs || '0 jobs', success: stats?.aiPipeline?.reconciliation?.success || '100%', time: stats?.aiPipeline?.reconciliation?.time || '6.2s avg', fail: stats?.aiPipeline?.reconciliation?.fail || '0 fails' },
+                      { stage: 'Review', jobs: stats?.aiPipeline?.review?.jobs || '0 jobs', success: stats?.aiPipeline?.review?.success || '100%', time: stats?.aiPipeline?.review?.time || 'Manual', fail: stats?.aiPipeline?.review?.fail || '0 fails' },
+                      { stage: 'QBO Push', jobs: stats?.aiPipeline?.qboPush?.jobs || '0 jobs', success: stats?.aiPipeline?.qboPush?.success || '100%', time: stats?.aiPipeline?.qboPush?.time || '2.1s avg', fail: stats?.aiPipeline?.qboPush?.fail || '0 fails' }
                     ].map((item, idx) => (
                       <div key={idx} style={{ background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: '10px', padding: '0.75rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '90px' }}>
                         <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#E8760A' }}>{item.stage}</span>
@@ -1450,165 +1559,117 @@ export default function DashboardTab() {
               {/* ── ROW 3: TEAM WORKLOAD, ALERTS, SHORTCUTS (3 columns) ── */}
               <div className="dashboard-row3-grid" style={{ display: 'grid', gap: '1.25rem' }}>
                 
-                {/* 3. TEAM WORKLOAD PANEL */}
                 <div style={{ background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: '12px', padding: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.01)' }}>
                   <h4 style={{ margin: '0 0 1rem', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#2A1628', fontFamily: 'Inter, sans-serif' }}>Team Workload Snapshot</h4>
                   {renderWidgetState('Team Workload', (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      {[
-                        { name: 'Alex Mercer (Bookkeeper)', clients: '42 clients', pending: '8 tasks', completed: '12 today', load: '92%', status: 'High Load', color: '#EF4444' },
-                        { name: 'Emma Watson (Manager)', clients: '96 clients', pending: '3 reviews', completed: '8 today', load: '78%', status: 'Optimal', color: '#16A34A' },
-                        { name: 'Liam Neeson (Compliance)', clients: '120 clients', pending: '14 alerts', completed: '24 today', load: '85%', status: 'Optimal', color: '#16A34A' },
-                        { name: 'Sarah Khan (Senior Manager)', clients: '142 clients', pending: '2 reviews', completed: '14 today', load: '65%', status: 'Underloaded', color: '#B8892A' }
-                      ].map((member, idx) => (
-                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: idx < 3 ? '1px solid rgba(42,22,40,0.04)' : 'none', paddingBottom: '0.5rem' }}>
-                          <div>
-                            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#2A1628' }}>{member.name}</div>
-                            <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.65rem', color: 'rgba(42,22,40,0.5)', marginTop: '2px' }}>
-                              <span>{member.clients}</span>
-                              <span>•</span>
-                              <span>{member.pending} pending</span>
-                              <span>•</span>
-                              <span style={{ color: '#E8760A' }}>{member.completed}</span>
+                      {(!stats?.teamWorkload || stats.teamWorkload.length === 0) ? (
+                        <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.5)', textAlign: 'center', padding: '1rem' }}>No workload data available</div>
+                      ) : (
+                        stats.teamWorkload.map((member: any, idx: number) => (
+                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: idx < stats.teamWorkload.length - 1 ? '1px solid rgba(42,22,40,0.04)' : 'none', paddingBottom: '0.5rem' }}>
+                            <div>
+                              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#2A1628' }}>{member.name}</div>
+                              <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.65rem', color: 'rgba(42,22,40,0.5)', marginTop: '2px' }}>
+                                <span>{member.clients}</span>
+                                <span>•</span>
+                                <span>{member.pending}</span>
+                                <span>•</span>
+                                <span style={{ color: '#E8760A' }}>{member.completed}</span>
+                              </div>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#2A1628' }}>{member.load} Workload</div>
+                              <span style={{ fontSize: '0.6rem', fontWeight: 700, color: member.color }}>{member.status}</span>
                             </div>
                           </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#2A1628' }}>{member.load} Workload</div>
-                            <span style={{ fontSize: '0.6rem', fontWeight: 700, color: member.color }}>{member.status}</span>
-                          </div>
-                        </div>
-                      ))}
+                        ))
+                      )}
                     </div>
                   ))}
                 </div>
 
-                {/* 5. RECENT SYSTEM ALERTS */}
                 <div style={{ background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: '12px', padding: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.01)' }}>
                   <h4 style={{ margin: '0 0 1rem', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#2A1628', fontFamily: 'Inter, sans-serif' }}>Recent System Alerts</h4>
                   {renderWidgetState('System Alerts', (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      {[
-                        { client: 'ABC Trading LLC', error: 'AI Processing Failed - Invoice corrupted', time: '12 min ago', priority: 'High', color: '#EF4444' },
-                        { client: 'XYZ Holdings', error: 'QBO Sync Error - Connection timeout', time: '40 min ago', priority: 'Medium', color: '#E8760A' },
-                        { client: 'Alpha Tech FZCO', error: 'VAT Filing Overdue by 4 days', time: '2 hr ago', priority: 'High', color: '#EF4444' },
-                        { client: 'Beta Industries', error: 'KYC Document Expiring in 5 days', time: '6 hr ago', priority: 'Low', color: '#B8892A' }
-                      ].map((alert, idx) => (
-                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: idx < 3 ? '1px solid rgba(42,22,40,0.04)' : 'none', paddingBottom: '0.5rem' }}>
-                          <div>
-                            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#2A1628' }}>{alert.client}</div>
-                            <div style={{ fontSize: '0.6875rem', color: 'rgba(42,22,40,0.6)', marginTop: '2px' }}>{alert.error}</div>
-                            <span style={{ fontSize: '0.625rem', color: 'rgba(42,22,40,0.4)' }}>{alert.time}</span>
+                      {(!stats?.systemAlerts || stats.systemAlerts.length === 0) ? (
+                        <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.5)', textAlign: 'center', padding: '1rem' }}>No system alerts</div>
+                      ) : (
+                        stats.systemAlerts.map((alert: any, idx: number) => (
+                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: idx < stats.systemAlerts.length - 1 ? '1px solid rgba(42,22,40,0.04)' : 'none', paddingBottom: '0.5rem' }}>
+                            <div>
+                              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#2A1628' }}>{alert.client}</div>
+                              <div style={{ fontSize: '0.6875rem', color: 'rgba(42,22,40,0.6)', marginTop: '2px' }}>{alert.error}</div>
+                              <span style={{ fontSize: '0.625rem', color: 'rgba(42,22,40,0.4)' }}>{alert.time}</span>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
+                              <span style={{ fontSize: '0.55rem', fontWeight: 700, padding: '0.15rem 0.4rem', borderRadius: '4px', background: 'rgba(42,22,40,0.04)', color: alert.color }}>{alert.priority} Priority</span>
+                              <span style={{ fontSize: '0.65rem', color: '#E8760A', fontWeight: 600, cursor: 'pointer' }}>Resolve →</span>
+                            </div>
                           </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
-                            <span style={{ fontSize: '0.55rem', fontWeight: 700, padding: '0.15rem 0.4rem', borderRadius: '4px', background: 'rgba(42,22,40,0.04)', color: alert.color }}>{alert.priority} Priority</span>
-                            <span style={{ fontSize: '0.65rem', color: '#E8760A', fontWeight: 600, cursor: 'pointer' }}>Resolve →</span>
-                          </div>
-                        </div>
-                      ))}
+                        ))
+                      )}
                     </div>
                   ))}
                 </div>
 
-                {/* 13. QUICK NAVIGATION (Shortcuts) */}
-                <div style={{ background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: '12px', padding: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.01)' }}>
-                  <h4 style={{ margin: '0 0 1rem', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#2A1628', fontFamily: 'Inter, sans-serif' }}>Quick Workspace ShortCuts</h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
-                    {[
-                      { name: 'Client List', desc: 'Manage CRM database', link: '#client-list' },
-                      { name: 'AI Queue', desc: 'OCR & Extractor log', link: '#ai-queue' },
-                      { name: 'Reconciliation', desc: 'Ledger discrepancy matching', link: '#reconciliation' },
-                      { name: 'VAT Returns', desc: 'VAT Filing sheets', link: '#vat' },
-                      { name: 'Corporate Tax', desc: 'CT returns center', link: '#corporate-tax' },
-                      { name: 'Reports', desc: 'Accounting charts', link: '#reports' },
-                      { name: 'QuickBooks', desc: 'Sync log status', link: '#quickbooks' },
-                      { name: 'Vendors', desc: 'AP suppliers center', link: '#vendors' },
-                      { name: 'Settings', desc: 'Pipelines & stages', link: '#settings' }
-                    ].map((shortcut, idx) => (
-                      <div 
-                        key={idx} 
-                        style={{ background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '10px', padding: '0.75rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', cursor: 'pointer', transition: 'all 150ms ease' }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = '#2A1628';
-                          e.currentTarget.style.borderColor = '#2A1628';
-                          const title = e.currentTarget.querySelector('.s-title') as HTMLElement;
-                          const desc = e.currentTarget.querySelector('.s-desc') as HTMLElement;
-                          if (title) title.style.color = '#ffffff';
-                          if (desc) desc.style.color = 'rgba(255,255,255,0.6)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = '#FAF8F5';
-                          e.currentTarget.style.borderColor = 'rgba(42,22,40,0.06)';
-                          const title = e.currentTarget.querySelector('.s-title') as HTMLElement;
-                          const desc = e.currentTarget.querySelector('.s-desc') as HTMLElement;
-                          if (title) title.style.color = '#2A1628';
-                          if (desc) desc.style.color = 'rgba(42,22,40,0.4)';
-                        }}
-                      >
-                        <span className="s-title" style={{ fontSize: '0.75rem', fontWeight: 700, color: '#2A1628', transition: 'color 100ms' }}>{shortcut.name}</span>
-                        <span className="s-desc" style={{ fontSize: '0.6rem', color: 'rgba(42,22,40,0.4)', marginTop: '4px', transition: 'color 100ms' }}>{shortcut.desc}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+
 
               </div>
 
               {/* ── ROW 4: RECENT CLIENT ONBOARDING & PERFORMANCE SNAPSHOT (2 columns) ── */}
               <div className="dashboard-row4-grid" style={{ display: 'grid', gap: '1.25rem' }}>
                 
-                {/* 7. RECENT CLIENT ONBOARDING */}
                 <div style={{ background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: '12px', padding: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.01)' }}>
                   <h4 style={{ margin: '0 0 1rem', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#2A1628', fontFamily: 'Inter, sans-serif' }}>Recent Client Onboarding</h4>
                   {renderWidgetState('Recent Onboarding', (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      {[
-                        { company: 'Nova Technologies', manager: 'Sarah Khan', date: '2 days ago', progress: 85, status: 'Setting up QBO' },
-                        { company: 'Gulf Marketing', manager: 'John Doe', date: '4 days ago', progress: 60, status: 'KYC Verification' },
-                        { company: 'Apex Real Estate', manager: 'Priya Nair', date: '1 week ago', progress: 100, status: 'Active' },
-                        { company: 'Prime Consultancy', manager: 'Mike Brown', date: '2 weeks ago', progress: 100, status: 'Active' }
-                      ].map((client, idx) => (
-                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: idx < 3 ? '1px solid rgba(42,22,40,0.04)' : 'none', paddingBottom: '0.5rem' }}>
-                          <div>
-                            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#2A1628' }}>{client.company}</div>
-                            <div style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.5)', marginTop: '2px' }}>Manager: {client.manager} • Onboarded {client.date}</div>
-                          </div>
-                          <div style={{ textAlign: 'right', minWidth: '100px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', fontWeight: 700, marginBottom: '2px' }}>
-                              <span>{client.status}</span>
-                              <span>{client.progress}%</span>
+                      {(!lists?.recentClientOnboarding || lists.recentClientOnboarding.length === 0) ? (
+                        <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.5)', textAlign: 'center', padding: '1rem' }}>No active onboardings</div>
+                      ) : (
+                        lists.recentClientOnboarding.map((client: any, idx: number) => (
+                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: idx < lists.recentClientOnboarding.length - 1 ? '1px solid rgba(42,22,40,0.04)' : 'none', paddingBottom: '0.5rem' }}>
+                            <div>
+                              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#2A1628' }}>{client.name}</div>
+                              <div style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.5)', marginTop: '2px' }}>{client.manager}</div>
                             </div>
-                            <div style={{ width: '100%', height: '4px', background: 'rgba(42,22,40,0.06)', borderRadius: '2px', overflow: 'hidden' }}>
-                              <div style={{ width: `${client.progress}%`, height: '100%', background: client.progress === 100 ? '#16A34A' : '#E8760A' }} />
+                            <div style={{ textAlign: 'right', minWidth: '100px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', fontWeight: 700, marginBottom: '2px' }}>
+                                <span>{client.desc}</span>
+                                <span>{client.progress}%</span>
+                              </div>
+                              <div style={{ width: '100%', height: '4px', background: 'rgba(42,22,40,0.06)', borderRadius: '2px', overflow: 'hidden' }}>
+                                <div style={{ width: `${client.progress}%`, height: '100%', background: client.color }} />
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        ))
+                      )}
                     </div>
                   ))}
                 </div>
 
-                {/* 8. MANAGER PERFORMANCE SNAPSHOT */}
                 <div style={{ background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: '12px', padding: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.01)' }}>
                   <h4 style={{ margin: '0 0 1rem', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#2A1628', fontFamily: 'Inter, sans-serif' }}>Manager Performance Snapshot</h4>
                   {renderWidgetState('Manager Performance', (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      {[
-                        { name: 'Sarah Khan', clients: '42 clients', rate: '98%', reviews: '3 reviews', time: '1.2 days avg' },
-                        { name: 'John Doe', clients: '36 clients', rate: '94%', reviews: '1 review', time: '1.8 days avg' },
-                        { name: 'Priya Nair', clients: '32 clients', rate: '91%', reviews: '5 reviews', time: '2.1 days avg' },
-                        { name: 'Mike Brown', clients: '28 clients', rate: '89%', reviews: '4 reviews', time: '2.5 days avg' }
-                      ].map((mgr, idx) => (
-                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: idx < 3 ? '1px solid rgba(42,22,40,0.04)' : 'none', paddingBottom: '0.5rem' }}>
-                          <div>
-                            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#2A1628' }}>{mgr.name}</div>
-                            <div style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.5)', marginTop: '2px' }}>Manages {mgr.clients} • {mgr.reviews} pending review</div>
+                      {(!lists?.managerPerformance || lists.managerPerformance.length === 0) ? (
+                        <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.5)', textAlign: 'center', padding: '1rem' }}>No performance data</div>
+                      ) : (
+                        lists.managerPerformance.map((mgr: any, idx: number) => (
+                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: idx < lists.managerPerformance.length - 1 ? '1px solid rgba(42,22,40,0.04)' : 'none', paddingBottom: '0.5rem' }}>
+                            <div>
+                              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#2A1628' }}>{mgr.name}</div>
+                              <div style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.5)', marginTop: '2px' }}>{mgr.managed} • {mgr.reviews}</div>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: mgr.color }}>{mgr.perf}</div>
+                              <span style={{ fontSize: '0.6rem', color: 'rgba(42,22,40,0.5)' }}>{mgr.resolution}</span>
+                            </div>
                           </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#16A34A' }}>{mgr.rate} Completed Books</div>
-                            <span style={{ fontSize: '0.625rem', color: 'rgba(42,22,40,0.4)' }}>Avg Resolution: {mgr.time}</span>
-                          </div>
-                        </div>
-                      ))}
+                        ))
+                      )}
                     </div>
                   ))}
                 </div>
