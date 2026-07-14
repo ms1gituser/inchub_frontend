@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Pagination from '@/components/ui/Pagination';
 
@@ -229,13 +229,7 @@ export default function ClientListTab() {
   const searchParams = useSearchParams();
   const actionParam = searchParams.get('action');
 
-  useEffect(() => {
-    if (actionParam === 'add-client') {
-      setAddClientOpen(true);
-    }
-  }, [actionParam]);
-
-  const [addClientOpen, setAddClientOpen] = useState(false);
+  const [addClientOpen, setAddClientOpen] = useState(actionParam === 'add-client');
   const [importOpen, setImportOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
