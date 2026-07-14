@@ -299,13 +299,13 @@ export default function AiQueueTab() {
   const searchParams = useSearchParams();
   const actionParam = searchParams.get('action');
 
+  const [uploadOpen, setUploadOpen] = useState(false);
+
   useEffect(() => {
     if (actionParam === 'upload') {
       setUploadOpen(true);
     }
   }, [actionParam]);
-
-  const [uploadOpen, setUploadOpen] = useState(false);
   // const [uploadSource, setUploadSource] = useState<'local' | 'drive'>('local');
   // const [hasFileSelected, setHasFileSelected] = useState(false);
   const [batchOpen, setBatchOpen] = useState(false);

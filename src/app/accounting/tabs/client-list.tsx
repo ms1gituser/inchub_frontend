@@ -229,13 +229,13 @@ export default function ClientListTab() {
   const searchParams = useSearchParams();
   const actionParam = searchParams.get('action');
 
+  const [addClientOpen, setAddClientOpen] = useState(false);
+
   useEffect(() => {
     if (actionParam === 'add-client') {
       setAddClientOpen(true);
     }
   }, [actionParam]);
-
-  const [addClientOpen, setAddClientOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
