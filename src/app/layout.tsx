@@ -24,13 +24,17 @@ export const metadata: Metadata = {
   description: 'A professional CRM platform for managing contacts, leads, deals and tasks.',
 };
 
+import StoreProvider from '@/components/providers/StoreProvider';
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${inter.variable} ${cormorant.variable}`}>
       <body>
-        <AppShell>{children}</AppShell>
+        <StoreProvider>
+          <AppShell>{children}</AppShell>
+        </StoreProvider>
       </body>
     </html>
   );
