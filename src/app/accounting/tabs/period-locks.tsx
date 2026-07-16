@@ -60,7 +60,7 @@ export default function PeriodLocksTab() {
   const [reportPath, setReportPath] = useState('');
   const [invoicePath, setInvoicePath] = useState('');
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const res = await get<{ success: boolean; data: MonthPeriod[]; compliance: ComplianceData }>('/bookkeeping/months');
@@ -73,17 +73,18 @@ export default function PeriodLocksTab() {
       if (tasksRes?.success) {
         setTasks(tasksRes.data || []);
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('[Fetch Period Locks Error]', e);
-      showToast(e.message || 'Failed to fetch compliance periods data.', 'error');
+      const err = e as { message?: string };
+      showToast(err.message || 'Failed to fetch compliance periods data.', 'error');
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const handleCreateMonth = async () => {
     // Propose opening the next sequential month
@@ -114,8 +115,9 @@ export default function PeriodLocksTab() {
             showToast(res.message || 'New accounting period created.', 'success');
             await fetchData();
           }
-        } catch (e: any) {
-          showToast(e.message || 'Failed to create new period.', 'error');
+        } catch (e: unknown) {
+          const err = e as { message?: string };
+          showToast(err.message || 'Failed to create new period.', 'error');
         } finally {
           setActionLoading(false);
         }
@@ -145,8 +147,9 @@ export default function PeriodLocksTab() {
         setInvoicePath('');
         await fetchData();
       }
-    } catch (e: any) {
-      showToast(e.message || 'Failed to close period.', 'error');
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      showToast(err.message || 'Failed to close period.', 'error');
     } finally {
       setActionLoading(false);
     }
@@ -160,8 +163,9 @@ export default function PeriodLocksTab() {
         showToast(res.message || 'Compliance task completed.', 'success');
         await fetchData();
       }
-    } catch (e: any) {
-      showToast(e.message || 'Failed to complete task.', 'error');
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      showToast(err.message || 'Failed to complete task.', 'error');
     } finally {
       setActionLoading(false);
     }

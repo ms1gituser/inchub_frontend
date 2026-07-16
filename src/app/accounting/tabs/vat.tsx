@@ -653,11 +653,12 @@ export default function VatCenterTab() {
   const [data, setData] = useState<VatReturnItem[]>([]);
   const [toasts, setToasts] = useState<{ id: string; message: string; tone: 'success' | 'danger' | 'info' | 'warning' }[]>([]);
 
-  useEffect(() => {
-    if (queueRes?.data) {
-      setData(queueRes.data);
-    }
-  }, [queueRes]);
+  // Sync queueRes.data into local state when it updates
+  const prevQueueDataRef = useRef<VatReturnItem[] | undefined>(undefined);
+  if (queueRes?.data && queueRes.data !== prevQueueDataRef.current) {
+    prevQueueDataRef.current = queueRes.data;
+    setData(queueRes.data);
+  }
 
   // Export Modal Configuration states
   const [exportScope, setExportScope] = useState<'all' | 'filtered' | 'selected'>('filtered');
@@ -1148,7 +1149,7 @@ export default function VatCenterTab() {
         ].map((tab) => {
           const isActive = activeStatusTab === tab.label;
 
-          let tabColors = {
+          const tabColors = {
             border: isActive ? '1.5px solid #E8760A' : '1px solid #DDD0C4',
             bg: isActive ? 'rgba(232,118,10,0.06)' : '#ffffff',
             color: isActive ? '#E8760A' : 'rgba(42,22,40,0.6)',

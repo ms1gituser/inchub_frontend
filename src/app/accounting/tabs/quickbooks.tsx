@@ -794,9 +794,12 @@ export default function QuickBooksTab() {
   const [isLoading, setIsLoading] = useState(false);
   const nextIdRef = useRef(100);
 
-  useEffect(() => {
-    if (queueRes?.data) setData(queueRes.data);
-  }, [queueRes]);
+  // Sync queueRes.data into local state when it updates
+  const prevQueueDataRef = useRef<QboConnectionItem[] | undefined>(undefined);
+  if (queueRes?.data && queueRes.data !== prevQueueDataRef.current) {
+    prevQueueDataRef.current = queueRes.data;
+    setData(queueRes.data);
+  }
 
   // Filter bar states
   const [filterManager, setFilterManager] = useState('All');
