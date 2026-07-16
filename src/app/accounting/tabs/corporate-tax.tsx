@@ -2,6 +2,11 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Pagination from '@/components/ui/Pagination';
+import {
+  useGetQueueQuery, useGetStatsQuery, useGetAnalyticsQuery, useGetDrawerDetailsQuery, useGetMetadataQuery,
+  usePostFileMutation, usePostAmendMutation, useAddCtReturnMutation, usePostBulkMutation, useImportReturnsMutation,
+  usePostNoteMutation, usePostDocumentMutation,
+} from '@/lib/ctApi';
 
 // ============================================================================
 // Types
@@ -480,11 +485,28 @@ function ModalShell({ onClose, eyebrow, titlePlain, titleAccent, maxWidth = '540
 // ============================================================================
 
 export default function CorporateTaxTab() {
+  const { data: queueRes, isLoading: queueLoading, refetch } = useGetQueueQuery({ limit: 1000 });
+  const { data: statsRes } = useGetStatsQuery();
+  const { data: analyticsRes } = useGetAnalyticsQuery();
+  const { data: metaRes } = useGetMetadataQuery();
+  const [fileReturn] = usePostFileMutation();
+  const [addCtReturn] = useAddCtReturnMutation();
+  const [postBulk] = usePostBulkMutation();
+  const [importReturns] = useImportReturnsMutation();
+  const [addNote] = usePostNoteMutation();
+  const [addDocument] = usePostDocumentMutation();
+  const dynamicReviewers = metaRes?.data?.reviewers?.length ? [...metaRes.data.reviewers, 'Unassigned'] : REVIEWERS;
+  const dynamicManagers = metaRes?.data?.managers?.length ? metaRes.data.managers : MANAGERS;
+
   // Local state datasets
-  const [data, setData] = useState<CtReturnItem[]>(MOCK_RETURNS);
+  const [data, setData] = useState<CtReturnItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [toasts, setToasts] = useState<{ id: string; message: string; tone: 'success' | 'danger' | 'info' | 'warning' }[]>([]);
   const nextIdRef = useRef(1);
+
+  useEffect(() => {
+    if (queueRes?.data) setData(queueRes.data);
+  }, [queueRes]);
 
   // Export Modal Configuration states
   const [exportScope, setExportScope] = useState<'all' | 'filtered' | 'selected'>('filtered');
@@ -556,6 +578,8 @@ export default function CorporateTaxTab() {
   // Import form state
   const [importTab, setImportTab] = useState<'local' | 'gdrive' | 'onedrive'>('local');
   const [importFile, setImportFile] = useState('');
+  const [importBase64, setImportBase64] = useState('');
+  const importFileInputRef = useRef<HTMLInputElement>(null);
   const [importTrn, setImportTrn] = useState('');
   const [importPeriod, setImportPeriod] = useState('FY 2025');
 
@@ -710,10 +734,20 @@ export default function CorporateTaxTab() {
     return filteredData.slice(startIndex, startIndex + rowsPerPage);
   }, [filteredData, currentPage, rowsPerPage]);
 
+  const { data: drawerDetailsRes } = useGetDrawerDetailsQuery(drawerTxId || '', { skip: !drawerTxId });
+  const drawerComputation = drawerDetailsRes?.data?.computation || null;
+  const drawerTransactions = drawerDetailsRes?.data?.transactions || [];
+  const drawerTimeline = drawerDetailsRes?.data?.timeline || [];
+  const drawerActivityLog = drawerDetailsRes?.data?.activityLog || [];
+  const drawerValidationChecks = drawerDetailsRes?.data?.validationChecks || [];
+  const drawerDocuments = drawerDetailsRes?.data?.documents || [];
+  const drawerNotes = drawerDetailsRes?.data?.notes || [];
+  const [quickCtNote, setQuickCtNote] = useState('');
+
   // Active drawer transaction details object
   const activeTx = useMemo(() => {
-    return data.find((x) => x.id === drawerTxId) || null;
-  }, [data, drawerTxId]);
+    return drawerDetailsRes?.data?.ctReturn || data.find((x) => x.id === drawerTxId) || null;
+  }, [data, drawerTxId, drawerDetailsRes]);
 
   // Row selection handlers
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -735,55 +769,46 @@ export default function CorporateTaxTab() {
       pushToast('Please fill in required fields.', 'warning');
       return;
     }
-    const accP = Number(newFormAccountingProfit) || 0;
-    const taxP = Number(newFormTaxableProfit) || 0;
-    const ctPay = taxP > 375000 ? Math.round((taxP - 375000) * 0.09) : 0;
-
-    const newObj: CtReturnItem = {
-      id: `ct-${nextIdRef.current++}`,
+    addCtReturn({
       client: newFormClient,
       trn: newFormTrn,
       taxPeriod: newFormPeriod,
       financialYear: newFormYear,
-      accountingProfit: accP,
-      taxableProfit: taxP,
-      corporateTax: ctPay,
-      status: 'Draft',
-      reviewer: newFormReviewer,
-      manager: 'John Doe',
-      priority: 'Medium',
-      dueDate: `${Number(newFormYear) + 1}-05-28`,
-      risk: 'Low',
-      lastUpdated: new Date().toISOString().split('T')[0],
-      taxRate: 9,
       entityType: newFormType,
-      tags: [newFormType],
-    };
-
-    setData((prev) => [newObj, ...prev]);
-    setPopup({ type: null });
-    pushToast(`Corporate Tax filing created for ${newFormClient}.`, 'success');
-
-    // Reset fields
-    setNewFormClient('');
-    setNewFormTrn('');
-    setNewFormAccountingProfit('');
-    setNewFormTaxableProfit('');
+      accountingProfit: Number(newFormAccountingProfit) || 0,
+      taxableProfit: Number(newFormTaxableProfit) || 0,
+      reviewer: newFormReviewer,
+      dueDate: `${Number(newFormYear) + 1}-05-28`,
+      taxRate: 9,
+    })
+      .unwrap()
+      .then(() => {
+        refetch();
+        setPopup({ type: null });
+        pushToast(`Corporate Tax filing created for ${newFormClient}.`, 'success');
+        setNewFormClient(''); setNewFormTrn(''); setNewFormAccountingProfit(''); setNewFormTaxableProfit('');
+      })
+      .catch(() => pushToast('Failed to create Corporate Tax return.', 'danger'));
   };
 
   const handleImportSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (importTab === 'local' && !importFile) {
+    if (importTab === 'local' && !importBase64) {
       pushToast('Please select a ledger report to upload.', 'warning');
       return;
     }
-    if (importTab !== 'local' && !importTrn) {
-      pushToast('Please verify target connection parameters.', 'warning');
+    if (importTab !== 'local') {
+      pushToast('Cloud import is not connected yet — please use local upload.', 'info');
       return;
     }
-
-    pushToast(`System initiated background mapping for ${importPeriod} Corporate Tax data.`, 'success');
-    setPopup({ type: null });
+    importReturns({ file: importBase64 })
+      .unwrap()
+      .then((res: any) => {
+        refetch();
+        setPopup({ type: null });
+        pushToast(`Imported ${res?.data?.count ?? 0} Corporate Tax return(s) successfully.`, 'success');
+      })
+      .catch(() => pushToast('Failed to import Corporate Tax data.', 'danger'));
   };
 
   // Bulk actions triggers
@@ -797,39 +822,35 @@ export default function CorporateTaxTab() {
       setPopup({ type: 'assign' });
       return;
     }
-
-    setData((prev) =>
-      prev.map((x) => {
-        if (!selectedIds.includes(x.id)) return x;
-        if (action === 'ready') return { ...x, status: 'Ready To File' };
-        if (action === 'filed') return { ...x, status: 'Filed' };
-        return x;
-      })
-    );
-
-    if (action === 'generate') {
-      pushToast(`Generated UAE Corporate Tax Returns (Form CT-1) for ${selectedIds.length} companies.`, 'success');
-    } else if (action === 'export') {
+    if (action === 'export') {
       setPopup({ type: 'export' });
-    } else {
-      pushToast(`Bulk action applied to ${selectedIds.length} records.`, 'success');
+      return;
     }
-    setSelectedIds([]);
+
+    const actionMap: Record<string, string> = { ready: 'markReady', filed: 'markFiled', generate: 'generate' };
+    const backendAction = actionMap[action] || action;
+    postBulk({ ids: selectedIds, action: backendAction })
+      .unwrap()
+      .then(() => {
+        refetch();
+        if (action === 'generate') pushToast(`Generated UAE Corporate Tax Returns (Form CT-1) for ${selectedIds.length} companies.`, 'success');
+        else pushToast(`Bulk action applied to ${selectedIds.length} records.`, 'success');
+        setSelectedIds([]);
+      })
+      .catch(() => pushToast('Bulk action failed.', 'danger'));
   };
 
   // Assign Reviewer execution
   const applyAssignReviewer = () => {
-    setData((prev) =>
-      prev.map((x) => {
-        if (selectedIds.includes(x.id)) {
-          return { ...x, reviewer: assignedReviewerSelection };
-        }
-        return x;
+    postBulk({ ids: selectedIds, action: 'assignReviewer', value: { reviewer: assignedReviewerSelection } })
+      .unwrap()
+      .then(() => {
+        refetch();
+        setPopup({ type: null });
+        pushToast(`Assigned ${assignedReviewerSelection} as reviewer for ${selectedIds.length} records.`, 'success');
+        setSelectedIds([]);
       })
-    );
-    setPopup({ type: null });
-    pushToast(`Assigned ${assignedReviewerSelection} as reviewer for ${selectedIds.length} records.`, 'success');
-    setSelectedIds([]);
+      .catch(() => pushToast('Failed to assign reviewer.', 'danger'));
   };
 
   const handleMenuAction = (key: string) => {
@@ -1055,12 +1076,12 @@ export default function CorporateTaxTab() {
           { label: 'Taxable Profit', value: `AED ${stats.taxable.toLocaleString()}`, sub: 'Adjusted CT Base', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
           { label: 'Accounting Profit', value: `AED ${stats.accounting.toLocaleString()}`, sub: 'FY2025 Book Earnings', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5z"/></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
           { label: 'Tax Adjustments', value: `AED ${(stats.taxable - stats.accounting).toLocaleString()}`, sub: 'Net Non-Deductibles', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z"/></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
-          { label: 'Deferred Tax Asset', value: 'AED 184,200', sub: 'Timing Differences', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
+          { label: 'Tax Adjustments (Actual)', value: `AED ${(statsRes?.data?.taxAdjustments ?? (stats.taxable - stats.accounting)).toLocaleString()}`, sub: 'Taxable vs Accounting Delta', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
           { label: 'Returns Pending', value: `${stats.pending} returns`, sub: 'Needs Internal Review', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
           { label: 'Returns Filed', value: `${stats.filed} returns`, sub: 'FTA Gateway Approved', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
-          { label: 'Compliance Score', value: '98.4%', sub: 'Audit matching rate', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
+          { label: 'Compliance Score', value: `${analyticsRes?.data?.accuracyTrend?.[analyticsRes.data.accuracyTrend.length - 1] ?? 100}%`, sub: 'On-time filing rate', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
           { label: 'High Risk Returns', value: `${stats.highRisk} items`, sub: 'Requires Director Sign-off', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
-          { label: 'Filing Deadline', value: '28 May 2026', sub: 'FY2025 Submission Limit', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' }
+          { label: 'Filing Deadline', value: statsRes?.data?.nextDeadline || 'None pending', sub: 'Next unfiled due date', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' }
         ].map((card, idx) => (
           <div
             key={idx}
@@ -1261,10 +1282,10 @@ export default function CorporateTaxTab() {
           </div>
         </div>
 
-        <CustomSelect value={filterManager} onChange={setFilterManager} options={['All', ...MANAGERS]} placeholder="Manager" />
+        <CustomSelect value={filterManager} onChange={setFilterManager} options={['All', ...dynamicManagers]} placeholder="Manager" />
         <CustomSelect value={filterYear} onChange={setFilterYear} options={['All', ...YEARS]} placeholder="Year" />
         <CustomSelect value={filterPeriod} onChange={setFilterPeriod} options={['All', ...PERIODS]} placeholder="Period" />
-        <CustomSelect value={filterReviewer} onChange={setFilterReviewer} options={['All', ...REVIEWERS]} placeholder="Reviewer" />
+        <CustomSelect value={filterReviewer} onChange={setFilterReviewer} options={['All', ...dynamicReviewers]} placeholder="Reviewer" />
         <CustomSelect value={filterRisk} onChange={setFilterRisk} options={['All', 'Low', 'Medium', 'High']} placeholder="Risk" />
         <CustomSelect value={filterEntityType} onChange={setFilterEntityType} options={['All', 'Mainland', 'Free Zone']} placeholder="Type" />
         <CustomSelect value={filterPriority} onChange={setFilterPriority} options={['All', 'Low', 'Medium', 'High', 'Urgent']} placeholder="Priority" />
@@ -1853,13 +1874,13 @@ export default function CorporateTaxTab() {
                   <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', fontWeight: 700, color: '#2A1628' }}>Tax Liability Computation</h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '10px', padding: '1rem' }}>
                     {[
-                      { label: 'Accounting Profit', val: activeTx.accountingProfit },
-                      { label: 'Total Adjustments (Net Addbacks)', val: activeTx.taxableProfit - activeTx.accountingProfit },
-                      { label: 'Adjusted Taxable Profit', val: activeTx.taxableProfit, bold: true },
-                      { label: 'Basic Tax-Free Threshold', val: -375000, type: 'Deduction' },
-                      { label: 'Taxable Income Above Threshold', val: Math.max(0, activeTx.taxableProfit - 375000), bold: true },
-                      { label: 'Corporate Tax Rate', val: '9.0%', rawVal: true },
-                      { label: 'Corporate Tax Liability', val: activeTx.corporateTax, bold: true, highlight: true }
+                      { label: 'Accounting Profit', val: drawerComputation?.accountingProfit ?? activeTx.accountingProfit },
+                      { label: 'Total Adjustments (Net Addbacks)', val: drawerComputation?.netAdjustment ?? (activeTx.taxableProfit - activeTx.accountingProfit) },
+                      { label: 'Adjusted Taxable Profit', val: drawerComputation?.taxableProfit ?? activeTx.taxableProfit, bold: true },
+                      { label: 'Basic Tax-Free Threshold', val: -(drawerComputation?.thresholdExempt ?? 375000), type: 'Deduction' },
+                      { label: 'Taxable Income Above Threshold', val: drawerComputation?.taxableAboveThreshold ?? Math.max(0, activeTx.taxableProfit - 375000), bold: true },
+                      { label: 'Corporate Tax Rate', val: `${activeTx.taxRate}%`, rawVal: true },
+                      { label: 'Corporate Tax Liability', val: drawerComputation?.corporateTax ?? activeTx.corporateTax, bold: true, highlight: true }
                     ].map((item, idx) => (
                       <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(42,22,40,0.04)', paddingBottom: '0.4rem' }}>
                         <span style={{ fontSize: '0.8125rem', color: item.bold ? '#2A1628' : 'rgba(42,22,40,0.6)', fontWeight: item.bold ? 700 : 500 }}>{item.label}</span>
@@ -1874,25 +1895,25 @@ export default function CorporateTaxTab() {
 
               {drawerTab === 'validation' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <div style={{ background: '#E6F4EA', padding: '0.75rem 1rem', borderRadius: '8px', color: '#137333', fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
-                    Compliance Validation Summary: 100% Passed
-                  </div>
-                  {[
-                    { title: 'Financial Statement Validation', desc: 'Trial balance agrees with general ledger balances and financial statements.', status: 'PASSED' },
-                    { title: 'Tax Adjustment Validation', desc: 'All non-deductible expense addbacks are mapped to correct accounting codes.', status: 'PASSED' },
-                    { title: 'Related Party Verification', desc: 'Intercompany transaction documentation matches Arm\'s Length standards.', status: 'PASSED' },
-                    { title: 'UAE CT Compliance', desc: 'Basic CT exemption thresholds and Free Zone Qualification criteria confirmed.', status: 'PASSED' },
-                    { title: 'Filing Completeness', desc: 'All required disclosures, balance sheets and disclosures are compiled.', status: 'PASSED' }
-                  ].map((chk, idx) => (
+                  {(() => {
+                    const passed = drawerValidationChecks.filter((c: any) => c.status === 'pass').length;
+                    const pct = drawerValidationChecks.length ? Math.round((passed / drawerValidationChecks.length) * 100) : 100;
+                    return (
+                      <div style={{ background: pct === 100 ? '#E6F4EA' : '#FFF7ED', padding: '0.75rem 1rem', borderRadius: '8px', color: pct === 100 ? '#137333' : '#c2410c', fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                        Compliance Validation Summary: {pct}% Passed ({passed}/{drawerValidationChecks.length})
+                      </div>
+                    );
+                  })()}
+                  {drawerValidationChecks.map((chk: any, idx: number) => (
                     <div key={idx} style={{ padding: '0.75rem 1rem', border: '1px solid rgba(42,22,40,0.05)', borderRadius: '10px', background: '#FAF8F5' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <strong style={{ fontSize: '0.8125rem' }}>{chk.title}</strong>
-                        <span style={{ fontSize: '0.65rem', background: '#E6F4EA', color: '#137333', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 700 }}>
-                          {chk.status}
+                        <strong style={{ fontSize: '0.8125rem' }}>{chk.label}</strong>
+                        <span style={{ fontSize: '0.65rem', background: chk.status === 'pass' ? '#E6F4EA' : chk.status === 'warning' ? '#FFF7ED' : '#FCE8E6', color: chk.status === 'pass' ? '#137333' : chk.status === 'warning' ? '#c2410c' : '#C5221F', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 700 }}>
+                          {chk.status.toUpperCase()}
                         </span>
                       </div>
-                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.7rem', color: 'rgba(42,22,40,0.5)' }}>{chk.desc}</p>
+                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.7rem', color: 'rgba(42,22,40,0.5)' }}>{chk.detail}</p>
                     </div>
                   ))}
                 </div>
@@ -1900,19 +1921,15 @@ export default function CorporateTaxTab() {
 
               {drawerTab === 'timeline' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', paddingLeft: '0.5rem' }}>
-                  {[
-                    { label: 'Filing logged', user: 'Priya Nair', time: '2026-06-09 14:23', icon: <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg> },
-                    { label: 'Compliance Audited', user: 'System Agent', time: '2026-06-08 09:12', icon: <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> },
-                    { label: 'Filing Created', user: 'Sneha Iyer', time: '2026-06-01 16:30', icon: <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><path d="M12 5v14M5 12h14"/></svg> },
-                  ].map((step, idx) => (
+                  {drawerTimeline.map((step: any, idx: number) => (
                     <div key={idx} style={{ display: 'flex', gap: '1rem', position: 'relative' }}>
-                      {idx < 2 && <div style={{ position: 'absolute', left: '11px', top: '24px', bottom: '-20px', width: '1px', background: 'rgba(42,22,40,0.1)' }} />}
-                      <div style={{ width: '23px', height: '23px', borderRadius: '50%', background: '#E8760A', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, marginTop: '2px', flexShrink: 0 }}>
-                        {step.icon}
+                      {idx < drawerTimeline.length - 1 && <div style={{ position: 'absolute', left: '11px', top: '24px', bottom: '-20px', width: '1px', background: 'rgba(42,22,40,0.1)' }} />}
+                      <div style={{ width: '23px', height: '23px', borderRadius: '50%', background: step.status === 'done' ? '#E8760A' : 'rgba(42,22,40,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, marginTop: '2px', flexShrink: 0 }}>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
                       </div>
                       <div>
-                        <strong style={{ fontSize: '0.8125rem', display: 'block' }}>{step.label}</strong>
-                        <span style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.45)' }}>by {step.user} • {step.time}</span>
+                        <strong style={{ fontSize: '0.8125rem', display: 'block' }}>{step.stage}</strong>
+                        <span style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.45)' }}>by {step.actor || 'System'} • {step.timestamp ? String(step.timestamp).split('T')[0] : 'Pending'}</span>
                       </div>
                     </div>
                   ))}
@@ -1921,23 +1938,21 @@ export default function CorporateTaxTab() {
 
               {drawerTab === 'activity' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {MOCK_ACTIVITY.map((act, idx) => {
-                    const isApproved = act.action.includes('Approved');
-                    const isCreated = act.action.includes('Created');
-                    const isRejected = act.action.includes('Rejected');
-                    const badgeBg = isApproved ? '#E6F4EA' : isCreated ? '#E8F0FE' : isRejected ? '#FCE8E6' : '#FFF0E2';
-                    const badgeColor = isApproved ? '#137333' : isCreated ? '#1A73E8' : isRejected ? '#C5221F' : '#E8760A';
+                  {drawerActivityLog.length === 0 && <p style={{ fontSize: '0.8125rem', color: 'rgba(42,22,40,0.45)', fontStyle: 'italic' }}>No activity recorded yet.</p>}
+                  {drawerActivityLog.map((act: any) => {
+                    const isCreate = act.operation === 'INSERT';
+                    const isDelete = act.operation === 'DELETE';
+                    const badgeBg = isCreate ? '#E8F0FE' : isDelete ? '#FCE8E6' : '#FFF0E2';
+                    const badgeColor = isCreate ? '#1A73E8' : isDelete ? '#C5221F' : '#E8760A';
                     return (
-                      <div key={idx} style={{ padding: '0.6rem 0.75rem', background: '#FAF8F5', borderRadius: '8px', border: '1px solid rgba(42,22,40,0.03)', fontSize: '0.75rem' }}>
+                      <div key={act.id} style={{ padding: '0.6rem 0.75rem', background: '#FAF8F5', borderRadius: '8px', border: '1px solid rgba(42,22,40,0.03)', fontSize: '0.75rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 600 }}>
                           <span style={{ background: badgeBg, color: badgeColor, padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 700 }}>
-                            {act.action}
+                            {String(act.tableName).replace(/_/g, ' ')} {act.operation}
                           </span>
-                          <span style={{ color: 'rgba(42,22,40,0.45)' }}>{act.timestamp}</span>
+                          <span style={{ color: 'rgba(42,22,40,0.45)' }}>{act.changedAt ? String(act.changedAt).replace('T', ' ').split('.')[0] : ''}</span>
                         </div>
-                        <div style={{ marginTop: '0.35rem', color: 'rgba(42,22,40,0.6)' }}>
-                          User: {act.user} • Old: &quot;{act.oldVal}&quot; • New: &quot;{act.newVal}&quot;
-                        </div>
+                        <div style={{ marginTop: '0.35rem', color: 'rgba(42,22,40,0.6)' }}>By: {act.changedBy || 'System'}</div>
                       </div>
                     );
                   })}
@@ -1946,52 +1961,26 @@ export default function CorporateTaxTab() {
 
               {drawerTab === 'documents' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {MOCK_DOCS.map((doc, idx) => (
-                    <div key={idx} style={{ padding: '0.75rem', border: '1px solid #DDD0C4', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const name = window.prompt('Document name (metadata only — no real file upload in this build):');
+                      if (!name || !activeTx) return;
+                      addDocument({ id: activeTx.id, name, type: 'Supporting Doc' })
+                        .unwrap()
+                        .then(() => pushToast('Document recorded.', 'success'))
+                        .catch(() => pushToast('Failed to record document.', 'danger'));
+                    }}
+                    style={{ alignSelf: 'flex-start', padding: '0.4rem 0.75rem', border: '1px solid #DDD0C4', borderRadius: '6px', background: '#fff', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', color: '#2A1628', fontFamily: 'inherit' }}
+                  >
+                    + Add Document
+                  </button>
+                  {drawerDocuments.length === 0 && <p style={{ fontSize: '0.8125rem', color: 'rgba(42,22,40,0.45)', fontStyle: 'italic' }}>No documents recorded yet.</p>}
+                  {drawerDocuments.map((doc: any) => (
+                    <div key={doc.id} style={{ padding: '0.75rem', border: '1px solid #DDD0C4', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff' }}>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: 600, fontSize: '0.8125rem' }}>{doc.name}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.45)', marginTop: '0.15rem' }}>Size: {doc.size} • Uploaded: {doc.date}</div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '0.35rem' }}>
-                        <button
-                          type="button"
-                          onClick={() => pushToast(`Previewing ${doc.name}`, 'info')}
-                          style={{ padding: '0.4rem 0.6rem', border: '1px solid #DDD0C4', borderRadius: '6px', background: '#fff', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', color: '#2A1628', fontFamily: 'inherit' }}
-                        >
-                          Preview
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => pushToast(`${doc.name} download started.`, 'info')}
-                          style={{ padding: '0.4rem 0.6rem', border: '1px solid #DDD0C4', borderRadius: '6px', background: '#fff', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', color: '#2A1628', fontFamily: 'inherit' }}
-                        >
-                          Download
-                        </button>
-                        {(() => {
-                          const isSystemGenerated = doc.name.includes('CT_Return_Draft') || doc.name.includes('Audited_Financial_Statements');
-                          return (
-                            <button
-                              type="button"
-                              disabled={isSystemGenerated}
-                              onClick={() => pushToast(`${doc.name} deleted.`, 'warning')}
-                              style={{
-                                padding: '0.4rem 0.6rem',
-                                border: isSystemGenerated ? '1px solid rgba(42,22,40,0.06)' : '1px solid #FCE8E6',
-                                borderRadius: '6px',
-                                background: '#fff',
-                                fontSize: '0.7rem',
-                                fontWeight: 700,
-                                cursor: isSystemGenerated ? 'not-allowed' : 'pointer',
-                                color: isSystemGenerated ? 'rgba(42,22,40,0.3)' : '#C5221F',
-                                fontFamily: 'inherit',
-                                opacity: isSystemGenerated ? 0.6 : 1
-                              }}
-                              title={isSystemGenerated ? 'System generated documents cannot be deleted' : 'Delete document'}
-                            >
-                              Delete
-                            </button>
-                          );
-                        })()}
+                        <div style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.45)', marginTop: '0.15rem' }}>{doc.type} • {doc.sizeKb} KB • Uploaded by {doc.uploadedBy || 'Unknown'} on {doc.createdAt ? String(doc.createdAt).split('T')[0] : ''}</div>
                       </div>
                     </div>
                   ))}
@@ -2037,27 +2026,34 @@ export default function CorporateTaxTab() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     <textarea
                       placeholder="Type a new internal corporate tax audit note..."
+                      value={quickCtNote}
+                      onChange={(e) => setQuickCtNote(e.target.value)}
                       style={{ width: '100%', minHeight: '80px', padding: '0.625rem', borderRadius: '10px', border: '1px solid #DDD0C4', outline: 'none', fontSize: '0.8125rem', boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical' }}
                     />
                     <button
                       type="button"
-                      onClick={() => pushToast('Note added successfully.', 'success')}
-                      style={{ background: '#E8760A', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.5rem 1rem', width: 'fit-content', alignSelf: 'flex-end', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                      disabled={!quickCtNote.trim()}
+                      onClick={() => {
+                        if (!activeTx || !quickCtNote.trim()) return;
+                        addNote({ id: activeTx.id, body: quickCtNote })
+                          .unwrap()
+                          .then(() => { setQuickCtNote(''); pushToast('Note added successfully.', 'success'); })
+                          .catch(() => pushToast('Failed to add note.', 'danger'));
+                      }}
+                      style={{ background: '#E8760A', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.5rem 1rem', width: 'fit-content', alignSelf: 'flex-end', fontSize: '0.75rem', fontWeight: 700, cursor: quickCtNote.trim() ? 'pointer' : 'not-allowed', opacity: quickCtNote.trim() ? 1 : 0.6, fontFamily: 'inherit' }}
                     >
                       Add Note
                     </button>
                   </div>
                   <div style={{ borderTop: '1px solid rgba(42,22,40,0.06)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {[
-                      { user: 'Priya Nair', role: 'Reviewer', date: '2026-06-08', text: 'Verified non-deductible addbacks. Transfer Pricing audit documentation for related parties matches safe harbor thresholds.' },
-                      { user: 'System Agent', role: 'Auditbot', date: '2026-06-08', text: 'Corporate tax compliance check passed. Below AED 375,000 threshold status logic validated.' }
-                    ].map((note, idx) => (
-                      <div key={idx} style={{ padding: '0.75rem', background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.03)', borderRadius: '8px', fontSize: '0.75rem' }}>
+                    {drawerNotes.length === 0 && <p style={{ fontSize: '0.8125rem', color: 'rgba(42,22,40,0.45)', fontStyle: 'italic' }}>No notes yet.</p>}
+                    {drawerNotes.map((note: any) => (
+                      <div key={note.id} style={{ padding: '0.75rem', background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.03)', borderRadius: '8px', fontSize: '0.75rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', color: 'rgba(42,22,40,0.5)', marginBottom: '0.25rem', fontSize: '0.7rem' }}>
-                          <span style={{ fontWeight: 600 }}>{note.user} ({note.role})</span>
-                          <span>{note.date}</span>
+                          <span style={{ fontWeight: 600 }}>{note.author || 'Unknown'}</span>
+                          <span>{note.createdAt ? String(note.createdAt).split('T')[0] : ''}</span>
                         </div>
-                        <div style={{ color: '#2A1628', lineHeight: 1.3 }}>{note.text}</div>
+                        <div style={{ color: '#2A1628', lineHeight: 1.3 }}>{note.body}</div>
                       </div>
                     ))}
                   </div>
@@ -2075,11 +2071,14 @@ export default function CorporateTaxTab() {
                   if (activeTx.status === 'Filed') {
                     pushToast('Corporate Tax Return PDF download started.', 'info');
                   } else {
-                    setData((prev) =>
-                      prev.map((x) => (x.id === activeTx.id ? { ...x, status: 'Filed' } : x))
-                    );
-                    setDrawerTxId(null);
-                    pushToast(`Return marked as Filed.`, 'success');
+                    fileReturn({ id: activeTx.id })
+                      .unwrap()
+                      .then(() => {
+                        refetch();
+                        setDrawerTxId(null);
+                        pushToast(`Return marked as Filed.`, 'success');
+                      })
+                      .catch(() => pushToast('Failed to file Corporate Tax return.', 'danger'));
                   }
                 }}
                 style={{ flex: 1, padding: '0.6rem', background: activeTx.status === 'Filed' ? '#137333' : '#E8760A', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}
@@ -2187,8 +2186,25 @@ export default function CorporateTaxTab() {
                   transition: 'all 0.15s ease',
                   boxSizing: 'border-box',
                 }}
-                onClick={() => setImportFile('CT_Ledger_Extract_FY2025.xlsx')}
+                onClick={() => importFileInputRef.current?.click()}
               >
+                <input
+                  ref={importFileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (!f) return;
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      const result = reader.result as string;
+                      setImportBase64(result.split(',')[1] || '');
+                      setImportFile(f.name);
+                    };
+                    reader.readAsDataURL(f);
+                  }}
+                />
                 <div style={{
                   width: '42px',
                   height: '42px',
@@ -2665,9 +2681,10 @@ export default function CorporateTaxTab() {
               <button
                 type="button"
                 onClick={() => {
-                  setData((prev) => prev.filter((x) => x.id !== popup.tx!.id));
-                  setPopup({ type: null });
-                  pushToast('Filing record deleted.', 'danger');
+                  postBulk({ ids: [popup.tx!.id], action: 'delete' })
+                    .unwrap()
+                    .then(() => { refetch(); setPopup({ type: null }); pushToast('Filing record deleted.', 'danger'); })
+                    .catch(() => pushToast('Failed to delete filing record.', 'danger'));
                 }}
                 style={{ background: '#DC2626', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
               >
@@ -2702,9 +2719,10 @@ export default function CorporateTaxTab() {
               <button
                 type="button"
                 onClick={() => {
-                  setData((prev) => prev.map((x) => (x.id === popup.tx!.id ? { ...x, status: 'Archived' } : x)));
-                  setPopup({ type: null });
-                  pushToast('Filing record archived.', 'warning');
+                  postBulk({ ids: [popup.tx!.id], action: 'archive' })
+                    .unwrap()
+                    .then(() => { refetch(); setPopup({ type: null }); pushToast('Filing record archived.', 'warning'); })
+                    .catch(() => pushToast('Failed to archive filing record.', 'danger'));
                 }}
                 style={{ background: '#B06000', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
               >
@@ -2739,9 +2757,10 @@ export default function CorporateTaxTab() {
               <button
                 type="button"
                 onClick={() => {
-                  setData((prev) => prev.map((x) => (x.id === popup.tx!.id ? { ...x, status: 'Filed' } : x)));
-                  setPopup({ type: null });
-                  pushToast('Submitted return to FTA portal.', 'success');
+                  fileReturn({ id: popup.tx!.id })
+                    .unwrap()
+                    .then(() => { refetch(); setPopup({ type: null }); pushToast('Submitted return to FTA portal.', 'success'); })
+                    .catch(() => pushToast('Failed to submit return.', 'danger'));
                 }}
                 style={{ background: '#E8760A', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
               >

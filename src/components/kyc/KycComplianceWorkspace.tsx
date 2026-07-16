@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { get, put, post } from '@/lib/apiClient';
+import KycRefreshTimer from './KycRefreshTimer';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type UploadStatus = 'Missing' | 'Uploaded' | 'Verified' | 'Rejected';
@@ -52,6 +53,7 @@ export default function KycComplianceWorkspace() {
   const [editState, setEditState] = useState<EditState>({ upload_status: 'Missing', expires_at: '', verified_by: '', notes: '' });
   const [saving, setSaving] = useState(false);
   const [filterStatus, setFilterStatus] = useState<UploadStatus | 'ALL'>('ALL');
+  const [lastRefreshTime, setLastRefreshTime] = useState<string>(new Date().toISOString());
 
   const fetchChecklist = useCallback(async () => {
     try {
@@ -59,6 +61,7 @@ export default function KycComplianceWorkspace() {
       if (res?.success) {
         setDocs(res.data);
         setKycStatus(res.kyc_status);
+        setLastRefreshTime(new Date().toISOString());
       }
     } catch (err) {
       console.error('[KycWorkspace] fetch error', err);
@@ -154,6 +157,9 @@ export default function KycComplianceWorkspace() {
           background: 'white', color: rag.color, fontSize: '0.72rem', fontWeight: 800, cursor: 'pointer'
         }}>RESET DEFAULTS</button>
       </div>
+
+      {/* ─── 24-Hour Refresh Timer ────────────────────────────────────────── */}
+      <KycRefreshTimer lastRefreshTime={lastRefreshTime} onRefresh={fetchChecklist} />
 
       {/* ─── Summary Metric Cards ──────────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>

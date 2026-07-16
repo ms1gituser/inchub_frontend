@@ -3,6 +3,16 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Pagination from '@/components/ui/Pagination';
+import {
+  useGetQueueQuery,
+  useGetQueueKpisQuery,
+  useGetQueueAnalyticsQuery,
+  useGetQueueDrawerDetailsQuery,
+  useAddQueueItemMutation,
+  useUpdateQueueItemMutation,
+  useBulkUpdateQueueMutation,
+  useImportQueueMutation,
+} from '@/lib/aiqueueapi';
 
 // Type definitions
 interface QueueItem {
@@ -67,104 +77,7 @@ interface QueueItem {
 }
 
 // Initial full enterprise queue data
-const INITIAL_QUEUE_DATA: QueueItem[] = [
-  {
-    id: '1', initials: 'AB', avatarBg: '#7C2D12', email: 'info@abctrading.ae', name: 'ABC Trading LLC', trn: '100556789600003',
-    documentName: 'INV-2026-891.pdf', documentType: 'Invoice', uploadDate: '2026-05-07',
-    stage: 'OCR Processing', aiConfidence: 45, ocrStatus: 'Warning', validationStatus: 'Pending',
-    reviewer: 'Alex Mercer', priority: 'High', currentStep: 'Character Recognition', processingTime: '2.4s',
-    qbStatus: 'Syncing', lastUpdated: '2m ago', exceptionType: 'None',
-    manager: 'Mahesh Maddu', bookkeeper: 'John Doe', industry: 'Trading & Retail', entityType: 'LLC',
-    country: 'UAE', financialYear: '2026', uploader: 'Customer Portal', pages: 1, size: '240 KB',
-    ocrText: 'ABC TRADING LLC\nINVOICE: INV-2026-891\nDate: 07/05/2026',
-    ocrConfidence: 96, detectedLanguage: 'English (US)', ocrWarnings: ['Invoice Date format non-standard'], missingFields: ['Purchase Order Reference'],
-    vendor: 'ABC Trading LLC', invoiceNumber: 'INV-2026-891', invoiceDate: '2026-05-07', dueDate: '2026-06-07',
-    currency: 'AED', taxAmount: '50.00', vat: '5%', subtotal: '1000.00', total: '1050.00',
-    paymentTerms: 'Net 30', category: '5010 - Cost of Goods Sold', glAccountSuggestion: '5010 - Cost of Goods Sold',
-    ledgerDebit: '5100 - Freight Cost (1000.00)', ledgerCredit: '2100 - Accounts Payable (1050.00)',
-    suggestedAccount: '5100 - Freight Cost', accountMapping: 'Auto-Matched', journalPreview: 'Dr 5100 / Cr 2100', ledgerStatus: 'Mapped'
-  },
-  {
-    id: '2', initials: 'XY', avatarBg: '#1E3A8A', email: 'contact@xyzholdings.com', name: 'XYZ Holdings Limited', trn: '100556789600004',
-    documentName: 'MOCK_TAX_INV.pdf', documentType: 'Tax Invoice', uploadDate: '2026-05-07',
-    stage: 'AI Extraction', aiConfidence: 91, ocrStatus: 'Success', validationStatus: 'Passed',
-    reviewer: 'Emma Watson', priority: 'Medium', currentStep: 'Entity Linking', processingTime: '3.1s',
-    qbStatus: 'Connected', lastUpdated: '12m ago', exceptionType: 'None',
-    manager: 'Priya Nair', bookkeeper: 'Emma Watson', industry: 'Technology', entityType: 'LLC',
-    country: 'UAE', financialYear: '2026', uploader: 'Email Ingestion', pages: 2, size: '412 KB',
-    ocrText: 'XYZ HOLDINGS LIMITED\nTAX INVOICE\nTRN: 100556789600004',
-    ocrConfidence: 99, detectedLanguage: 'English (UK)', ocrWarnings: [], missingFields: [],
-    vendor: 'XYZ Holdings Limited', invoiceNumber: 'TX-90921', invoiceDate: '2026-05-06', dueDate: '2026-06-06',
-    currency: 'AED', taxAmount: '24.15', vat: '5%', subtotal: '483.00', total: '507.15',
-    paymentTerms: 'Net 30', category: '6200 - Professional Fees', glAccountSuggestion: '6200 - Professional Fees',
-    ledgerDebit: '6300 - IT (483.00)', ledgerCredit: '2100 - Accounts Payable (507.15)',
-    suggestedAccount: '6300 - IT Expenses', accountMapping: 'Verified', journalPreview: 'Dr 6300 / Cr 2100', ledgerStatus: 'Passed'
-  },
-  {
-    id: '3', initials: 'DP', avatarBg: '#14532D', email: 'admin@deltaproperties.ae', name: 'Delta Properties FZCO', trn: '100556789600005',
-    documentName: 'DELTA-RENT-2026.pdf', documentType: 'Invoice', uploadDate: '2026-05-06',
-    stage: 'Ledger Mapping', aiConfidence: 87, ocrStatus: 'Success', validationStatus: 'Passed',
-    reviewer: 'Alex Mercer', priority: 'High', currentStep: 'Account Coding', processingTime: '4.8s',
-    qbStatus: 'Connected', lastUpdated: '1h ago', exceptionType: 'None',
-    manager: 'Rohit Sharma', bookkeeper: 'Alex Mercer', industry: 'Real Estate', entityType: 'FZCO',
-    country: 'UAE', financialYear: '2026', uploader: 'Google Drive Sync', pages: 4, size: '890 KB',
-    ocrText: 'DELTA PROPERTIES FZCO\nRENT INVOICE Q2',
-    ocrConfidence: 98, detectedLanguage: 'English (US)', ocrWarnings: [], missingFields: [],
-    vendor: 'Delta Properties FZCO', invoiceNumber: 'DP-RENT-05', invoiceDate: '2026-05-01', dueDate: '2026-05-31',
-    currency: 'AED', taxAmount: '750.00', vat: '5%', subtotal: '15000.00', total: '15750.00',
-    paymentTerms: 'Due on Receipt', category: '6100 - Rent Expense', glAccountSuggestion: '6100 - Rent Expense',
-    ledgerDebit: '6100 - Rent Expense (15000.00)', ledgerCredit: '2100 - Accounts Payable (15750.00)',
-    suggestedAccount: '6100 - Rent Expense', accountMapping: 'Mapped', journalPreview: 'Dr 6100 / Cr 2100', ledgerStatus: 'Mapped'
-  },
-  {
-    id: '4', initials: 'AT', avatarBg: '#3B0764', email: 'finance@alphatech.ae', name: 'Alpha Tech FZCO', trn: '100556789600006',
-    documentName: 'OFFICE-SUPPLIES.pdf', documentType: 'Receipt', uploadDate: '2026-05-05',
-    stage: 'Review Required', aiConfidence: 58, ocrStatus: 'Success', validationStatus: 'Warning',
-    reviewer: 'Liam Neeson', priority: 'Low', currentStep: 'Manual Review Trigger', processingTime: '1.9s',
-    qbStatus: 'Syncing', lastUpdated: '4h ago', exceptionType: 'Low AI Confidence',
-    manager: 'Sneha Iyer', bookkeeper: 'Liam Neeson', industry: 'Technology', entityType: 'FZCO',
-    country: 'UAE', financialYear: '2026', uploader: 'WhatsApp Ingestion', pages: 1, size: '105 KB',
-    ocrText: 'NOON COM TRADING\nOFFICE CHAIR',
-    ocrConfidence: 94, detectedLanguage: 'English (US)', ocrWarnings: ['Low text contrast warning'], missingFields: ['Tax invoice title missing'],
-    vendor: 'Alpha Tech FZCO', invoiceNumber: 'AS-89201', invoiceDate: '2026-05-04', dueDate: '2026-05-18',
-    currency: 'AED', taxAmount: '12.50', vat: '5%', subtotal: '250.00', total: '262.50',
-    paymentTerms: 'Net 14', category: '6400 - Office Supplies', glAccountSuggestion: '6400 - Office Supplies',
-    ledgerDebit: '6400 - Office Supplies (250.00)', ledgerCredit: '1100 - Petty Cash (262.50)',
-    suggestedAccount: '6400 - Office Supplies', accountMapping: 'Unresolved', journalPreview: 'Dr 6400 / Cr 1100', ledgerStatus: 'Pending Review'
-  },
-  {
-    id: '5', initials: 'BI', avatarBg: '#052E16', email: 'operations@betaind.ae', name: 'Beta Industries LLC', trn: '100556789600007',
-    documentName: 'STEEL-PLATE-Q1.pdf', documentType: 'Invoice', uploadDate: '2026-05-05',
-    stage: 'Exceptions', aiConfidence: 38, ocrStatus: 'Failed', validationStatus: 'Failed',
-    reviewer: 'John Doe', priority: 'High', currentStep: 'None', processingTime: '11.2s',
-    qbStatus: 'Error', lastUpdated: '1d ago', exceptionType: 'Failed OCR',
-    manager: 'Mahesh Maddu', bookkeeper: 'John Doe', industry: 'Manufacturing', entityType: 'LLC',
-    country: 'Saudi Arabia', financialYear: '2026', uploader: 'Customer Portal', pages: 12, size: '2.1 MB',
-    ocrText: 'ERROR CODE: UNREADABLE_DOC_TEXT_LAYERS',
-    ocrConfidence: 12, detectedLanguage: 'None', ocrWarnings: ['Unreadable handwritten text overlay', 'OCR character segmentation failed'], missingFields: ['Total Amount', 'Tax Amount', 'Vendor Name'],
-    vendor: '', invoiceNumber: '', invoiceDate: '', dueDate: '',
-    currency: 'AED', taxAmount: '0.00', vat: '0%', subtotal: '0.00', total: '0.00',
-    paymentTerms: '', category: '', glAccountSuggestion: '',
-    ledgerDebit: '', ledgerCredit: '',
-    suggestedAccount: '', accountMapping: 'Unmapped', journalPreview: '', ledgerStatus: 'Unresolved'
-  },
-  {
-    id: '6', initials: 'GS', avatarBg: '#1e1b4b', email: 'info@gammasolutions.ae', name: 'Gamma Solutions FZCO', trn: '100556789600008',
-    documentName: 'LIC-RENEWAL-2026.pdf', documentType: 'Tax Invoice', uploadDate: '2026-05-04',
-    stage: 'Ready For Reconciliation', aiConfidence: 97, ocrStatus: 'Success', validationStatus: 'Passed',
-    reviewer: 'Sarah Khan', priority: 'Medium', currentStep: 'Completed Pipeline', processingTime: '4.5s',
-    qbStatus: 'Connected', lastUpdated: '1d ago', exceptionType: 'None',
-    manager: 'Sneha Iyer', bookkeeper: 'Sarah Khan', industry: 'Logistics', entityType: 'FZCO',
-    country: 'UAE', financialYear: '2026', uploader: 'System Auto-Ingest', pages: 2, size: '1.1 MB',
-    ocrText: 'DUBAI CHAMBER OF COMMERCE\nLICENSE RENEWAL FEE\nTOTAL: 15200.00 AED',
-    ocrConfidence: 99, detectedLanguage: 'English', ocrWarnings: [], missingFields: [],
-    vendor: 'Dubai Chamber', invoiceNumber: 'DCC-LIC-2026', invoiceDate: '2026-05-04', dueDate: '2026-05-04',
-    currency: 'AED', taxAmount: '0.00', vat: '0%', subtotal: '15200.00', total: '15200.00',
-    paymentTerms: 'Immediate', category: 'Licenses & Fees', glAccountSuggestion: '6700 - Government Fees & Permits',
-    ledgerDebit: '6700 - Gov Fees (15200.00)', ledgerCredit: '1200 - Bank Current Account (15200.00)',
-    suggestedAccount: '6700 - Gov Fees', accountMapping: 'Reconciliation Ready', journalPreview: 'Dr 6700 / Cr 1200', ledgerStatus: 'Ready'
-  }
-];
+
 
 interface CustomSelectProps {
   label?: string;
@@ -258,18 +171,11 @@ function CustomSelect({ label, value, options, onChange }: CustomSelectProps) {
 }
 
 export default function AiQueueTab() {
-  // Page states
-  const [queueList, setClients] = useState<QueueItem[]>(INITIAL_QUEUE_DATA);
-  const [selectedRows, setSelectedRows] = useState<string[]>([]);
-  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [search, setSearch] = useState('');
-  
-  // Status tab filtering state
   const [currentTab, setCurrentTab] = useState<'All Jobs' | 'Uploaded' | 'OCR Processing' | 'AI Extraction' | 'Ledger Mapping' | 'Review Required' | 'Approved' | 'Rejected' | 'Exceptions' | 'Ready For Reconciliation' | 'Completed'>('All Jobs');
   
-  // Custom smart filters
   const [filters, setFilters] = useState({
     client: 'All',
     manager: 'All',
@@ -288,13 +194,51 @@ export default function AiQueueTab() {
     exceptionType: 'All',
   });
 
-  // Layout presentation states (for verifying Empty, Loading, Error, Success states)
-  const [viewState, setViewState] = useState<'standard' | 'empty' | 'loading' | 'error' | 'success'>('standard');
+  const { data: queueRes, isLoading: queueLoading } = useGetQueueQuery({
+    page: currentPage,
+    limit: rowsPerPage,
+    search,
+    filters: {
+      ...filters,
+      stage: currentTab === 'All Jobs' ? undefined : currentTab
+    }
+  });
 
-  // Modals / Drawer Control
+  const { data: kpisRes } = useGetQueueKpisQuery();
+  const { data: analyticsRes } = useGetQueueAnalyticsQuery();
+
+  const queueList = queueRes?.data || [];
+  const totalItems = queueRes?.meta?.total || queueList.length || 0;
+
+  const kpis = kpisRes?.data || {
+    totalDocuments: 0,
+    averageConfidence: 0,
+    exceptionRate: '0%',
+    qbSyncErrors: 0
+  };
+
+  const analytics = analyticsRes?.data || {
+    pipelineFunnel: [],
+    operationalDiagnostics: [],
+    exceptionsCenter: [],
+    queueHealth: [],
+    engineDiagnostics: { languages: [], ocrStatus: [] },
+    recentExceptions: []
+  };
+
+  const [addQueueItem] = useAddQueueItemMutation();
+  const [updateQueueItem] = useUpdateQueueItemMutation();
+  const [bulkUpdateQueue] = useBulkUpdateQueueMutation();
+  const [importQueue] = useImportQueueMutation();
+
+  const [selectedRows, setSelectedRows] = useState<string[]>([]);
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [viewState, setViewState] = useState<'standard' | 'empty' | 'loading' | 'error' | 'success'>('standard');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<QueueItem | null>(null);
   const [drawerTab, setDrawerTab] = useState<'overview' | 'document' | 'ocr' | 'ai' | 'ledger' | 'validation' | 'timeline' | 'activity'>('overview');
+  const { data: drawerDetailsRes } = useGetQueueDrawerDetailsQuery(selectedItem?.id || '', { skip: !selectedItem });
+  const drawerDetails = drawerDetailsRes?.data || { ocrText: '', ocrConfidence: 0, aiConfidence: 0, ocrWarnings: [], missingFields: [], timeline: [] };
   
   const searchParams = useSearchParams();
   const actionParam = searchParams.get('action');
@@ -385,46 +329,11 @@ export default function AiQueueTab() {
   };
 
   // Main Filter Handler
-  const filteredQueue = queueList.filter(item => {
-    const q = search.toLowerCase();
-    const matchesSearch = !q ||
-      item.name.toLowerCase().includes(q) ||
-      item.documentName.toLowerCase().includes(q) ||
-      item.id.toLowerCase().includes(q);
-
-    // Sidebar status tabs filtering mapping
-    let matchesTab = true;
-    if (currentTab !== 'All Jobs') {
-      matchesTab = item.stage === currentTab;
-    }
-
-    const matchesClient = filters.client === 'All' || item.name === filters.client;
-    const matchesManager = filters.manager === 'All' || item.manager === filters.manager;
-    const matchesBookkeeper = filters.bookkeeper === 'All' || item.bookkeeper === filters.bookkeeper;
-    const matchesIndustry = filters.industry === 'All' || item.industry === filters.industry;
-    const matchesEntityType = filters.entityType === 'All' || item.entityType === filters.entityType;
-    const matchesCountry = filters.country === 'All' || item.country === filters.country;
-    const matchesFY = filters.financialYear === 'All' || item.financialYear === filters.financialYear;
-    const matchesPriority = filters.priority === 'All' || item.priority === filters.priority;
-    const matchesStage = filters.stage === 'All' || item.stage === filters.stage;
-    const matchesDocType = filters.documentType === 'All' || item.documentType === filters.documentType;
-    const matchesReviewer = filters.reviewer === 'All' || item.reviewer === filters.reviewer;
-    const matchesQb = filters.qbStatus === 'All' || item.qbStatus === filters.qbStatus;
-    const matchesException = filters.exceptionType === 'All' || item.exceptionType === filters.exceptionType;
-
-    let matchesConfidence = true;
-    if (filters.aiConfidence === 'High (>80%)') matchesConfidence = item.aiConfidence > 80;
-    else if (filters.aiConfidence === 'Medium (50-80%)') matchesConfidence = item.aiConfidence >= 50 && item.aiConfidence <= 80;
-    else if (filters.aiConfidence === 'Low (<50%)') matchesConfidence = item.aiConfidence < 50;
-
-    return matchesSearch && matchesTab && matchesClient && matchesManager && matchesBookkeeper &&
-      matchesIndustry && matchesEntityType && matchesCountry && matchesFY && matchesPriority &&
-      matchesStage && matchesDocType && matchesReviewer && matchesQb && matchesException && matchesConfidence;
-  });
+  const filteredQueue = queueList;
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      setSelectedRows(filteredQueue.map(c => c.id));
+      setSelectedRows(filteredQueue.map((c: QueueItem) => c.id));
     } else {
       setSelectedRows([]);
     }
@@ -439,24 +348,40 @@ export default function AiQueueTab() {
   };
 
   // Row Action Functions
-  const handleApprove = (id: string) => {
-    setClients(prev => prev.map(c => c.id === id ? { ...c, stage: 'Approved', validationStatus: 'Passed' } : c));
-    triggerToast('Bookkeeping job approved successfully!', 'success');
+  const handleApprove = async (id: string) => {
+    try {
+      await updateQueueItem({ id, body: { stage: 'Approved', validationStatus: 'Passed' } }).unwrap();
+      triggerToast('Bookkeeping job approved successfully!', 'success');
+    } catch (err: any) {
+      triggerToast(err?.data?.message || 'Failed to approve job', 'error');
+    }
   };
 
-  const handleReject = (id: string) => {
-    setClients(prev => prev.map(c => c.id === id ? { ...c, stage: 'Rejected', validationStatus: 'Failed' } : c));
-    triggerToast('Bookkeeping job rejected.', 'error');
+  const handleReject = async (id: string) => {
+    try {
+      await updateQueueItem({ id, body: { stage: 'Rejected', validationStatus: 'Failed' } }).unwrap();
+      triggerToast('Bookkeeping job rejected.', 'error');
+    } catch (err: any) {
+      triggerToast(err?.data?.message || 'Failed to reject job', 'error');
+    }
   };
 
-  const handleMoveToRecon = (id: string) => {
-    setClients(prev => prev.map(c => c.id === id ? { ...c, stage: 'Ready For Reconciliation' } : c));
-    triggerToast('Moved job to Reconciliation Center.', 'success');
+  const handleMoveToRecon = async (id: string) => {
+    try {
+      await updateQueueItem({ id, body: { stage: 'Ready For Reconciliation' } }).unwrap();
+      triggerToast('Moved job to Reconciliation Center.', 'success');
+    } catch (err: any) {
+      triggerToast(err?.data?.message || 'Failed to move job', 'error');
+    }
   };
 
-  const handleRetry = (id: string) => {
-    setClients(prev => prev.map(c => c.id === id ? { ...c, stage: 'OCR Processing', ocrStatus: 'Pending', aiConfidence: 75 } : c));
-    triggerToast('Retrying processing job...', 'info');
+  const handleRetry = async (id: string) => {
+    try {
+      await updateQueueItem({ id, body: { stage: 'OCR Processing', ocrStatus: 'Pending', aiConfidence: 75 } }).unwrap();
+      triggerToast('Retrying processing job...', 'info');
+    } catch (err: any) {
+      triggerToast(err?.data?.message || 'Failed to retry job', 'error');
+    }
   };
 
   return (
@@ -547,21 +472,62 @@ export default function AiQueueTab() {
       </div>
 
 
+      {/* ── EMAIL WEBHOOK INGESTION CARD ── */}
+      <div style={{
+        background: '#FAF8F5',
+        border: '1px solid #DDD0C4',
+        borderRadius: '12px',
+        padding: '1rem',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        boxShadow: '0 4px 12px rgba(42,22,40,0.02)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ background: 'rgba(232,118,10,0.1)', color: '#E8760A', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ margin: 'auto' }}>
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+              <polyline points="22,6 12,13 2,6" />
+            </svg>
+          </div>
+          <div>
+            <h4 style={{ margin: 0, fontSize: '0.8125rem', fontWeight: 700, color: '#2A1628' }}>Inbound Email Document Ingestion</h4>
+            <p style={{ margin: '0.125rem 0 0', fontSize: '0.75rem', color: 'rgba(42,22,40,0.6)' }}>
+              Forward receipts or PDF invoices to your workspace email to automatically feed the AI queue:
+            </p>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.4rem 0.75rem' }}>
+          <code style={{ fontSize: '0.75rem', fontWeight: 700, color: '#E8760A', fontFamily: 'monospace' }}>
+            ocr-tenant-alpha@inchub-incoming.com
+          </code>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText('ocr-tenant-alpha@inchub-incoming.com');
+              triggerToast('Email address copied to clipboard!', 'success');
+            }}
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'rgba(42,22,40,0.4)', padding: 0 }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+          </button>
+        </div>
+      </div>
+
       {/* ── TOP KPI CARDS ── */}
       <div className="no-scrollbar" style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '0.75rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
         {[
-          { label: 'Uploaded Today', value: '48 docs', sub: 'Last: 5m ago', color: '#E8760A', bg: 'rgba(232,118,10,0.06)', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> },
-          { label: 'Retries Triggered', value: '14 items', sub: 'Recalculated OCR', color: '#E8760A', bg: 'rgba(232,118,10,0.06)', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> },
-          { label: 'Manual Reviews', value: '8 jobs', sub: 'Awaiting approval', color: '#E8760A', bg: 'rgba(232,118,10,0.06)', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> },
-          { label: 'Failed Jobs', value: '3 errors', sub: 'OCR/Ledger errors', color: '#EF4444', bg: 'rgba(239,68,68,0.06)', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> },
-          { label: 'Duplicate Docs', value: '2 flags', sub: 'Identical uploads', color: '#E8760A', bg: 'rgba(232,118,10,0.06)', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/></svg> },
-          { label: 'Avg Processing Time', value: '4.2 sec', sub: 'Queue throughput', color: '#047857', bg: 'rgba(4,120,87,0.06)', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
-          { label: 'Waiting For Review', value: '5 tasks', sub: 'High Priority focus', color: '#E8760A', bg: 'rgba(232,118,10,0.06)', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> },
-          { label: 'Approved Today', value: '18 items', sub: 'Auto-posted QBO', color: '#E8760A', bg: 'rgba(232,118,10,0.06)', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg> },
-          { label: 'Ledger Ready', value: '8 clients', sub: 'Accounts mapped', color: '#E8760A', bg: 'rgba(232,118,10,0.06)', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5V4.5z"/></svg> },
-          { label: 'Reconciliation Ready', value: '14 items', sub: 'Pushed to center', color: '#E8760A', bg: 'rgba(232,118,10,0.06)', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg> },
-          { label: 'QuickBooks Ready', value: '196 items', sub: 'Sync endpoints', color: '#E8760A', bg: 'rgba(232,118,10,0.06)', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> },
-          { label: 'Urgent Exceptions', value: '3 errors', sub: 'Review required', color: '#E8760A', bg: 'rgba(232,118,10,0.06)', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/></svg> }
+          { label: 'Uploaded Today', value: kpis.uploadedToday, sub: 'Last: 5m ago', color: '#E8760A', bg: 'rgba(232,118,10,0.06)', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> },
+          { label: 'Retries Triggered', value: kpis.retriesTriggered, sub: 'Recalculated OCR', color: '#E8760A', bg: 'rgba(232,118,10,0.06)', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> },
+          { label: 'Manual Reviews', value: kpis.manualReviews, sub: 'Awaiting approval', color: '#E8760A', bg: 'rgba(232,118,10,0.06)', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> },
+          { label: 'Failed Jobs', value: kpis.failedJobs, sub: 'OCR/Ledger errors', color: '#EF4444', bg: 'rgba(239,68,68,0.06)', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> },
+          { label: 'Duplicate Docs', value: kpis.duplicateDocs, sub: 'Identical uploads', color: '#E8760A', bg: 'rgba(232,118,10,0.06)', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/></svg> },
+          { label: 'Avg Processing Time', value: kpis.avgProcessingTime, sub: 'Queue throughput', color: '#047857', bg: 'rgba(4,120,87,0.06)', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
+          { label: 'Waiting For Review', value: kpis.waitingForReview, sub: 'High Priority focus', color: '#E8760A', bg: 'rgba(232,118,10,0.06)', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> },
+          { label: 'Approved Today', value: kpis.approvedToday, sub: 'Auto-posted QBO', color: '#E8760A', bg: 'rgba(232,118,10,0.06)', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg> },
+          { label: 'Ledger Ready', value: kpis.ledgerReady, sub: 'Accounts mapped', color: '#E8760A', bg: 'rgba(232,118,10,0.06)', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5V4.5z"/></svg> },
+          { label: 'Reconciliation Ready', value: kpis.reconciliationReady, sub: 'Pushed to center', color: '#E8760A', bg: 'rgba(232,118,10,0.06)', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg> },
+          { label: 'QuickBooks Ready', value: kpis.quickbooksReady, sub: 'Sync endpoints', color: '#E8760A', bg: 'rgba(232,118,10,0.06)', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> },
+          { label: 'Urgent Exceptions', value: kpis.urgentExceptions, sub: 'Review required', color: '#E8760A', bg: 'rgba(232,118,10,0.06)', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/></svg> }
         ].map((card, i) => (
           <div key={i} style={{
             background: '#ffffff',
@@ -598,16 +564,16 @@ export default function AiQueueTab() {
       <div className="no-scrollbar" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
         {[
           { id: 'All Jobs', label: 'All Jobs', count: queueList.length },
-          { id: 'Uploaded', label: 'Uploaded', count: queueList.filter(c => c.stage === 'Uploaded').length },
-          { id: 'OCR Processing', label: 'OCR Processing', count: queueList.filter(c => c.stage === 'OCR Processing').length },
-          { id: 'AI Extraction', label: 'AI Extraction', count: queueList.filter(c => c.stage === 'AI Extraction').length },
-          { id: 'Ledger Mapping', label: 'Ledger Mapping', count: queueList.filter(c => c.stage === 'Ledger Mapping').length },
-          { id: 'Review Required', label: 'Review Required', count: queueList.filter(c => c.stage === 'Review Required').length },
-          { id: 'Approved', label: 'Approved', count: queueList.filter(c => c.stage === 'Approved').length },
-          { id: 'Rejected', label: 'Rejected', count: queueList.filter(c => c.stage === 'Rejected').length },
-          { id: 'Exceptions', label: 'Exceptions', count: queueList.filter(c => c.stage === 'Exceptions').length },
-          { id: 'Ready For Reconciliation', label: 'Ready For Reconciliation', count: queueList.filter(c => c.stage === 'Ready For Reconciliation').length },
-          { id: 'Completed', label: 'Completed', count: queueList.filter(c => c.stage === 'Completed').length }
+          { id: 'Uploaded', label: 'Uploaded', count: queueList.filter((c: QueueItem) => c.stage === 'Uploaded').length },
+          { id: 'OCR Processing', label: 'OCR Processing', count: queueList.filter((c: QueueItem) => c.stage === 'OCR Processing').length },
+          { id: 'AI Extraction', label: 'AI Extraction', count: queueList.filter((c: QueueItem) => c.stage === 'AI Extraction').length },
+          { id: 'Ledger Mapping', label: 'Ledger Mapping', count: queueList.filter((c: QueueItem) => c.stage === 'Ledger Mapping').length },
+          { id: 'Review Required', label: 'Review Required', count: queueList.filter((c: QueueItem) => c.stage === 'Review Required').length },
+          { id: 'Approved', label: 'Approved', count: queueList.filter((c: QueueItem) => c.stage === 'Approved').length },
+          { id: 'Rejected', label: 'Rejected', count: queueList.filter((c: QueueItem) => c.stage === 'Rejected').length },
+          { id: 'Exceptions', label: 'Exceptions', count: queueList.filter((c: QueueItem) => c.stage === 'Exceptions').length },
+          { id: 'Ready For Reconciliation', label: 'Ready For Reconciliation', count: queueList.filter((c: QueueItem) => c.stage === 'Ready For Reconciliation').length },
+          { id: 'Completed', label: 'Completed', count: queueList.filter((c: QueueItem) => c.stage === 'Completed').length }
         ].map(tab => (
           <button
             key={tab.id}
@@ -675,13 +641,13 @@ export default function AiQueueTab() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
             {[
               { label: 'Assign Reviewer', ic: '👤', onClick: () => setBulkModal({ type: 'reviewer', title: 'Assign Reviewer' }) },
-              { label: 'Approve Selected', ic: '✅', onClick: () => { setClients(prev => prev.map(c => selectedRows.includes(c.id) ? { ...c, stage: 'Approved' } : c)); setSelectedRows([]); triggerToast('Approved selected jobs!', 'success'); } },
-              { label: 'Reject Selected', ic: '❌', onClick: () => { setClients(prev => prev.map(c => selectedRows.includes(c.id) ? { ...c, stage: 'Rejected' } : c)); setSelectedRows([]); triggerToast('Rejected selected jobs.', 'error'); } },
-              { label: 'Retry OCR', ic: '🔄', onClick: () => { setClients(prev => prev.map(c => selectedRows.includes(c.id) ? { ...c, stage: 'OCR Processing', ocrStatus: 'Pending' } : c)); setSelectedRows([]); triggerToast('Retrying processing for selected files.', 'info'); } },
-              { label: 'Move to Recon', ic: '📤', onClick: () => { setClients(prev => prev.map(c => selectedRows.includes(c.id) ? { ...c, stage: 'Ready For Reconciliation' } : c)); setSelectedRows([]); triggerToast('Pushed selected items to Reconciliation.', 'success'); } },
+              { label: 'Approve Selected', ic: '✅', onClick: async () => { try { await bulkUpdateQueue({ ids: selectedRows, action: 'stage', value: 'Approved' }).unwrap(); setSelectedRows([]); triggerToast('Approved selected jobs!', 'success'); } catch (e) {} } },
+              { label: 'Reject Selected', ic: '❌', onClick: async () => { try { await bulkUpdateQueue({ ids: selectedRows, action: 'stage', value: 'Rejected' }).unwrap(); setSelectedRows([]); triggerToast('Rejected selected jobs.', 'error'); } catch (e) {} } },
+              { label: 'Retry OCR', ic: '🔄', onClick: async () => { try { await bulkUpdateQueue({ ids: selectedRows, action: 'stage', value: 'OCR Processing' }).unwrap(); setSelectedRows([]); triggerToast('Retrying processing for selected files.', 'info'); } catch (e) {} } },
+              { label: 'Move to Recon', ic: '📤', onClick: async () => { try { await bulkUpdateQueue({ ids: selectedRows, action: 'stage', value: 'Ready For Reconciliation' }).unwrap(); setSelectedRows([]); triggerToast('Pushed selected items to Reconciliation.', 'success'); } catch (e) {} } },
               { label: 'Export Batch', ic: '📥', onClick: () => { triggerToast('Export batch prepared.', 'success'); } },
-              { label: 'Archive', ic: '🗄️', onClick: () => { setClients(prev => prev.filter(c => !selectedRows.includes(c.id))); setSelectedRows([]); triggerToast('Archived selected rows.', 'info'); } },
-              { label: 'Delete', ic: '🗑️', onClick: () => { setClients(prev => prev.filter(c => !selectedRows.includes(c.id))); setSelectedRows([]); triggerToast('Deleted selected rows.', 'error'); } },
+              { label: 'Archive', ic: '🗄️', onClick: async () => { try { await bulkUpdateQueue({ ids: selectedRows, action: 'delete' }).unwrap(); setSelectedRows([]); triggerToast('Archived selected rows.', 'info'); } catch (e) {} } },
+              { label: 'Delete', ic: '🗑️', onClick: async () => { try { await bulkUpdateQueue({ ids: selectedRows, action: 'delete' }).unwrap(); setSelectedRows([]); triggerToast('Deleted selected rows.', 'error'); } catch (e) {} } },
               { label: 'AI Review Run', ic: '🤖', onClick: () => { triggerToast('Triggered bulk AI validation review.', 'info'); } },
               { label: 'Add Notes', ic: '📝', onClick: () => setBulkModal({ type: 'notes', title: 'Add Bulk Notes' }) }
             ].map((btn, i) => (
@@ -704,7 +670,7 @@ export default function AiQueueTab() {
         </div>
       )}
 
-      {viewState === 'loading' && (
+      {(viewState === 'loading' || queueLoading) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
             {[1, 2, 3, 4].map(n => (
@@ -746,7 +712,7 @@ export default function AiQueueTab() {
       )}
 
       {/* ── STANDARD DATA TABLE VIEW ── */}
-      {viewState === 'standard' && (
+      {(viewState === 'standard' && !queueLoading) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
           {/* Full-Width Table */}
           <style>{`
@@ -795,7 +761,7 @@ export default function AiQueueTab() {
                     <td colSpan={16} style={{ padding: '3rem', textAlign: 'center', color: 'rgba(42,22,40,0.45)' }}>No bookkeeping workflows matching filter query.</td>
                   </tr>
                 ) : (
-                  filteredQueue.map((item, idx) => (
+                  filteredQueue.map((item: QueueItem, idx: number) => (
                     <tr key={item.id} style={{ borderBottom: idx < filteredQueue.length - 1 ? '1px solid rgba(42,22,40,0.04)' : 'none', background: selectedRows.includes(item.id) ? 'rgba(232,118,10,0.02)' : 'transparent', whiteSpace: 'nowrap' }}>
                       <td style={{ padding: '1rem', textAlign: 'center' }}>
                         <input type="checkbox" checked={selectedRows.includes(item.id)} onChange={() => handleSelectOne(item.id)} />
@@ -959,9 +925,9 @@ export default function AiQueueTab() {
             {/* Queue Health Card */}
             <div style={{ background: '#2A1628', color: '#fff', borderRadius: '16px', padding: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '0.5rem' }}>
               <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Overall Queue Health</div>
-              <div style={{ fontSize: '1.75rem', fontWeight: 300, fontFamily: 'Georgia, serif' }}>94.2% <span style={{ fontSize: '0.75rem', color: '#047857' }}>Excellent</span></div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 300, fontFamily: 'Georgia, serif' }}>{analytics.queueHealth[0]?.value || '94.2%'} <span style={{ fontSize: '0.75rem', color: '#047857' }}>Excellent</span></div>
               <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '10px', overflow: 'hidden' }}>
-                <div style={{ width: '94%', height: '100%', background: '#E8760A' }} />
+                <div style={{ width: analytics.queueHealth[0]?.value || '94%', height: '100%', background: '#E8760A' }} />
               </div>
               <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.6)', marginTop: '0.25rem' }}>Today&apos;s Throughput: <strong>86 invoices/hr</strong></div>
             </div>
@@ -971,26 +937,23 @@ export default function AiQueueTab() {
               <div style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.4)', fontWeight: 700, textTransform: 'uppercase' }}>Engine Diagnostics</div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.6)' }}>AI Accuracy Score</span>
-                <strong style={{ fontSize: '0.8125rem', color: '#2A1628' }}>98.1%</strong>
+                <strong style={{ fontSize: '0.8125rem', color: '#2A1628' }}>{analytics.engineDiagnostics?.accuracyScore || '98.1%'}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.6)' }}>Manual Review Rate</span>
-                <strong style={{ fontSize: '0.8125rem', color: '#E8760A' }}>6.4%</strong>
+                <strong style={{ fontSize: '0.8125rem', color: '#E8760A' }}>{analytics.engineDiagnostics?.manualReviewRate || '6.4%'}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.6)' }}>OCR Fail Rate</span>
-                <strong style={{ fontSize: '0.8125rem', color: '#EF4444' }}>0.82%</strong>
+                <strong style={{ fontSize: '0.8125rem', color: '#EF4444' }}>{analytics.engineDiagnostics?.ocrFailRate || '0.82%'}</strong>
               </div>
             </div>
 
             {/* Queue Distribution */}
             <div style={{ background: '#ffffff', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '16px', padding: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '0.5rem' }}>
               <div style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.4)', fontWeight: 700, textTransform: 'uppercase' }}>Recent Exceptions</div>
-              {[
-                { name: 'Beta Industries steel receipt unreadable', time: '1d ago', code: 'OCR_FAIL' },
-                { name: 'Alpha Tech receipt duplicate detected', time: '2d ago', code: 'DUP_INV' }
-              ].map((item, i) => (
-                <div key={i} style={{ display: 'flex', flexDirection: 'column', paddingBottom: '0.5rem', borderBottom: i === 0 ? '1px solid rgba(42,22,40,0.04)' : 'none', marginTop: '0.25rem' }}>
+              {(analytics.recentExceptions || []).map((item: any, i: number) => (
+                <div key={i} style={{ display: 'flex', flexDirection: 'column', paddingBottom: '0.5rem', borderBottom: i === 0 && analytics.recentExceptions.length > 1 ? '1px solid rgba(42,22,40,0.04)' : 'none', marginTop: '0.25rem' }}>
                   <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#2A1628' }}>{item.name}</span>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'rgba(42,22,40,0.45)', marginTop: '2px' }}>
                     <span>Code: {item.code}</span>
@@ -1023,21 +986,14 @@ export default function AiQueueTab() {
         <div style={{ background: '#ffffff', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '16px', padding: '1.25rem' }}>
           <h3 style={{ margin: '0 0 1rem', fontSize: '0.9rem', fontWeight: 700, color: '#2A1628', fontFamily: 'Inter, sans-serif' }}>AI Bookkeeping Pipeline Funnel</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {[
-              { step: 'Document Upload', val: '100%', color: '#2A1628', count: '1,240 docs' },
-              { step: 'OCR Character Extraction', val: '99.2%', color: '#E8760A', count: '1,230 docs' },
-              { step: 'AI Intent Parsing', val: '98.5%', color: '#E8760A', count: '1,221 docs' },
-              { step: 'Rule-Based Verification', val: '94.2%', color: '#2A1628', count: '1,168 docs' },
-              { step: 'GL Mapping & Ledger Construction', val: '93.5%', color: '#E8760A', count: '1,160 docs' },
-              { step: 'Direct Reconciliation Posting', val: '88.1%', color: '#047857', count: '1,092 docs' }
-            ].map((st, i) => (
+            {(analytics.pipelineFunnel || []).map((st: any, i: number) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem', background: '#FAF8F5', borderRadius: '8px', border: '1px solid rgba(42,22,40,0.04)' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, width: '24px', height: '24px', borderRadius: '50%', background: st.color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, width: '24px', height: '24px', borderRadius: '50%', background: st.color || '#2A1628', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#2A1628' }}>{st.step}</div>
                   <div style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.45)', marginTop: '1px' }}>{st.count}</div>
                 </div>
-                <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: st.color }}>{st.val}</span>
+                <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: st.color || '#2A1628' }}>{st.val}</span>
               </div>
             ))}
           </div>
@@ -1051,19 +1007,14 @@ export default function AiQueueTab() {
             <div style={{ border: '1px solid rgba(42,22,40,0.04)', borderRadius: '10px', padding: '0.75rem', background: '#FAF8F5' }}>
               <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Queue Stage Distribution</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem' }}>
-                {[
-                  { name: 'OCR Processing', val: 25, color: '#E8760A' },
-                  { name: 'AI Extraction', val: 35, color: '#2A1628' },
-                  { name: 'Ledger Mapping', val: 20, color: '#E8760A' },
-                  { name: 'Exceptions / Errors', val: 20, color: '#EF4444' }
-                ].map((item, i) => (
+                {(analytics.operationalDiagnostics || []).map((item: any, i: number) => (
                   <div key={i}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: '#2A1628', fontWeight: 500 }}>
                       <span>{item.name}</span>
                       <span>{item.val}%</span>
                     </div>
                     <div style={{ width: '100%', height: '4px', background: 'rgba(42,22,40,0.06)', borderRadius: '10px', overflow: 'hidden', marginTop: '2px' }}>
-                      <div style={{ width: `${item.val}%`, height: '100%', background: item.color }} />
+                      <div style={{ width: `${item.val}%`, height: '100%', background: item.color || '#2A1628' }} />
                     </div>
                   </div>
                 ))}
@@ -1074,11 +1025,11 @@ export default function AiQueueTab() {
             <div style={{ border: '1px solid rgba(42,22,40,0.04)', borderRadius: '10px', padding: '0.75rem', background: '#FAF8F5' }}>
               <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>AI Confidence Yield</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem' }}>
-                {[
+                {(analytics.confidenceYield || [
                   { name: 'High Confidence (>90%)', val: 78, color: '#047857' },
                   { name: 'Medium Confidence (60-90%)', val: 16, color: '#E8760A' },
                   { name: 'Needs Manual Review (<60%)', val: 6, color: '#EF4444' }
-                ].map((item, i) => (
+                ]).map((item: any, i: number) => (
                   <div key={i}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: '#2A1628', fontWeight: 500 }}>
                       <span>{item.name}</span>
@@ -1294,11 +1245,11 @@ export default function AiQueueTab() {
                     <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(42,22,40,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.75rem' }}>Suggested Corrections & Smart Actions</div>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <button onClick={() => {
-                        setClients(prev => prev.map(c => c.id === selectedItem.id ? { ...c, category: 'Utilities', glAccountSuggestion: '5010-UTIL' } : c));
+                        updateQueueItem({ id: selectedItem.id, body: { category: 'Utilities', glAccountSuggestion: '5010-UTIL' } });
                         triggerToast('Smart suggestion applied: Utilities', 'success');
                       }} style={{ flex: 1, padding: '0.45rem', background: 'rgba(232,118,10,0.08)', color: '#E8760A', border: 'none', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer' }}>Map to Utilities</button>
                       <button onClick={() => {
-                        setClients(prev => prev.map(c => c.id === selectedItem.id ? { ...c, category: 'Software Licences', glAccountSuggestion: '5020-SaaS' } : c));
+                        updateQueueItem({ id: selectedItem.id, body: { category: 'Software Licences', glAccountSuggestion: '5020-SaaS' } });
                         triggerToast('Smart suggestion applied: Software SaaS', 'success');
                       }} style={{ flex: 1, padding: '0.45rem', background: 'rgba(42,22,40,0.06)', color: '#2A1628', border: 'none', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer' }}>Map to SaaS</button>
                     </div>
@@ -1327,7 +1278,7 @@ export default function AiQueueTab() {
                           <span style={{ color: '#047857' }}>Confidence: {selectedItem.ocrConfidence}%</span>
                         </div>
                         <input type="text" defaultValue={fld.val} onChange={e => {
-                          setClients(prev => prev.map(c => c.id === selectedItem.id ? { ...c, [fld.key]: e.target.value } : c));
+                          updateQueueItem({ id: selectedItem.id, body: { [fld.key]: e.target.value } });
                         }} style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #DDD0C4', fontSize: '0.75rem', color: '#2A1628', outline: 'none' }} />
                       </div>
                     ))}
@@ -2112,34 +2063,56 @@ export default function AiQueueTab() {
                     Save Draft
                   </button>
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       if (selectedUploadClients.length === 0) {
                         triggerToast('Please select at least one client.', 'error');
                         return;
                       }
-                      // Simulate Ingestion Loading
                       setUploadState('loading');
-                      setTimeout(() => {
-                        // After 3 seconds, simulate success
+                      try {
+                        const fileName = uploadedFilesList[0]?.name || 'trade_invoice.pdf';
+                        await addQueueItem({
+                          documentName: fileName,
+                          documentType: selectedClassification,
+                          stage: 'Uploaded',
+                          priority: assignPriority,
+                          vendor: selectedUploadClients[0],
+                          total: '1250.00',
+                          currency: 'AED',
+                          reviewer: assignReviewer
+                        }).unwrap();
                         setUploadState('success');
-                      }, 3000);
+                      } catch (err: any) {
+                        setUploadState('error');
+                      }
                     }}
                     style={{ background: '#E8760A', color: '#ffffff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
                   >
                     Upload & Queue Later
                   </button>
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       if (selectedUploadClients.length === 0) {
                         triggerToast('Please select at least one client.', 'error');
                         return;
                       }
-                      // Simulate Ingestion Loading
                       setUploadState('loading');
-                      setTimeout(() => {
-                        // After 3 seconds, simulate success
+                      try {
+                        const fileName = uploadedFilesList[0]?.name || 'trade_invoice.pdf';
+                        await addQueueItem({
+                          documentName: fileName,
+                          documentType: selectedClassification,
+                          stage: 'OCR Processing',
+                          priority: assignPriority,
+                          vendor: selectedUploadClients[0],
+                          total: '1250.00',
+                          currency: 'AED',
+                          reviewer: assignReviewer
+                        }).unwrap();
                         setUploadState('success');
-                      }, 3000);
+                      } catch (err: any) {
+                        setUploadState('error');
+                      }
                     }}
                     style={{ background: '#2A1628', color: '#ffffff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
                   >
@@ -2771,7 +2744,14 @@ export default function AiQueueTab() {
                 </div>
 
                 <div style={{ display: 'flex', gap: '0.75rem' }}>
-                  <button onClick={() => { setExportOpen(false); setExportState('form'); triggerToast('Download started.', 'success'); }} style={{ background: '#2A1628', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}>Download</button>
+                  <button onClick={() => {
+                    const token = localStorage.getItem('crm_access_token');
+                    const format = exportFormat === 'csv' ? 'csv' : 'xlsx';
+                    window.open(`http://localhost:5000/api/v1/ai-queue/export?token=${token}&format=${format}`, '_blank');
+                    setExportOpen(false);
+                    setExportState('form');
+                    triggerToast('Download started.', 'success');
+                  }} style={{ background: '#2A1628', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}>Download</button>
                   <button onClick={() => triggerToast('Share link copied to clipboard.', 'info')} style={{ background: '#E8760A', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}>Share</button>
                   <button onClick={() => { setExportOpen(false); setExportState('form'); }} style={{ background: '#ffffff', color: 'rgba(42,22,40,0.5)', border: '1px solid #DDD0C4', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}>Close</button>
                 </div>
@@ -3134,10 +3114,11 @@ export default function AiQueueTab() {
                   </button>
                   <button
                     onClick={() => {
-                      setExportState('loading');
-                      setTimeout(() => {
-                        setExportState('success');
-                      }, 2500);
+                      const token = localStorage.getItem('crm_access_token');
+                      const format = exportFormat === 'csv' ? 'csv' : 'xlsx';
+                      window.open(`http://localhost:5000/api/v1/ai-queue/export?token=${token}&format=${format}`, '_blank');
+                      setExportOpen(false);
+                      triggerToast('Download started.', 'success');
                     }}
                     style={{ background: '#2A1628', color: '#ffffff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
                   >
@@ -3171,12 +3152,17 @@ export default function AiQueueTab() {
             </div>
             <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #DDD0C4', background: '#FAF8F5', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
               <button onClick={() => setBulkModal({ type: null, title: '' })} style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.5rem 1rem', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', color: '#2A1628' }}>Cancel</button>
-              <button onClick={() => {
-                if (bulkModal.type === 'reviewer') {
-                  setClients(prev => prev.map(c => selectedRows.includes(c.id) ? { ...c, reviewer: bulkValue || c.reviewer } : c));
-                  triggerToast(`Assigned ${bulkValue} to selected jobs.`, 'success');
-                } else if (bulkModal.type === 'notes') {
-                  triggerToast('Notes appended to selected jobs successfully.', 'success');
+              <button onClick={async () => {
+                try {
+                  if (bulkModal.type === 'reviewer') {
+                    await bulkUpdateQueue({ ids: selectedRows, action: 'reviewer', value: bulkValue }).unwrap();
+                    triggerToast(`Assigned ${bulkValue} to selected jobs.`, 'success');
+                  } else if (bulkModal.type === 'notes') {
+                    await bulkUpdateQueue({ ids: selectedRows, action: 'notes', value: bulkValue }).unwrap();
+                    triggerToast('Notes appended to selected jobs successfully.', 'success');
+                  }
+                } catch (err: any) {
+                  triggerToast('Failed to apply bulk update', 'error');
                 }
                 setSelectedRows([]);
                 setBulkModal({ type: null, title: '' });

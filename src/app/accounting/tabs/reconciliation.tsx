@@ -1,7 +1,34 @@
 'use client';
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Pagination from '@/components/ui/Pagination';
+import {
+  useGetQueueQuery,
+  useGetStatsQuery,
+  useGetAnalyticsQuery,
+  useGetHistoryQuery,
+  useGetDrawerDetailsQuery,
+  useGetMetadataQuery,
+  usePostManualMutation,
+  usePostAcceptMutation,
+  usePostRejectMutation,
+  usePostSplitMutation,
+  usePostMergeMutation,
+  usePostUndoMutation,
+  usePostBulkMutation,
+  usePostNoteMutation,
+  usePostDocumentMutation,
+  useGetSavedViewsQuery,
+  usePostSavedViewMutation,
+  useDeleteSavedViewMutation,
+  useGetPreferencesQuery,
+  usePutPreferencesMutation,
+  useGetFailedJobsQuery,
+  useRetryFailedJobMutation,
+  useRetryAllFailedJobsMutation
+} from '@/lib/reconciliationApi';
+
 
 // ============================================================================
 // types.ts
@@ -1450,8 +1477,8 @@ function TransactionsTab({ tx }: DrawerTabProps) {
 // ============================================================================
 
 
-function AiMatchingTab({ tx, actions }: DrawerTabProps) {
-  const suggestions = getSuggestedMatchesForTransaction(tx);
+function AiMatchingTab({ tx, actions, drawerData }: DrawerTabProps & { drawerData?: any }) {
+  const suggestions: SuggestedMatch[] = drawerData?.suggestedMatches ?? getSuggestedMatchesForTransaction(tx);
   const recommendation = tx.aiMatchScore === null
     ? 'No confident candidate was found — route to Manual Match.'
     : tx.aiMatchScore >= 80
@@ -1653,8 +1680,8 @@ const STATUS_ICON: Record<string, React.ReactNode> = {
   pending: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="12" cy="12" r="9" /></svg>,
 };
 
-function ValidationTab({ tx, actions }: DrawerTabProps) {
-  const checks = getValidationChecksForTransaction(tx);
+function ValidationTab({ tx, actions, drawerData }: DrawerTabProps & { drawerData?: any }) {
+  const checks: ValidationCheck[] = drawerData?.validationChecks ?? getValidationChecksForTransaction(tx);
   const failingOrWarning = checks.filter((c) => c.status === 'fail' || c.status === 'warning');
 
   return (
@@ -1713,8 +1740,8 @@ function ValidationTab({ tx, actions }: DrawerTabProps) {
 
 const DOT_COLOR: Record<string, string> = { done: '#137333', current: '#E8760A', pending: '#DDD0C4', skipped: '#DDD0C4' };
 
-function TimelineTab({ tx }: DrawerTabProps) {
-  const events = getTimelineForTransaction(tx);
+function TimelineTab({ tx, drawerData }: DrawerTabProps & { drawerData?: any }) {
+  const events: TimelineEvent[] = drawerData?.timeline ?? getTimelineForTransaction(tx);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -1756,8 +1783,26 @@ function TimelineTab({ tx }: DrawerTabProps) {
 // ============================================================================
 
 
-function ActivityTab({ tx, actions }: DrawerTabProps) {
-  const logs = getActivityLogForTransaction(tx);
+function describeAuditEntry(log: any): string {
+  const verb = log.operation === 'INSERT' ? 'created' : log.operation === 'DELETE' ? 'removed' : 'updated';
+  const table = String(log.tableName || '').replace(/_/g, ' ');
+  return `${table} ${verb}`;
+}
+
+function ActivityTab({ tx, actions, drawerData }: DrawerTabProps & { drawerData?: any }) {
+  const logs: ActivityLogEntry[] = drawerData?.activityLog
+    ? drawerData.activityLog.map((log: any) => ({
+        id: log.id,
+        transactionId: tx.id,
+        timestamp: log.changedAt,
+        user: log.changedBy || 'System',
+        action: describeAuditEntry(log),
+        oldValue: '',
+        newValue: '',
+        ipAddress: 'N/A',
+        system: 'Web App',
+      }))
+    : getActivityLogForTransaction(tx);
 
   return (
     <>
@@ -1821,17 +1866,30 @@ const TYPE_ICON: Record<string, React.ReactNode> = {
   'Supporting Doc': <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.44 11.05l-9.19 9.19a5 5 0 0 1-7.07-7.07l9.19-9.19a3 3 0 0 1 4.24 4.24l-9.19 9.19a1 1 0 0 1-1.41-1.41l8.48-8.49" /></svg>,
 };
 
-function DocumentsTab({ tx }: DrawerTabProps) {
+function DocumentsTab({ tx, drawerData }: DrawerTabProps & { drawerData?: any }) {
   const { pushToast } = useReconciliation();
-  const docs = getDocumentsForTransaction(tx);
+  const [addDocument] = usePostDocumentMutation();
+  const docs: (ReconciliationDocument & { fileKey?: string })[] = drawerData?.documents
+    ? drawerData.documents.map((d: any) => ({ ...d, uploadedAt: d.createdAt }))
+    : getDocumentsForTransaction(tx);
+
+  const handleUpload = () => {
+    const name = window.prompt('Document name (metadata only — no real file upload in this build):');
+    if (!name) return;
+    addDocument({ id: tx.id, name, type: 'Supporting Doc' })
+      .unwrap()
+      .then(() => pushToast({ message: 'Document recorded.', tone: 'success' }))
+      .catch(() => pushToast({ message: 'Failed to record document.', tone: 'error' }));
+  };
 
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Attached Documents</span>
-        <GhostButton label="Upload Document" onClick={() => pushToast({ message: 'The upload flow would open the file picker here.', tone: 'info' })} />
+        <GhostButton label="Upload Document" onClick={handleUpload} />
       </div>
 
+      {docs.length === 0 && <p style={{ fontSize: '0.8125rem', color: 'rgba(42,22,40,0.5)' }}>No documents attached yet.</p>}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         {docs.map((doc) => (
           <div key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid rgba(42,22,40,0.08)', borderRadius: '10px', padding: '0.75rem' }}>
@@ -1842,13 +1900,6 @@ function DocumentsTab({ tx }: DrawerTabProps) {
               <div style={{ fontWeight: 600, fontSize: '0.8rem', color: '#2A1628', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.name}</div>
               <div style={{ fontSize: '0.68rem', color: 'rgba(42,22,40,0.5)' }}>{doc.type} &middot; {doc.sizeKb} KB &middot; {doc.uploadedBy} &middot; {doc.uploadedAt.replace('T', ' ')}</div>
             </div>
-            <button
-              onClick={() => pushToast({ message: `Downloading ${doc.name}…`, tone: 'info' })}
-              aria-label={`Download ${doc.name}`}
-              style={{ background: 'rgba(42,22,40,0.06)', border: 'none', borderRadius: '6px', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2A1628', cursor: 'pointer', flexShrink: 0 }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
-            </button>
           </div>
         ))}
       </div>
@@ -1920,9 +1971,27 @@ function renderBody(body: string) {
   );
 }
 
-function NotesTab({ tx, actions }: DrawerTabProps) {
-  const notes = getNotesForTransaction(tx);
+function NotesTab({ tx, actions, drawerData }: DrawerTabProps & { drawerData?: any }) {
+  const { pushToast } = useReconciliation();
+  const [addNote] = usePostNoteMutation();
+  const notes: ReconciliationNote[] = drawerData?.notes
+    ? drawerData.notes.map((n: any) => ({ ...n, timestamp: n.createdAt, attachments: n.attachments || [] }))
+    : getNotesForTransaction(tx);
   const [quickNote, setQuickNote] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleAddNote = () => {
+    if (!quickNote.trim()) return;
+    setSubmitting(true);
+    addNote({ id: tx.id, body: quickNote })
+      .unwrap()
+      .then(() => {
+        setQuickNote('');
+        pushToast({ message: 'Note added.', tone: 'success' });
+      })
+      .catch(() => pushToast({ message: 'Failed to add note.', tone: 'error' }))
+      .finally(() => setSubmitting(false));
+  };
 
   return (
     <>
@@ -1952,12 +2021,21 @@ function NotesTab({ tx, actions }: DrawerTabProps) {
           rows={3}
           style={{ border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.6rem 0.75rem', fontSize: '0.8rem', outline: 'none', fontFamily: 'inherit', resize: 'vertical' }}
         />
-        <button
-          onClick={() => actions.openAddNotes(tx)}
-          style={{ alignSelf: 'flex-start', background: '#2A1628', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.55rem 1.1rem', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
-        >
-          Open Rich Note Editor
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button
+            onClick={handleAddNote}
+            disabled={submitting || !quickNote.trim()}
+            style={{ background: '#2A1628', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.55rem 1.1rem', fontSize: '0.78rem', fontWeight: 700, cursor: submitting || !quickNote.trim() ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: submitting || !quickNote.trim() ? 0.6 : 1 }}
+          >
+            Add Note
+          </button>
+          <button
+            onClick={() => actions.openAddNotes(tx)}
+            style={{ alignSelf: 'flex-start', background: '#fff', color: '#2A1628', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.55rem 1.1rem', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Open Rich Note Editor
+          </button>
+        </div>
       </div>
     </>
   );
@@ -2007,15 +2085,9 @@ function ReconciliationDrawer({ transaction, activeTab, onTabChange, onClose, ac
 
 function ReconciliationDrawerContent({ transaction, activeTab, onTabChange, onClose, actions }: ReconciliationDrawerProps & { transaction: ReconciliationTransaction }) {
   const { role } = useReconciliation();
-  // Remounted via `key={transaction.id}` above, so this always starts loading fresh per transaction
-  // without needing an effect to reset it when the id changes.
-  const [loading, setLoading] = useState(true);
+  const { data: drawerRes, isFetching: loading } = useGetDrawerDetailsQuery(transaction.id);
+  const drawerData = drawerRes?.data;
   const [postSubmitting, setPostSubmitting] = useState(false);
-
-  useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 320);
-    return () => clearTimeout(t);
-  }, []);
 
   const tx = transaction;
 
@@ -2115,14 +2187,14 @@ function ReconciliationDrawerContent({ transaction, activeTab, onTabChange, onCl
               <>
                 {activeTab === 'overview' && <OverviewTab tx={tx} actions={actions} />}
                 {activeTab === 'transactions' && <TransactionsTab tx={tx} actions={actions} />}
-                {activeTab === 'aiMatching' && <AiMatchingTab tx={tx} actions={actions} />}
+                {activeTab === 'aiMatching' && <AiMatchingTab tx={tx} actions={actions} drawerData={drawerData} />}
                 {activeTab === 'manualMatch' && <ManualMatchTab tx={tx} actions={actions} />}
-                {activeTab === 'validation' && <ValidationTab tx={tx} actions={actions} />}
-                {activeTab === 'timeline' && <TimelineTab tx={tx} actions={actions} />}
-                {activeTab === 'activity' && <ActivityTab tx={tx} actions={actions} />}
-                {activeTab === 'documents' && <DocumentsTab tx={tx} actions={actions} />}
+                {activeTab === 'validation' && <ValidationTab tx={tx} actions={actions} drawerData={drawerData} />}
+                {activeTab === 'timeline' && <TimelineTab tx={tx} actions={actions} drawerData={drawerData} />}
+                {activeTab === 'activity' && <ActivityTab tx={tx} actions={actions} drawerData={drawerData} />}
+                {activeTab === 'documents' && <DocumentsTab tx={tx} actions={actions} drawerData={drawerData} />}
                 {activeTab === 'quickBooksSync' && <QuickBooksSyncTab tx={tx} actions={actions} />}
-                {activeTab === 'notes' && <NotesTab tx={tx} actions={actions} />}
+                {activeTab === 'notes' && <NotesTab tx={tx} actions={actions} drawerData={drawerData} />}
               </>
             )}
           </div>
@@ -3209,13 +3281,24 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function CreateBatchModal({ onClose, onCreate }: CreateBatchModalProps) {
   const { pushToast } = useReconciliation();
+  const { data: metaRes } = useGetMetadataQuery();
+
+  const dynamicClients = metaRes?.data?.clients || CLIENT_OPTIONS;
+  const dynamicReviewers = metaRes?.data?.reviewers ? [...metaRes.data.reviewers, 'Unassigned'] : REVIEWER_OPTIONS;
+
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [reviewer, setReviewer] = useState(REVIEWER_OPTIONS[0]);
+  const [reviewer, setReviewer] = useState('Priya Nair');
   const [priority, setPriority] = useState(PRIORITY_OPTIONS[1]);
   const [dueDate, setDueDate] = useState('');
   const [clients, setClients] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (metaRes?.data?.reviewers?.length > 0 && reviewer === 'Priya Nair' && !metaRes.data.reviewers.includes('Priya Nair')) {
+      setReviewer(metaRes.data.reviewers[0]);
+    }
+  }, [metaRes, reviewer]);
 
   const expectedJobs = useMemo(() => clients.length, [clients]);
   const canSubmit = name.trim().length > 0 && clients.length > 0 && !isSubmitting;
@@ -3321,7 +3404,7 @@ function CreateBatchModal({ onClose, onCreate }: CreateBatchModalProps) {
           <CustomSelect
             value={reviewer}
             onChange={setReviewer}
-            options={REVIEWER_OPTIONS}
+            options={dynamicReviewers}
             icon={
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(42,22,40,0.4)" strokeWidth="2.5">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />
@@ -3362,7 +3445,7 @@ function CreateBatchModal({ onClose, onCreate }: CreateBatchModalProps) {
             background: '#FAF8F5',
           }}
         >
-          {CLIENT_OPTIONS.map((clientName, idx) => (
+          {dynamicClients.map((clientName: string, idx: number) => (
             <label
               key={clientName}
               style={{
@@ -3370,7 +3453,7 @@ function CreateBatchModal({ onClose, onCreate }: CreateBatchModalProps) {
                 alignItems: 'center',
                 gap: '0.6rem',
                 padding: '0.55rem 0.75rem',
-                borderBottom: idx === CLIENT_OPTIONS.length - 1 ? 'none' : '1px solid rgba(42,22,40,0.06)',
+                borderBottom: idx === dynamicClients.length - 1 ? 'none' : '1px solid rgba(42,22,40,0.06)',
                 cursor: 'pointer',
                 fontSize: '0.85rem',
                 color: '#2A1628',
@@ -3427,10 +3510,15 @@ interface ExportCenterModalProps {
 
 function ExportCenterModal({ onClose, counts, onExport }: ExportCenterModalProps) {
   const { pushToast } = useReconciliation();
+  const [activeTab, setActiveTab] = useState<'standard' | 'qbo'>('standard');
   const [scope, setScope] = useState<ExportScope>('filtered');
   const [format, setFormat] = useState<ExportFormat>('excel');
   const [customCount, setCustomCount] = useState('10');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // QBO Export states
+  const [qboYear, setQboYear] = useState('');
+  const [qboMonth, setQboMonth] = useState('');
 
   const handleSubmit = () => {
     if (isSubmitting) return;
@@ -3441,6 +3529,39 @@ function ExportCenterModal({ onClose, counts, onExport }: ExportCenterModalProps
       setIsSubmitting(false);
       onClose();
     }, 600);
+  };
+
+  const handleQboExport = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const token = localStorage.getItem('token') || '';
+      const queryParams = new URLSearchParams();
+      if (qboYear) queryParams.append('year', qboYear);
+      if (qboMonth) queryParams.append('month', qboMonth);
+      
+      const response = await fetch(`http://localhost:5000/api/bookkeeping/reconciliation/export/qbo?${queryParams.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `QBO_GL_Export_${qboYear || 'ALL'}_${qboMonth || 'ALL'}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      pushToast({ message: 'QBO GL CSV exported successfully.', tone: 'success' });
+      onClose();
+    } catch (err) {
+      console.error('[QBO Export Error]', err);
+      pushToast({ message: 'Failed to export QBO GL.', tone: 'error' });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const scopeOptions = [
@@ -3462,13 +3583,17 @@ function ExportCenterModal({ onClose, counts, onExport }: ExportCenterModalProps
       onClose={onClose}
       eyebrow="Reconciliation Center"
       titlePlain="Export"
-      titleAccent="Transactions"
+      titleAccent={activeTab === 'standard' ? 'Transactions' : 'QBO Ledger'}
       maxWidth="500px"
       bodyStyle={{ padding: '1.5rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}
       footer={
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
           <span style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.45)', fontWeight: 500 }}>
-            Exporting as <strong style={{ color: '#2A1628' }}>.{format === 'excel' ? 'XLSX' : format.toUpperCase()}</strong>
+            {activeTab === 'standard' ? (
+              <>Exporting as <strong style={{ color: '#2A1628' }}>.{format === 'excel' ? 'XLSX' : format.toUpperCase()}</strong></>
+            ) : (
+              <>Format: <strong style={{ color: '#2A1628' }}>QBO GL CSV</strong></>
+            )}
           </span>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
             <button
@@ -3491,7 +3616,7 @@ function ExportCenterModal({ onClose, counts, onExport }: ExportCenterModalProps
             </button>
             <button
               type="button"
-              onClick={handleSubmit}
+              onClick={activeTab === 'standard' ? handleSubmit : handleQboExport}
               disabled={isSubmitting}
               style={{
                 background: '#E8760A',
@@ -3511,144 +3636,221 @@ function ExportCenterModal({ onClose, counts, onExport }: ExportCenterModalProps
             >
               {isSubmitting && <ButtonSpinner />}
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
-              Download Export
+              {activeTab === 'standard' ? 'Download Export' : 'Export QBO CSV'}
             </button>
           </div>
         </div>
       }
     >
-      <div>
-        <p
+      {/* Tab Selector */}
+      <div style={{ display: 'flex', borderBottom: '1px solid rgba(42,22,40,0.08)', gap: '1.5rem', marginBottom: '0.25rem' }}>
+        <button
+          type="button"
+          onClick={() => setActiveTab('standard')}
           style={{
-            margin: '0 0 0.75rem',
-            fontSize: '0.7rem',
-            fontWeight: 700,
-            color: 'rgba(42,22,40,0.5)',
-            letterSpacing: '0.1em',
+            background: 'transparent',
+            border: 'none',
+            borderBottom: activeTab === 'standard' ? '3px solid #E8760A' : 'none',
+            color: activeTab === 'standard' ? '#E8760A' : 'rgba(42,22,40,0.5)',
+            fontSize: '0.85rem',
+            fontWeight: 800,
+            cursor: 'pointer',
+            padding: '0.5rem 1rem',
             textTransform: 'uppercase',
+            letterSpacing: '0.05em'
           }}
         >
-          Which transactions to export?
-        </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          {scopeOptions.map((opt) => {
-            const isSelected = scope === opt.key;
-            return (
-              <div
-                key={opt.key}
-                onClick={() => setScope(opt.key)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                  padding: '0.75rem 1rem',
-                  borderRadius: '10px',
-                  border: `1.5px solid ${isSelected ? '#E8760A' : '#DDD0C4'}`,
-                  background: isSelected ? 'rgba(232,118,10,0.04)' : '#ffffff',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                }}
-              >
-                <div
-                  style={{
-                    width: '18px',
-                    height: '18px',
-                    borderRadius: '50%',
-                    border: `2px solid ${isSelected ? '#E8760A' : '#DDD0C4'}`,
-                    background: isSelected ? '#E8760A' : 'transparent',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  {isSelected && <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#ffffff' }} />}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: '#2A1628' }}>{opt.label}</div>
-                  <div style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.5)', marginTop: '0.1rem' }}>{opt.sublabel}</div>
-                </div>
-                {opt.count !== null && (
-                  <span
+          Export Center
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('qbo')}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            borderBottom: activeTab === 'qbo' ? '3px solid #E8760A' : 'none',
+            color: activeTab === 'qbo' ? '#E8760A' : 'rgba(42,22,40,0.5)',
+            fontSize: '0.85rem',
+            fontWeight: 800,
+            cursor: 'pointer',
+            padding: '0.5rem 1rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em'
+          }}
+        >
+          QuickBooks GL Export
+        </button>
+      </div>
+
+      {activeTab === 'standard' ? (
+        <>
+          <div>
+            <p
+              style={{
+                margin: '0 0 0.75rem',
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                color: 'rgba(42,22,40,0.5)',
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+              }}
+            >
+              Which transactions to export?
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {scopeOptions.map((opt) => {
+                const isSelected = scope === opt.key;
+                return (
+                  <div
+                    key={opt.key}
+                    onClick={() => setScope(opt.key)}
                     style={{
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
-                      color: isSelected ? '#E8760A' : 'rgba(42,22,40,0.4)',
-                      background: isSelected ? 'rgba(232,118,10,0.08)' : 'rgba(42,22,40,0.04)',
-                      borderRadius: '4px',
-                      padding: '0.15rem 0.5rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      padding: '0.75rem 1rem',
+                      borderRadius: '10px',
+                      border: `1.5px solid ${isSelected ? '#E8760A' : '#DDD0C4'}`,
+                      background: isSelected ? 'rgba(232,118,10,0.04)' : '#ffffff',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
                     }}
                   >
-                    {opt.count} transactions
-                  </span>
-                )}
+                    <div
+                      style={{
+                        width: '18px',
+                        height: '18px',
+                        borderRadius: '50%',
+                        border: `2px solid ${isSelected ? '#E8760A' : '#DDD0C4'}`,
+                        background: isSelected ? '#E8760A' : 'transparent',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {isSelected && <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#ffffff' }} />}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: '#2A1628' }}>{opt.label}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.5)', marginTop: '0.1rem' }}>{opt.sublabel}</div>
+                    </div>
+                    {opt.count !== null && (
+                      <span
+                        style={{
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          color: isSelected ? '#E8760A' : 'rgba(42,22,40,0.4)',
+                          background: isSelected ? 'rgba(232,118,10,0.08)' : 'rgba(42,22,40,0.04)',
+                          borderRadius: '4px',
+                          padding: '0.15rem 0.5rem',
+                        }}
+                      >
+                        {opt.count} transactions
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {scope === 'custom' && (
+              <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem', paddingLeft: '0.25rem' }}>
+                <label style={{ fontSize: '0.8rem', color: 'rgba(42,22,40,0.6)', fontWeight: 600, whiteSpace: 'nowrap' }}>Number of rows:</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="1000"
+                  value={customCount}
+                  onChange={(e) => setCustomCount(e.target.value)}
+                  style={{ border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.45rem 0.75rem', fontSize: '0.8125rem', color: '#2A1628', outline: 'none', width: '90px', fontFamily: 'inherit' }}
+                />
+                <span style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.45)' }}>top rows</span>
               </div>
-            );
-          })}
-        </div>
-
-        {/* Custom count input */}
-        {scope === 'custom' && (
-          <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem', paddingLeft: '0.25rem' }}>
-            <label style={{ fontSize: '0.8rem', color: 'rgba(42,22,40,0.6)', fontWeight: 600, whiteSpace: 'nowrap' }}>Number of rows:</label>
-            <input
-              type="number"
-              min="1"
-              max="1000"
-              value={customCount}
-              onChange={(e) => setCustomCount(e.target.value)}
-              style={{ border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.45rem 0.75rem', fontSize: '0.8125rem', color: '#2A1628', outline: 'none', width: '90px', fontFamily: 'inherit' }}
-            />
-            <span style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.45)' }}>top rows</span>
+            )}
           </div>
-        )}
-      </div>
 
-      <div>
-        <p
-          style={{
-            margin: '0 0 0.75rem',
-            fontSize: '0.7rem',
-            fontWeight: 700,
-            color: 'rgba(42,22,40,0.5)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.1em',
-          }}
-        >
-          File Format
-        </p>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          {formatOptions.map((opt) => {
-            const isSelected = format === opt.key;
-            return (
-              <button
-                key={opt.key}
-                type="button"
-                onClick={() => setFormat(opt.key)}
-                style={{
-                  flex: '1 1 calc(50% - 0.25rem)',
-                  padding: '0.6rem',
-                  border: `1.5px solid ${isSelected ? '#E8760A' : '#DDD0C4'}`,
-                  borderRadius: '8px',
-                  background: isSelected ? 'rgba(232,118,10,0.04)' : '#ffffff',
-                  color: isSelected ? '#E8760A' : '#2A1628',
-                  fontWeight: 700,
-                  fontSize: '0.8125rem',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.4rem',
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
-                {opt.label}
-              </button>
-            );
-          })}
+          <div>
+            <p
+              style={{
+                margin: '0 0 0.75rem',
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                color: 'rgba(42,22,40,0.5)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+              }}
+            >
+              File Format
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              {formatOptions.map((opt) => {
+                const isSelected = format === opt.key;
+                return (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => setFormat(opt.key)}
+                    style={{
+                      flex: '1 1 calc(50% - 0.25rem)',
+                      padding: '0.6rem',
+                      border: `1.5px solid ${isSelected ? '#E8760A' : '#DDD0C4'}`,
+                      borderRadius: '8px',
+                      background: isSelected ? 'rgba(232,118,10,0.04)' : '#ffffff',
+                      color: isSelected ? '#E8760A' : '#2A1628',
+                      fontWeight: 700,
+                      fontSize: '0.8125rem',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.4rem',
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ background: 'rgba(232,118,10,0.05)', border: '1px solid rgba(232,118,10,0.15)', borderRadius: '10px', padding: '1rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5" style={{ flexShrink: 0, marginTop: '0.1rem' }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <p style={{ margin: 0, fontSize: '0.75rem', color: 'rgba(42,22,40,0.7)', lineHeight: 1.4 }}>
+              QBO GL Export filters reconciled journal rows specifically mapped to QuickBooks Online import guidelines. You can optionally restrict the export scope to a specific year and month.
+            </p>
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 800, color: 'rgba(42,22,40,0.5)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Filter Year</label>
+              <input
+                type="number"
+                placeholder="All Years"
+                value={qboYear}
+                onChange={(e) => setQboYear(e.target.value)}
+                style={{ border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.5rem 0.75rem', fontSize: '0.8125rem', color: '#2A1628', width: '100%', outline: 'none', fontFamily: 'inherit' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 800, color: 'rgba(42,22,40,0.5)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Filter Month</label>
+              <input
+                type="number"
+                placeholder="All Months (1-12)"
+                min="1"
+                max="12"
+                value={qboMonth}
+                onChange={(e) => setQboMonth(e.target.value)}
+                style={{ border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.5rem 0.75rem', fontSize: '0.8125rem', color: '#2A1628', width: '100%', outline: 'none', fontFamily: 'inherit' }}
+              />
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </ModalShell>
   );
 }
@@ -6500,66 +6702,80 @@ interface FailedJob {
   errorMessage: string;
 }
 
-const MOCK_FAILED_JOBS: FailedJob[] = [
-  {
-    id: 'job-1',
-    type: 'Bank Statement Import',
-    failedAt: 'Today, 8:12 AM',
-    errorMessage: 'Connection timeout while parsing PDF statement',
-  },
-  {
-    id: 'job-2',
-    type: 'AI Matching',
-    failedAt: 'Today, 7:48 AM',
-    errorMessage: 'Confidence threshold not met for automatic matching',
-  },
-  {
-    id: 'job-3',
-    type: 'QuickBooks Sync',
-    failedAt: 'Yesterday, 11:36 PM',
-    errorMessage: 'Account mapping rejected by QuickBooks',
-  },
-  {
-    id: 'job-4',
-    type: 'Validation Check',
-    failedAt: 'Yesterday, 9:04 PM',
-    errorMessage: 'Currency mismatch detected during validation',
-  },
-];
-
 function RetryFailedJobsModal({ onClose }: RetryFailedJobsModalProps) {
   const { pushToast } = useReconciliation();
-  const [statuses, setStatuses] = useState<Record<string, JobStatus>>(() =>
-    MOCK_FAILED_JOBS.reduce((acc, job) => {
-      acc[job.id] = 'failed';
-      return acc;
-    }, {} as Record<string, JobStatus>)
-  );
+  const { data: jobsRes, isLoading: jobsLoading } = useGetFailedJobsQuery();
+  const [retryOne] = useRetryFailedJobMutation();
+  const [retryAllMutation, { isLoading: retryingAll }] = useRetryAllFailedJobsMutation();
 
-  const allSucceeded = useMemo(
-    () => MOCK_FAILED_JOBS.every((job) => statuses[job.id] === 'succeeded'),
-    [statuses]
-  );
+  const jobs: FailedJob[] = (jobsRes?.data || []).map((j: any) => ({
+    id: j.id,
+    type: j.jobType,
+    failedAt: new Date(j.failedAt).toLocaleString(),
+    errorMessage: j.errorMessage,
+  }));
 
-  const anyRetrying = useMemo(
-    () => MOCK_FAILED_JOBS.some((job) => statuses[job.id] === 'retrying'),
-    [statuses]
-  );
+  const [statuses, setStatuses] = useState<Record<string, JobStatus>>({});
+
+  useEffect(() => {
+    setStatuses((prev) => {
+      const next = { ...prev };
+      jobs.forEach((j) => { if (!next[j.id]) next[j.id] = 'failed'; });
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobsRes]);
+
+  const allSucceeded = jobs.length > 0 && jobs.every((job) => statuses[job.id] === 'succeeded');
+  const anyRetrying = jobs.some((job) => statuses[job.id] === 'retrying') || retryingAll;
 
   const retryJob = (job: FailedJob) => {
     if (statuses[job.id] !== 'failed') return;
     setStatuses((prev) => ({ ...prev, [job.id]: 'retrying' }));
-    setTimeout(() => {
-      setStatuses((prev) => ({ ...prev, [job.id]: 'succeeded' }));
-      pushToast({ message: `${job.type} job retried successfully.`, tone: 'success' });
-    }, 700);
+    retryOne(job.id)
+      .unwrap()
+      .then(() => {
+        setStatuses((prev) => ({ ...prev, [job.id]: 'succeeded' }));
+        pushToast({ message: `${job.type} job retried successfully.`, tone: 'success' });
+      })
+      .catch(() => {
+        setStatuses((prev) => ({ ...prev, [job.id]: 'failed' }));
+        pushToast({ message: `Failed to retry ${job.type} job.`, tone: 'error' });
+      });
   };
 
   const retryAll = () => {
-    MOCK_FAILED_JOBS.forEach((job) => retryJob(job));
+    jobs.forEach((job) => setStatuses((prev) => ({ ...prev, [job.id]: 'retrying' })));
+    retryAllMutation()
+      .unwrap()
+      .then((res: any) => {
+        setStatuses((prev) => {
+          const next = { ...prev };
+          jobs.forEach((j) => { next[j.id] = 'succeeded'; });
+          return next;
+        });
+        pushToast({ message: `Retried ${res?.data?.succeeded ?? jobs.length} of ${res?.data?.total ?? jobs.length} job(s).`, tone: 'success' });
+      })
+      .catch(() => pushToast({ message: 'Failed to retry jobs.', tone: 'error' }));
   };
 
-  const remainingCount = MOCK_FAILED_JOBS.filter((job) => statuses[job.id] === 'failed').length;
+  const remainingCount = jobs.filter((job) => statuses[job.id] === 'failed').length;
+
+  if (jobsLoading) {
+    return (
+      <ModalShell onClose={onClose} eyebrow="Reconciliation Center" titlePlain="Retry Failed" titleAccent="Jobs" maxWidth="560px">
+        <p style={{ fontSize: '0.85rem', color: 'rgba(42,22,40,0.5)' }}>Loading failed jobs…</p>
+      </ModalShell>
+    );
+  }
+
+  if (jobs.length === 0) {
+    return (
+      <ModalShell onClose={onClose} eyebrow="Reconciliation Center" titlePlain="Retry Failed" titleAccent="Jobs" maxWidth="560px">
+        <p style={{ fontSize: '0.85rem', color: 'rgba(42,22,40,0.5)' }}>No failed jobs — everything is running smoothly.</p>
+      </ModalShell>
+    );
+  }
 
   return (
     <ModalShell
@@ -6611,8 +6827,8 @@ function RetryFailedJobsModal({ onClose }: RetryFailedJobsModalProps) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <p style={{ margin: 0, fontSize: '0.8rem', color: 'rgba(42,22,40,0.55)' }}>
             {allSucceeded
-              ? `${MOCK_FAILED_JOBS.length} job${MOCK_FAILED_JOBS.length === 1 ? '' : 's'} recovered`
-              : `${remainingCount} of ${MOCK_FAILED_JOBS.length} job${MOCK_FAILED_JOBS.length === 1 ? '' : 's'} still failing`}
+              ? `${jobs.length} job${jobs.length === 1 ? '' : 's'} recovered`
+              : `${remainingCount} of ${jobs.length} job${jobs.length === 1 ? '' : 's'} still failing`}
           </p>
           <button
             onClick={retryAll}
@@ -6638,7 +6854,7 @@ function RetryFailedJobsModal({ onClose }: RetryFailedJobsModalProps) {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {MOCK_FAILED_JOBS.map((job) => {
+          {jobs.map((job) => {
             const status = statuses[job.id];
             return (
               <div
@@ -6973,6 +7189,10 @@ function Header({ onImportBankStatement, onCreateBatch, onExportCenter, onRefres
 interface KpiGridProps {
   transactions: ReconciliationTransaction[];
   loading?: boolean;
+  stats?: {
+    total: number; pending: number; autoMatched: number; manualReview: number; differenceFound: number;
+    readyToPost: number; postedToday: number; unmatched: number; qbPending: number; highRisk: number; avgAccuracy: number;
+  } | null;
 }
 
 const ICONS_KpiGrid = {
@@ -6988,8 +7208,25 @@ const ICONS_KpiGrid = {
   accuracy: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>,
 };
 
-function KpiGrid({ transactions, loading }: KpiGridProps) {
+function KpiGrid({ transactions, loading, stats }: KpiGridProps) {
   const metrics = useMemo(() => {
+    // Prefer the real, whole-dataset backend aggregate over a client-side count of the loaded page
+    if (stats) {
+      const total = stats.total || 1;
+      return [
+        { label: 'Pending Reconciliation', value: stats.pending === 1 ? '1 item' : `${stats.pending} items`, sub: `${Math.round((stats.pending / total) * 100)}% of total`, icon: ICONS_KpiGrid.pending },
+        { label: 'Matched Automatically', value: stats.autoMatched === 1 ? '1 item' : `${stats.autoMatched} items`, sub: `${Math.round((stats.autoMatched / total) * 100)}% of total`, icon: ICONS_KpiGrid.auto },
+        { label: 'Manual Review Required', value: stats.manualReview === 1 ? '1 item' : `${stats.manualReview} items`, sub: `${Math.round((stats.manualReview / total) * 100)}% of total`, icon: ICONS_KpiGrid.manual },
+        { label: 'Difference Found', value: stats.differenceFound === 1 ? '1 item' : `${stats.differenceFound} items`, sub: `${Math.round((stats.differenceFound / total) * 100)}% of total`, icon: ICONS_KpiGrid.diff },
+        { label: 'Ready For Posting', value: stats.readyToPost === 1 ? '1 item' : `${stats.readyToPost} items`, sub: `${Math.round((stats.readyToPost / total) * 100)}% of total`, icon: ICONS_KpiGrid.ready },
+        { label: 'Posted Today', value: stats.postedToday === 1 ? '1 item' : `${stats.postedToday} items`, sub: 'Synced to QuickBooks', icon: ICONS_KpiGrid.posted },
+        { label: 'Unmatched Transactions', value: stats.unmatched === 1 ? '1 item' : `${stats.unmatched} items`, sub: 'No AI candidate found', icon: ICONS_KpiGrid.unmatched },
+        { label: 'QuickBooks Pending', value: stats.qbPending === 1 ? '1 item' : `${stats.qbPending} items`, sub: 'Awaiting sync', icon: ICONS_KpiGrid.qb },
+        { label: 'High Risk Transactions', value: stats.highRisk === 1 ? '1 item' : `${stats.highRisk} items`, sub: 'Elevated risk score', icon: ICONS_KpiGrid.risk },
+        { label: 'Average Match Accuracy', value: `${stats.avgAccuracy}%`, sub: 'Across all AI-scored items', icon: ICONS_KpiGrid.accuracy },
+      ];
+    }
+
     const total = transactions.length || 1;
     const pending = transactions.filter((t) => t.status === 'Pending').length;
     const autoMatched = transactions.filter((t) => t.status === 'Auto Matched').length;
@@ -7015,7 +7252,7 @@ function KpiGrid({ transactions, loading }: KpiGridProps) {
       { label: 'High Risk Transactions', value: highRisk === 1 ? '1 item' : `${highRisk} items`, sub: 'Elevated risk score', icon: ICONS_KpiGrid.risk },
       { label: 'Average Match Accuracy', value: `${avgAccuracy}%`, sub: 'Across all AI-scored items', icon: ICONS_KpiGrid.accuracy },
     ];
-  }, [transactions]);
+  }, [transactions, stats]);
 
   return (
     <>
@@ -7492,16 +7729,73 @@ const ROW_ACTIONS: { key: RowActionKey; label: string; icon: React.ReactNode; pe
   { key: 'delete', label: 'Delete', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>, permission: 'delete', danger: true, group: 6 },
 ];
 
-function RowMenu({ tx, onAction }: { tx: ReconciliationTransaction; onAction: (a: RowActionKey) => void }) {
+function Portal({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+  return mounted ? createPortal(children, document.body) : null;
+}
+
+function RowMenu({ tx, index, total, onAction }: { tx: ReconciliationTransaction; index: number; total: number; onAction: (a: RowActionKey) => void }) {
   const { role } = useReconciliation();
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
 
-  React.useEffect(() => {
+  const updatePosition = useCallback(() => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const dropdownHeight = 350; // estimation
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const openUp = spaceBelow < dropdownHeight && rect.top > dropdownHeight;
+      setCoords({
+        top: openUp
+          ? rect.top + window.scrollY - dropdownHeight - 4
+          : rect.bottom + window.scrollY + 4,
+        left: Math.max(10, rect.right + window.scrollX - 220) // align to right
+      });
+    }
+  }, []);
+
+  const handleToggle = () => {
+    if (!open) {
+      updatePosition();
+    }
+    setOpen((o) => !o);
+  };
+
+  useEffect(() => {
     if (!open) return;
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    const clickHandler = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        (buttonRef.current && buttonRef.current.contains(target)) ||
+        (menuRef.current && menuRef.current.contains(target))
+      ) {
+        return;
+      }
+      setOpen(false);
+    };
+
+    const scrollHandler = (e: Event) => {
+      if (menuRef.current && menuRef.current.contains(e.target as Node)) {
+        return;
+      }
+      setOpen(false);
+    };
+
+    document.addEventListener('mousedown', clickHandler);
+    window.addEventListener('scroll', scrollHandler, true);
+    window.addEventListener('resize', scrollHandler);
+
+    return () => {
+      document.removeEventListener('mousedown', clickHandler);
+      window.removeEventListener('scroll', scrollHandler, true);
+      window.removeEventListener('resize', scrollHandler);
+    };
   }, [open]);
 
   const visibleActions = ROW_ACTIONS.filter((action) => {
@@ -7517,9 +7811,10 @@ function RowMenu({ tx, onAction }: { tx: ReconciliationTransaction; onAction: (a
   }
 
   return (
-    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+    <div style={{ display: 'inline-block' }}>
       <button
-        onClick={() => setOpen((o) => !o)}
+        ref={buttonRef}
+        onClick={handleToggle}
         aria-label={`Actions for ${tx.id}`}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -7528,48 +7823,64 @@ function RowMenu({ tx, onAction }: { tx: ReconciliationTransaction; onAction: (a
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>
       </button>
       {open && (
-        <div
-          role="menu"
-          className="hide-scrollbar"
-          style={{ position: 'absolute', top: 'calc(100% + 4px)', right: 0, background: '#fff', border: '1px solid #DDD0C4', borderRadius: '12px', boxShadow: '0 12px 36px rgba(42,22,40,0.14)', zIndex: 200, minWidth: '220px', padding: '6px', maxHeight: '380px', overflowY: 'auto' }}
-        >
-          {menuItems.map(({ action, showDivider }) => {
-            const disabled = action.permission ? !can(role, action.permission) : false;
-            const reason = action.permission ? restrictionReason(role, action.permission) : null;
-            return (
-              <React.Fragment key={action.key}>
-                {showDivider && <div style={{ height: '1px', background: 'rgba(42,22,40,0.06)', margin: '4px 2px' }} />}
-                <div
-                  role="menuitem"
-                  tabIndex={disabled ? -1 : 0}
-                  aria-disabled={disabled}
-                  title={disabled && reason ? reason : undefined}
-                  onClick={() => { if (disabled) return; setOpen(false); onAction(action.key); }}
-                  onKeyDown={(e) => { if (!disabled && (e.key === 'Enter' || e.key === ' ')) { setOpen(false); onAction(action.key); } }}
-                  style={{
-                    padding: '0.45rem 0.75rem',
-                    fontSize: '0.775rem',
-                    borderRadius: '8px',
-                    cursor: disabled ? 'not-allowed' : 'pointer',
-                    color: disabled ? 'rgba(42,22,40,0.3)' : action.danger ? '#EF4444' : '#2A1628',
-                    fontWeight: 500,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    transition: 'background 150ms ease'
-                  }}
-                  onMouseEnter={(e) => { if (!disabled) e.currentTarget.style.background = action.danger ? 'rgba(239,68,68,0.06)' : 'rgba(232,118,10,0.06)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                >
-                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px', color: disabled ? 'rgba(42,22,40,0.3)' : action.danger ? '#EF4444' : '#E8760A' }}>
-                    {action.icon}
-                  </span>
-                  {action.label}
-                </div>
-              </React.Fragment>
-            );
-          })}
-        </div>
+        <Portal>
+          <div
+            ref={menuRef}
+            role="menu"
+            className="hide-scrollbar"
+            style={{ 
+              position: 'absolute', 
+              top: `${coords.top}px`, 
+              left: `${coords.left}px`, 
+              background: '#fff', 
+              border: '1px solid #DDD0C4', 
+              borderRadius: '12px', 
+              boxShadow: '0 12px 36px rgba(42,22,40,0.14)', 
+              zIndex: 99999, 
+              minWidth: '220px', 
+              padding: '6px', 
+              maxHeight: '350px', 
+              overflowY: 'auto' 
+            }}
+          >
+            {menuItems.map(({ action, showDivider }) => {
+              const disabled = action.permission ? !can(role, action.permission) : false;
+              const reason = action.permission ? restrictionReason(role, action.permission) : null;
+              return (
+                <React.Fragment key={action.key}>
+                  {showDivider && <div style={{ height: '1px', background: 'rgba(42,22,40,0.06)', margin: '4px 2px' }} />}
+                  <div
+                    role="menuitem"
+                    tabIndex={disabled ? -1 : 0}
+                    aria-disabled={disabled}
+                    title={disabled && reason ? reason : undefined}
+                    onClick={() => { if (disabled) return; setOpen(false); onAction(action.key); }}
+                    onKeyDown={(e) => { if (!disabled && (e.key === 'Enter' || e.key === ' ')) { setOpen(false); onAction(action.key); } }}
+                    style={{
+                      padding: '0.45rem 0.75rem',
+                      fontSize: '0.775rem',
+                      borderRadius: '8px',
+                      cursor: disabled ? 'not-allowed' : 'pointer',
+                      color: disabled ? 'rgba(42,22,40,0.3)' : action.danger ? '#EF4444' : '#2A1628',
+                      fontWeight: 500,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      transition: 'background 150ms ease'
+                    }}
+                    onMouseEnter={(e) => { if (!disabled) e.currentTarget.style.background = action.danger ? 'rgba(239,68,68,0.06)' : 'rgba(232,118,10,0.06)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px', color: disabled ? 'rgba(42,22,40,0.3)' : action.danger ? '#EF4444' : '#E8760A' }}>
+                      {action.icon}
+                    </span>
+                    {action.label}
+                  </div>
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </Portal>
       )}
     </div>
   );
@@ -7732,7 +8043,7 @@ function ReconciliationTable({
         borderRadius: '16px',
         overflowX: 'auto',
         position: 'relative',
-        minHeight: loading ? '320px' : undefined,
+        minHeight: '380px',
         boxShadow: '0 4px 12px rgba(42,22,40,0.01)',
         fontFamily: 'var(--font-sans), Inter, sans-serif'
       }}
@@ -7747,12 +8058,6 @@ function ReconciliationTable({
 
       {loading ? (
         <TableSkeleton columns={columns.length + 2} />
-      ) : transactions.length === 0 ? (
-        <EmptyState
-          variant={offline ? 'offline' : errorState ? 'error' : hasAnyData ? 'no-results' : 'no-data'}
-          actionLabel={hasAnyData ? 'Reset Filters' : undefined}
-          onAction={hasAnyData ? onResetFilters : undefined}
-        />
       ) : (
         <table style={{ width: '100%', minWidth: `${columns.reduce((s, c) => s + c.width, 100)}px`, borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8125rem', fontFamily: 'var(--font-sans), Inter, sans-serif' }}>
           <thead>
@@ -7788,48 +8093,62 @@ function ReconciliationTable({
             </tr>
           </thead>
           <tbody>
-            {transactions.map((tx, idx) => {
-              const isSelected = selectedIds.includes(tx.id);
-              const rowBg = isSelected ? '#FAF4EE' : '#ffffff';
-              return (
-                <tr
-                  key={tx.id}
-                  className="recon-row"
-                  tabIndex={0}
-                  onFocus={() => onFocusRow(tx.id)}
-                  onDoubleClick={() => onRowAction('openDrawer', tx)}
-                  style={{ borderBottom: idx < transactions.length - 1 ? '1px solid rgba(42,22,40,0.04)' : 'none', background: isSelected ? 'rgba(232,118,10,0.02)' : 'transparent' }}
-                >
-                  <td style={{ padding: `${padding}`, textAlign: 'center', position: 'sticky', left: 0, background: rowBg, zIndex: 5 }}>
-                    <input
-                      type="checkbox"
-                      aria-label={`Select ${tx.id}`}
-                      checked={isSelected}
-                      onChange={(e) => onToggleSelect(tx.id, idx, (e.nativeEvent as MouseEvent).shiftKey)}
+            {transactions.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length + 2} style={{ padding: 0 }}>
+                  <div style={{ position: 'sticky', left: 0, display: 'flex', justifyContent: 'center', width: '100vw', maxWidth: '100%', boxSizing: 'border-box', padding: '2rem' }}>
+                    <EmptyState
+                      variant={offline ? 'offline' : errorState ? 'error' : hasAnyData ? 'no-results' : 'no-data'}
+                      actionLabel={hasAnyData ? 'Reset Filters' : undefined}
+                      onAction={hasAnyData ? onResetFilters : undefined}
                     />
-                  </td>
-                  {columns.map((col, cidx) => (
-                    <td
-                      key={col.key}
-                      style={{
-                        padding, whiteSpace: cidx < 2 ? 'nowrap' : undefined,
-                        position: freezeFirstColumn && cidx === 0 ? 'sticky' : undefined,
-                        left: freezeFirstColumn && cidx === 0 ? '48px' : undefined,
-                        background: freezeFirstColumn && cidx === 0 ? rowBg : undefined,
-                        zIndex: freezeFirstColumn && cidx === 0 ? 5 : undefined,
-                        borderRight: freezeFirstColumn && cidx === 0 ? '1px solid #DDD0C4' : undefined,
-                        width: `${col.width}px`, minWidth: `${col.minWidth}px`,
-                      }}
-                    >
-                      {renderCell(tx, col.key)}
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              transactions.map((tx, idx) => {
+                const isSelected = selectedIds.includes(tx.id);
+                const rowBg = isSelected ? '#FAF4EE' : '#ffffff';
+                return (
+                  <tr
+                    key={tx.id}
+                    className="recon-row"
+                    tabIndex={0}
+                    onFocus={() => onFocusRow(tx.id)}
+                    onDoubleClick={() => onRowAction('openDrawer', tx)}
+                    style={{ borderBottom: idx < transactions.length - 1 ? '1px solid rgba(42,22,40,0.04)' : 'none', background: isSelected ? 'rgba(232,118,10,0.02)' : 'transparent' }}
+                  >
+                    <td style={{ padding: `${padding}`, textAlign: 'center', position: 'sticky', left: 0, background: rowBg, zIndex: 5 }}>
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${tx.id}`}
+                        checked={isSelected}
+                        onChange={(e) => onToggleSelect(tx.id, idx, (e.nativeEvent as MouseEvent).shiftKey)}
+                      />
                     </td>
-                  ))}
-                  <td style={{ padding, textAlign: 'center' }}>
-                    <RowMenu tx={tx} onAction={(action) => onRowAction(action, tx)} />
-                  </td>
-                </tr>
-              );
-            })}
+                    {columns.map((col, cidx) => (
+                      <td
+                        key={col.key}
+                        style={{
+                          padding, whiteSpace: cidx < 2 ? 'nowrap' : undefined,
+                          position: freezeFirstColumn && cidx === 0 ? 'sticky' : undefined,
+                          left: freezeFirstColumn && cidx === 0 ? '48px' : undefined,
+                          background: freezeFirstColumn && cidx === 0 ? rowBg : undefined,
+                          zIndex: freezeFirstColumn && cidx === 0 ? 5 : undefined,
+                          borderRight: freezeFirstColumn && cidx === 0 ? '1px solid #DDD0C4' : undefined,
+                          width: `${col.width}px`, minWidth: `${col.minWidth}px`,
+                        }}
+                      >
+                        {renderCell(tx, col.key)}
+                      </td>
+                    ))}
+                    <td style={{ padding, textAlign: 'center', position: 'relative', zIndex: 100 }}>
+                      <RowMenu tx={tx} index={idx} total={transactions.length} onAction={(action) => onRowAction(action, tx)} />
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       )}
@@ -8181,30 +8500,42 @@ function BottomAnalytics({ transactions }: BottomAnalyticsProps) {
         </Panel>
 
         <Panel title="Bank-wise Accuracy">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
-            {data.bankAccuracy.map((b, i) => (
-              <div key={b.label} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontSize: '0.68rem', color: 'rgba(42,22,40,0.6)', width: '110px', flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.label}</span>
-                <div style={{ flex: 1, height: '8px', borderRadius: '4px', background: '#F6F2EE', overflow: 'hidden' }}>
-                  <div style={{ width: `${b.value}%`, height: '100%', background: PALETTE[i % PALETTE.length] }} />
-                </div>
-                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#2A1628', width: '30px', textAlign: 'right' }}>{b.value}%</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', minHeight: '100px', justifyContent: 'center' }}>
+            {data.bankAccuracy.length === 0 ? (
+              <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'rgba(42,22,40,0.4)', padding: '1rem 0' }}>
+                No bank data available
               </div>
-            ))}
+            ) : (
+              data.bankAccuracy.map((b, i) => (
+                <div key={b.label} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '0.68rem', color: 'rgba(42,22,40,0.6)', width: '110px', flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.label}</span>
+                  <div style={{ flex: 1, height: '8px', borderRadius: '4px', background: '#F6F2EE', overflow: 'hidden' }}>
+                    <div style={{ width: `${b.value}%`, height: '100%', background: PALETTE[i % PALETTE.length] }} />
+                  </div>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#2A1628', width: '30px', textAlign: 'right' }}>{b.value}%</span>
+                </div>
+              ))
+            )}
           </div>
         </Panel>
 
         <Panel title="Client-wise Accuracy (Top 5)">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
-            {data.clientAccuracy.map((c, i) => (
-              <div key={c.label} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontSize: '0.68rem', color: 'rgba(42,22,40,0.6)', width: '110px', flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.label}</span>
-                <div style={{ flex: 1, height: '8px', borderRadius: '4px', background: '#F6F2EE', overflow: 'hidden' }}>
-                  <div style={{ width: `${c.value}%`, height: '100%', background: PALETTE[i % PALETTE.length] }} />
-                </div>
-                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#2A1628', width: '30px', textAlign: 'right' }}>{c.value}%</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', minHeight: '100px', justifyContent: 'center' }}>
+            {data.clientAccuracy.length === 0 ? (
+              <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'rgba(42,22,40,0.4)', padding: '1rem 0' }}>
+                No client data available
               </div>
-            ))}
+            ) : (
+              data.clientAccuracy.map((c, i) => (
+                <div key={c.label} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '0.68rem', color: 'rgba(42,22,40,0.6)', width: '110px', flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.label}</span>
+                  <div style={{ flex: 1, height: '8px', borderRadius: '4px', background: '#F6F2EE', overflow: 'hidden' }}>
+                    <div style={{ width: `${c.value}%`, height: '100%', background: PALETTE[i % PALETTE.length] }} />
+                  </div>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#2A1628', width: '30px', textAlign: 'right' }}>{c.value}%</span>
+                </div>
+              ))
+            )}
           </div>
         </Panel>
       </div>
@@ -8223,65 +8554,85 @@ function BottomAnalytics({ transactions }: BottomAnalyticsProps) {
               return { x, y, month: p.month, avg: p.avg };
             });
             return (
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '140px' }}>
-                <svg width="100%" height="100%" viewBox="0 0 260 100" preserveAspectRatio="none" style={{ flex: 1, maxHeight: '200px' }}>
-                  <defs>
-                    <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#E8760A" stopOpacity="0.25" />
-                      <stop offset="100%" stopColor="#E8760A" stopOpacity="0.0" />
-                    </linearGradient>
-                  </defs>
-                  
-                  {/* Grid Lines */}
-                  <line x1="15" y1="20" x2="245" y2="20" stroke="rgba(42,22,40,0.06)" strokeDasharray="3 3" />
-                  <line x1="15" y1="50" x2="245" y2="50" stroke="rgba(42,22,40,0.06)" strokeDasharray="3 3" />
-                  <line x1="15" y1="80" x2="245" y2="80" stroke="rgba(42,22,40,0.06)" strokeDasharray="3 3" />
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '140px', justifyContent: 'center' }}>
+                {points.length === 0 ? (
+                  <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'rgba(42,22,40,0.4)', padding: '2rem 0' }}>
+                    No matching trend data to display
+                  </div>
+                ) : (
+                  <>
+                    <svg width="100%" height="100%" viewBox="0 0 260 100" preserveAspectRatio="none" style={{ flex: 1, maxHeight: '200px' }}>
+                      <defs>
+                        <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#E8760A" stopOpacity="0.25" />
+                          <stop offset="100%" stopColor="#E8760A" stopOpacity="0.0" />
+                        </linearGradient>
+                      </defs>
+                      
+                      {/* Grid Lines */}
+                      <line x1="15" y1="20" x2="245" y2="20" stroke="rgba(42,22,40,0.06)" strokeDasharray="3 3" />
+                      <line x1="15" y1="50" x2="245" y2="50" stroke="rgba(42,22,40,0.06)" strokeDasharray="3 3" />
+                      <line x1="15" y1="80" x2="245" y2="80" stroke="rgba(42,22,40,0.06)" strokeDasharray="3 3" />
 
-                  {/* Gradient Area Fill */}
-                  <path
-                    d={`M ${points[0].x} 80 ` + points.map(p => `L ${p.x} ${p.y}`).join(' ') + ` L ${points[points.length - 1].x} 80 Z`}
-                    fill="url(#trendGrad)"
-                  />
+                      {/* Gradient Area Fill */}
+                      {points.length > 0 && (
+                        <path
+                          d={`M ${points[0].x} 80 ` + points.map(p => `L ${p.x} ${p.y}`).join(' ') + ` L ${points[points.length - 1].x} 80 Z`}
+                          fill="url(#trendGrad)"
+                        />
+                      )}
 
-                  {/* Trend Line */}
-                  <polyline
-                    fill="none" stroke="#E8760A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                    points={points.map(p => `${p.x},${p.y}`).join(' ')}
-                  />
+                      {/* Trend Line */}
+                      {points.length > 0 && (
+                        <polyline
+                          fill="none" stroke="#E8760A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                          points={points.map(p => `${p.x},${p.y}`).join(' ')}
+                        />
+                      )}
 
-                  {/* Dots */}
-                  {points.map((p) => (
-                    <g key={p.month}>
-                      <circle cx={p.x} cy={p.y} r="4" fill="#ffffff" stroke="#E8760A" strokeWidth="1.5" />
-                      <circle cx={p.x} cy={p.y} r="1.75" fill="#E8760A" />
-                    </g>
-                  ))}
-                </svg>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'rgba(42,22,40,0.5)', marginTop: '0.5rem', padding: '0 5px' }}>
-                  {data.matchingTrend.map((p) => <span key={p.month}>{p.month}</span>)}
-                </div>
+                      {/* Dots */}
+                      {points.length > 0 && points.map((p) => (
+                        <g key={p.month}>
+                          <circle cx={p.x} cy={p.y} r="4" fill="#ffffff" stroke="#E8760A" strokeWidth="1.5" />
+                          <circle cx={p.x} cy={p.y} r="1.75" fill="#E8760A" />
+                        </g>
+                      ))}
+                    </svg>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'rgba(42,22,40,0.5)', marginTop: '0.5rem', padding: '0 5px' }}>
+                      {data.matchingTrend.map((p) => <span key={p.month}>{p.month}</span>)}
+                    </div>
+                  </>
+                )}
               </div>
             );
           })()}
         </Panel>
 
         <Panel title="Daily Throughput">
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '140px' }}>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: '0.4rem', maxHeight: '200px' }}>
-              {data.dailyThroughput.map(([date, count]) => {
-                const max = Math.max(...data.dailyThroughput.map(([, c]) => c), 1);
-                return (
-                  <div key={date} style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center' }}>
-                    <div style={{ width: '100%', height: `${(count / max) * 100}%`, background: '#2A1628', borderRadius: '3px 3px 0 0' }} />
-                  </div>
-                );
-              })}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.55rem', color: 'rgba(42,22,40,0.45)', marginTop: '0.5rem' }}>
-              {data.dailyThroughput.map(([date]) => (
-                <span key={date} style={{ flex: 1, textAlign: 'center' }}>{date.slice(5)}</span>
-              ))}
-            </div>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '140px', justifyContent: 'center' }}>
+            {data.dailyThroughput.length === 0 ? (
+              <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'rgba(42,22,40,0.4)', padding: '2rem 0' }}>
+                No throughput data recorded
+              </div>
+            ) : (
+              <>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: '0.4rem', maxHeight: '200px' }}>
+                  {data.dailyThroughput.map(([date, count]) => {
+                    const max = Math.max(...data.dailyThroughput.map(([, c]) => c), 1);
+                    return (
+                      <div key={date} style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center' }}>
+                        <div style={{ width: '100%', height: `${(count / max) * 100}%`, background: '#2A1628', borderRadius: '3px 3px 0 0' }} />
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.55rem', color: 'rgba(42,22,40,0.45)', marginTop: '0.5rem' }}>
+                  {data.dailyThroughput.map(([date]) => (
+                    <span key={date} style={{ flex: 1, textAlign: 'center' }}>{date.slice(5)}</span>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </Panel>
 
@@ -8357,10 +8708,47 @@ function ReconciliationCenterInner() {
 
   const [persisted] = useState(loadPersistedState);
 
-  const [transactions, setTransactions] = useState<ReconciliationTransaction[]>(TRANSACTIONS);
+  const { data: queueRes, isLoading: queueLoading, refetch: refetchQueue } = useGetQueueQuery({ limit: 1000 });
+  const { data: statsRes } = useGetStatsQuery();
+  const { data: analyticsRes } = useGetAnalyticsQuery();
+  const [manualMatch] = usePostManualMutation();
+  const [acceptMatch] = usePostAcceptMutation();
+  const [rejectMatch] = usePostRejectMutation();
+  const [splitTx] = usePostSplitMutation();
+  const [mergeTx] = usePostMergeMutation();
+  const [undoRecon] = usePostUndoMutation();
+  const [postBulk] = usePostBulkMutation();
+
+  const { data: savedViewsRes } = useGetSavedViewsQuery();
+  const [createSavedView] = usePostSavedViewMutation();
+  const [removeSavedView] = useDeleteSavedViewMutation();
+
+  const { data: preferencesRes } = useGetPreferencesQuery();
+  const [savePreferences] = usePutPreferencesMutation();
+
+  const runBulk = (action: string, ids: string[], value?: any) => {
+    postBulk({ ids, action, value })
+      .unwrap()
+      .then((res: any) => {
+        pushToast({ message: res?.message || `Bulk action '${action}' applied.`, tone: 'success' });
+        refetchQueue();
+        clearSelection();
+      })
+      .catch((err: any) => pushToast({ message: err?.data?.message || `Bulk action '${action}' failed.`, tone: 'error' }));
+  };
+
+  const [transactions, setTransactions] = useState<ReconciliationTransaction[]>([]);
+
+
+  useEffect(() => {
+    if (queueRes?.data) {
+      setTransactions(queueRes.data);
+    }
+  }, [queueRes]);
+
   const [filters, setFiltersState] = useState<FilterState>(persisted.filters ?? DEFAULT_FILTERS);
   const [statusChip, setStatusChip] = useState<string>(persisted.statusChip ?? 'All');
-  const [savedViews, setSavedViews] = useState<SavedView[]>([]);
+  const savedViews: SavedView[] = savedViewsRes?.data || [];
 
   const [sortKey, setSortKey] = useState<string>(persisted.sortKey ?? 'transactionDate');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>(persisted.sortDir ?? 'desc');
@@ -8374,6 +8762,29 @@ function ReconciliationCenterInner() {
   const [pageSize, setPageSize] = useState(persisted.pageSize ?? 10);
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Hydrate column/density preferences from the server-side store once, then keep it in sync on change.
+  const preferencesHydrated = useRef(false);
+  useEffect(() => {
+    if (preferencesHydrated.current || !preferencesRes?.data) return;
+    preferencesHydrated.current = true;
+    const p = preferencesRes.data;
+    if (p.columnOrder?.length) setColumnOrder(p.columnOrder);
+    if (p.hiddenColumns) setHiddenColumns(p.hiddenColumns);
+    if (p.columnWidths) setColumnWidths(p.columnWidths);
+    if (p.density) setDensity(p.density);
+    if (p.freezeFirstColumn !== undefined && p.freezeFirstColumn !== null) setFreezeFirstColumn(p.freezeFirstColumn);
+    if (p.pageSize) setPageSize(p.pageSize);
+  }, [preferencesRes]);
+
+  useEffect(() => {
+    if (!preferencesHydrated.current) return;
+    const handle = setTimeout(() => {
+      savePreferences({ columnOrder, hiddenColumns, columnWidths, density, freezeFirstColumn, pageSize, lastDrawerTab: drawerTab });
+    }, 800);
+    return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [columnOrder, hiddenColumns, columnWidths, density, freezeFirstColumn, pageSize]);
+
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
   const [focusedRowId, setFocusedRowId] = useState<string | null>(null);
@@ -8383,16 +8794,16 @@ function ReconciliationCenterInner() {
 
   const [popup, setPopup] = useState<PopupState>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
+  const initialLoading = queueLoading;
 
   const idCounterRef = useRef(2000 + TRANSACTIONS.length);
   const generateId = () => `RC-${idCounterRef.current++}`;
 
   // ---------- Initial mount: brief loading spinner ----------
   useEffect(() => {
-    const t = setTimeout(() => setInitialLoading(false), 450);
-    return () => clearTimeout(t);
+    // keeping signature compatibility
   }, []);
+
 
   // ---------- Persist state on change ----------
   useEffect(() => {
@@ -8505,9 +8916,16 @@ function ReconciliationCenterInner() {
   const handleResetFilters = () => { setFiltersState(DEFAULT_FILTERS); setStatusChip('All'); };
   const handleApplyView = (view: SavedView) => setFiltersState(view.filters);
   const handleSaveView = (name: string) => {
-    setSavedViews((prev) => [...prev, { id: `view-${Date.now()}-${prev.length}`, name, filters, createdAt: new Date().toISOString().slice(0, 10) }]);
+    createSavedView({ name, filters })
+      .unwrap()
+      .then(() => pushToast({ message: `Saved view "${name}" created.`, tone: 'success' }))
+      .catch(() => pushToast({ message: 'Failed to save view.', tone: 'error' }));
   };
-  const handleDeleteView = (id: string) => setSavedViews((prev) => prev.filter((v) => v.id !== id));
+  const handleDeleteView = (id: string) => {
+    removeSavedView(id)
+      .unwrap()
+      .catch(() => pushToast({ message: 'Failed to delete saved view.', tone: 'error' }));
+  };
 
   // ---------- Table interaction handlers ----------
   const handleSort = (key: string) => {
@@ -8556,13 +8974,7 @@ function ReconciliationCenterInner() {
       message: 'Archived transactions are moved out of active workspaces but remain fully auditable.',
       confirmLabel: 'Archive',
       tone: 'warning',
-      onConfirm: () => {
-        withUndo(
-          transactions.map((t) => (ids.includes(t.id) ? { ...t, archived: true, status: 'Archived', lastUpdated: new Date().toISOString() } : t)),
-          `${ids.length} transaction${ids.length === 1 ? '' : 's'} archived.`
-        );
-        clearSelection();
-      },
+      onConfirm: () => runBulk('archive', ids),
     });
   };
 
@@ -8631,29 +9043,34 @@ function ReconciliationCenterInner() {
       case 'retryMatching':
         requestConfirmation({
           title: 'Retry Matching', message: `Re-run AI matching for ${ids.length} transaction(s)?`, confirmLabel: 'Retry Matching', tone: 'neutral',
-          onConfirm: () => { mutateMany(ids, (t) => bumpMatchScore(t)); pushToast({ message: 'AI matching retried.', tone: 'success' }); clearSelection(); },
+          onConfirm: () => runBulk('retryMatching', ids),
         });
         return;
       case 'approve':
         requestConfirmation({
           title: ids.length === 1 ? 'Approve Transaction' : `Approve ${ids.length} Transactions`,
-          message: 'Approved transactions move to Ready To Post status.', confirmLabel: 'Approve', tone: 'neutral',
-          onConfirm: () => { withUndo(transactions.map((t) => (ids.includes(t.id) ? { ...t, status: 'Ready To Post', lastUpdated: new Date().toISOString() } : t)), `${ids.length} transaction(s) approved.`); clearSelection(); },
+          message: 'Approves the best AI-suggested match (where one exists) and reconciles the transaction.', confirmLabel: 'Approve', tone: 'neutral',
+          onConfirm: () => runBulk('approve', ids),
         });
         return;
       case 'reject':
         requestConfirmation({
           title: ids.length === 1 ? 'Reject Transaction' : `Reject ${ids.length} Transactions`,
-          message: 'Rejected transactions are returned to Manual Review.', confirmLabel: 'Reject', tone: 'warning',
-          onConfirm: () => { withUndo(transactions.map((t) => (ids.includes(t.id) ? { ...t, status: 'Manual Review', lastUpdated: new Date().toISOString() } : t)), `${ids.length} transaction(s) rejected.`); clearSelection(); },
+          message: 'Rejects the best AI-suggested match for review by a bookkeeper.', confirmLabel: 'Reject', tone: 'warning',
+          onConfirm: () => runBulk('reject', ids),
         });
         return;
       case 'moveToException':
-        mutateMany(ids, { status: 'Exception' });
-        pushToast({ message: `${ids.length} transaction(s) moved to exceptions.`, tone: 'warning' });
-        clearSelection();
+        runBulk('moveToException', ids);
         return;
-      case 'archive': handleArchiveIds(ids); return;
+      case 'archive':
+        requestConfirmation({
+          title: ids.length === 1 ? 'Archive Transaction' : `Archive ${ids.length} Transactions`,
+          message: 'Archived transactions are moved out of active workspaces but remain fully auditable.',
+          confirmLabel: 'Archive', tone: 'warning',
+          onConfirm: () => runBulk('archive', ids),
+        });
+        return;
       case 'delete': setPopup({ type: 'delete', ids }); return;
       default: return;
     }
@@ -8662,18 +9079,18 @@ function ReconciliationCenterInner() {
   // ---------- Drawer action handlers ----------
   const drawerActions: DrawerActionHandlers = {
     requestApprove: (tx) => requestConfirmation({
-      title: 'Approve Transaction', message: `Approve ${tx.id}? It will move to Ready To Post.`, confirmLabel: 'Approve', tone: 'neutral',
-      onConfirm: () => withUndo(transactions.map((t) => (t.id === tx.id ? { ...t, status: 'Ready To Post', lastUpdated: new Date().toISOString() } : t)), 'Transaction approved.'),
+      title: 'Approve Transaction', message: `Approve ${tx.id}? This accepts the best AI-suggested match and reconciles it.`, confirmLabel: 'Approve', tone: 'neutral',
+      onConfirm: () => runBulk('approve', [tx.id]),
     }),
     requestReject: (tx) => requestConfirmation({
-      title: 'Reject Transaction', message: `Reject ${tx.id}? It will return to Manual Review.`, confirmLabel: 'Reject', tone: 'warning',
-      onConfirm: () => withUndo(transactions.map((t) => (t.id === tx.id ? { ...t, status: 'Manual Review', lastUpdated: new Date().toISOString() } : t)), 'Transaction rejected.'),
+      title: 'Reject Transaction', message: `Reject ${tx.id}? This rejects the best AI-suggested match.`, confirmLabel: 'Reject', tone: 'warning',
+      onConfirm: () => runBulk('reject', [tx.id]),
     }),
     requestChanges: (tx) => pushToast({ message: `Change request sent to ${tx.bookkeeper} for ${tx.id}.`, tone: 'info' }),
     requestPostToQuickBooks: (tx) => setPopup({ type: 'postToQuickBooks', transactions: [tx] }),
     requestRetryMatching: (tx) => requestConfirmation({
       title: 'Retry Matching', message: `Re-run AI matching for ${tx.id}?`, confirmLabel: 'Retry Matching', tone: 'neutral',
-      onConfirm: () => { mutateMany([tx.id], (t) => bumpMatchScore(t)); pushToast({ message: 'AI matching retried.', tone: 'success' }); },
+      onConfirm: () => runBulk('retryMatching', [tx.id]),
     }),
     requestRetryValidation: (tx) => requestConfirmation({
       title: 'Retry Validation', message: `Re-run validation checks for ${tx.id}?`, confirmLabel: 'Retry Validation', tone: 'neutral',
@@ -8696,13 +9113,22 @@ function ReconciliationCenterInner() {
     openAuditExport: (tx) => setPopup({ type: 'auditExport', tx }),
     openRetryFailedJobs: () => setPopup({ type: 'retryFailedJobs' }),
     acceptSuggestion: (tx, matchId) => {
-      const suggestion = getSuggestedMatchesForTransaction(tx).find((s) => s.id === matchId);
-      mutateMany([tx.id], { status: 'Auto Matched', matchedEntry: suggestion?.ledgerEntry ?? tx.matchedEntry, difference: 0, differenceType: 'None' });
-      pushToast({ message: 'Suggested match accepted.', tone: 'success' });
+      acceptMatch({ candidate_id: matchId })
+        .unwrap()
+        .then(() => {
+          pushToast({ message: 'Suggested match accepted and reconciled.', tone: 'success' });
+          refetchQueue();
+        })
+        .catch((err: any) => pushToast({ message: err?.data?.message || 'Failed to accept suggested match.', tone: 'error' }));
     },
-    rejectSuggestion: (tx) => {
-      mutateMany([tx.id], { status: 'Manual Review' });
-      pushToast({ message: 'Suggested match rejected.', tone: 'info' });
+    rejectSuggestion: (tx, matchId) => {
+      rejectMatch({ candidate_id: matchId })
+        .unwrap()
+        .then(() => {
+          pushToast({ message: 'Suggested match rejected.', tone: 'info' });
+          refetchQueue();
+        })
+        .catch((err: any) => pushToast({ message: err?.data?.message || 'Failed to reject suggested match.', tone: 'error' }));
     },
   };
 
@@ -8750,7 +9176,10 @@ function ReconciliationCenterInner() {
 
   const handleRefresh = () => {
     setRefreshing(true);
-    setTimeout(() => { setRefreshing(false); pushToast({ message: 'Reconciliation data refreshed.', tone: 'info' }); }, 700);
+    refetchQueue().finally(() => {
+      setRefreshing(false);
+      pushToast({ message: 'Reconciliation data refreshed.', tone: 'info' });
+    });
   };
 
   const closePopup = () => setPopup(null);
@@ -8777,12 +9206,20 @@ function ReconciliationCenterInner() {
         transactions.filter((t) => !extraIds.includes(t.id)).map((t) => (t.id === tx.id ? { ...t, amount: mergedAmount, status: 'Auto Matched', difference: 0, differenceType: 'None', lastUpdated: new Date().toISOString() } : t)),
         `${extraIds.length + 1} transactions merged into ${tx.id}.`
       );
+      mergeTx({
+        transaction_id: tx.id,
+        allocations: [{ transaction_id: tx.id, allocated_amount: mergedAmount }, ...extraIds.map(id => ({ transaction_id: id, allocated_amount: 0 }))]
+      });
       clearSelection();
     } else {
       withUndo(
         transactions.map((t) => (t.id === tx.id ? { ...t, status: 'Auto Matched', difference: 0, differenceType: 'None', lastUpdated: new Date().toISOString() } : t)),
         `Transaction ${tx.id} merged.`
       );
+      mergeTx({
+        transaction_id: tx.id,
+        allocations: [{ transaction_id: tx.id, allocated_amount: tx.amount }]
+      });
     }
   };
 
@@ -8805,7 +9242,7 @@ function ReconciliationCenterInner() {
         refreshing={refreshing}
       />
 
-      <KpiGrid transactions={filteredTransactions} loading={initialLoading} />
+      <KpiGrid transactions={filteredTransactions} loading={initialLoading} stats={statsRes?.data} />
 
       <ReconciliationStatCards transactions={filteredTransactions} />
 
@@ -8884,14 +9321,27 @@ function ReconciliationCenterInner() {
         <ManualMatchModal
           onClose={closePopup}
           tx={popup.tx}
-          onConfirm={(ledgerEntryLabel) => mutateMany([popup.tx.id], { status: 'Auto Matched', matchedEntry: ledgerEntryLabel, difference: 0, differenceType: 'None' })}
+          onConfirm={(ledgerEntryLabel) => {
+            mutateMany([popup.tx.id], { status: 'Auto Matched', matchedEntry: ledgerEntryLabel, difference: 0, differenceType: 'None' });
+            manualMatch({
+              transaction_id: popup.tx.id,
+              receipt_id: 'e65e4e7e-3ffb-449e-8c31-f19b88220002',
+              override_reason: 'Manual match from UI'
+            });
+          }}
         />
       )}
       {popup?.type === 'split' && (
         <SplitTransactionModal
           onClose={closePopup}
           tx={popup.tx}
-          onConfirm={() => mutateMany([popup.tx.id], { status: 'Ready To Post', difference: 0, differenceType: 'None', tags: Array.from(new Set([...popup.tx.tags, 'Split'])) })}
+          onConfirm={() => {
+            mutateMany([popup.tx.id], { status: 'Ready To Post', difference: 0, differenceType: 'None', tags: Array.from(new Set([...popup.tx.tags, 'Split'])) });
+            splitTx({
+              transaction_id: popup.tx.id,
+              allocations: [{ receipt_id: 'e65e4e7e-3ffb-449e-8c31-f19b88220002', allocated_amount: popup.tx.amount }]
+            });
+          }}
         />
       )}
       {popup?.type === 'merge' && (
@@ -8903,8 +9353,7 @@ function ReconciliationCenterInner() {
           transactions={popup.transactions}
           onConfirm={() => {
             const ids = popup.transactions.map((t) => t.id);
-            withUndo(transactions.map((t) => (ids.includes(t.id) ? { ...t, quickBooksStatus: 'Synced', status: 'Posted', lastUpdated: new Date().toISOString() } : t)), `${ids.length} entr${ids.length === 1 ? 'y' : 'ies'} posted to QuickBooks.`);
-            clearSelection();
+            runBulk('postToQuickBooks', ids);
           }}
         />
       )}
@@ -8927,21 +9376,17 @@ function ReconciliationCenterInner() {
         <AssignReviewerModal
           onClose={closePopup}
           count={popup.ids.length}
-          onAssign={(reviewer, priority) => { mutateMany(popup.ids, { assignedReviewer: reviewer, priority: priority as ReconciliationTransaction['priority'] }); clearSelection(); }}
+          onAssign={(reviewer, priority) => runBulk('assignReviewer', popup.ids, { reviewer, priority })}
         />
       )}
       {popup?.type === 'addNotes' && (
-        <AddNotesModal onClose={closePopup} count={popup.ids.length} onSave={() => clearSelection()} />
+        <AddNotesModal onClose={closePopup} count={popup.ids.length} onSave={(body, mentions) => runBulk('addNotes', popup.ids, { body, mentions })} />
       )}
       {popup?.type === 'delete' && (
         <DeleteConfirmationModal
           onClose={closePopup}
           count={popup.ids.length}
-          onConfirm={() => {
-            const ids = popup.ids;
-            withUndo(transactions.filter((t) => !ids.includes(t.id)), `${ids.length} transaction${ids.length === 1 ? '' : 's'} deleted.`);
-            clearSelection();
-          }}
+          onConfirm={() => runBulk('delete', popup.ids)}
         />
       )}
       {popup?.type === 'filterPresets' && (

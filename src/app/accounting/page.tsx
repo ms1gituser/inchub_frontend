@@ -21,6 +21,7 @@ import CorporateTaxTab from './tabs/corporate-tax';
 import ReportsTab from './tabs/reports';
 import QuickBooksTab from './tabs/quickbooks';
 import VendorsTab from './tabs/vendors';
+import PeriodLocksTab from './tabs/period-locks';
 
 // Types
 interface KycItem {
@@ -152,6 +153,7 @@ export default function AccountingPage() {
   const [ctFilings, setCtFilings] = useState<CtFiling[]>([]);
   const [lockError, setLockError] = useState<string | null>(null);
   const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<'ocr' | 'reconciliation' | 'suspense' | 'quickbooks' | 'kyc' | 'period-locks' | 'corporate-tax'>('ocr');
+  const [reportsSubTab, setReportsSubTab] = useState<'reports' | 'period-locks'>('reports');
 
   // Sync tab selection with query parameter
   useEffect(() => {
@@ -1121,7 +1123,48 @@ export default function AccountingPage() {
       {tabParam === 'reconciliation' && <ReconciliationTab />}
       {tabParam === 'vat' && <VatTab />}
       {tabParam === 'corporate-tax' && <CorporateTaxTab />}
-      {tabParam === 'reports' && <ReportsTab />}
+      {tabParam === 'reports' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {/* Sub-tab Switcher Header */}
+          <div style={{ display: 'flex', borderBottom: '1px solid rgba(42,22,40,0.08)', gap: '1.5rem', marginBottom: '0.5rem' }}>
+            <button
+              onClick={() => setReportsSubTab('reports')}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                borderBottom: reportsSubTab === 'reports' ? '3px solid #E8760A' : 'none',
+                color: reportsSubTab === 'reports' ? '#E8760A' : 'rgba(42,22,40,0.5)',
+                fontSize: '0.85rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                padding: '0.5rem 1rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em'
+              }}
+            >
+              System Reports
+            </button>
+            <button
+              onClick={() => setReportsSubTab('period-locks')}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                borderBottom: reportsSubTab === 'period-locks' ? '3px solid #E8760A' : 'none',
+                color: reportsSubTab === 'period-locks' ? '#E8760A' : 'rgba(42,22,40,0.5)',
+                fontSize: '0.85rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                padding: '0.5rem 1rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em'
+              }}
+            >
+              Period Locks & Compliance
+            </button>
+          </div>
+          {reportsSubTab === 'reports' ? <ReportsTab /> : <PeriodLocksTab />}
+        </div>
+      )}
       {tabParam === 'quickbooks' && <QuickBooksTab />}
       {tabParam === 'vendors' && <VendorsTab />}
 
