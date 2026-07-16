@@ -1,6 +1,6 @@
 'use client';
 
-import React, { CSSProperties, JSX } from 'react';
+import React, { CSSProperties } from 'react';
 
 interface TypographyProps {
   variant: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'body' | 'subtitle' | 'label' | 'caption';
@@ -10,7 +10,7 @@ interface TypographyProps {
   color?: 'primary' | 'secondary' | 'success' | 'error' | 'warning' | 'info' | 'inherit';
   weight?: 300 | 400 | 500 | 600;
   align?: 'left' | 'center' | 'right' | 'justify';
-  as?: keyof JSX.IntrinsicElements;
+  as?: keyof React.JSX.IntrinsicElements;
   truncate?: boolean;
 }
 
