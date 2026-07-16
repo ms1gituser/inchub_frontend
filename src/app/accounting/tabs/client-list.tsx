@@ -1,8 +1,19 @@
 'use client';
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 
 import React, { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Pagination from '@/components/ui/Pagination';
+import {
+  useGetClientsQuery,
+  useGetClientKpisQuery,
+  useAddClientMutation,
+  useUpdateClientMutation,
+  useDeleteClientMutation,
+  useBulkUpdateClientsMutation,
+  useImportClientsMutation,
+  useGetClientDrawerDetailsQuery,
+} from '@/lib/clientapi';
 
 interface ClientItem {
   id: string;
@@ -39,179 +50,8 @@ interface ClientItem {
   onboardingStage: string;
 }
 
-const INITIAL_CLIENTS: ClientItem[] = [
-  {
-    id: '1', initials: 'AB', avatarBg: '#7C2D12',
-    name: 'ABC Trading LLC', email: 'info@abctrading.ae',
-    trn: '100556789600003', vatStatusText: 'VAT Registered',
-    manager: 'Mahesh Maddu', managerAvatar: '👨‍💼',
-    status: 'Active', kycStatus: 'Verified', booksStatus: 'In Progress',
-    vatDue: 'Due in 2 Days', vatDueColor: '#EF4444',
-    ctDue: 'Due in 5 Days', ctDueColor: '#EF4444', lastActivity: '2h ago',
-    clientCode: 'ACC-001', industry: 'Trading', entityType: 'LLC',
-    bookkeeper: 'Alex Mercer', financialYear: 'Jan–Dec 2024',
-    qbStatus: 'Connected', riskLevel: 'High', overallProgress: 72,
-    activeTasks: 8, documents: 24, nextDeadline: 'VAT in 2 days',
-    tags: ['Priority', 'VAT'], country: 'UAE', onboardingStage: 'Complete',
-  },
-  {
-    id: '2', initials: 'XYZ', avatarBg: '#312E81',
-    name: 'XYZ Holdings Limited', email: 'contact@xyzholdings.com',
-    trn: '100556789600004', vatStatusText: 'VAT Registered',
-    manager: 'Priya Nair', managerAvatar: '👩‍💼',
-    status: 'Active', kycStatus: 'Verified', booksStatus: 'Completed',
-    vatDue: 'Filed', vatDueColor: '#10B981',
-    ctDue: 'Filed', ctDueColor: '#10B981', lastActivity: '4h ago',
-    clientCode: 'ACC-002', industry: 'Finance', entityType: 'LLC',
-    bookkeeper: 'Emma Watson', financialYear: 'Jan–Dec 2024',
-    qbStatus: 'Connected', riskLevel: 'Low', overallProgress: 98,
-    activeTasks: 1, documents: 42, nextDeadline: 'CT in 45 days',
-    tags: ['Premium'], country: 'UAE', onboardingStage: 'Complete',
-  },
-  {
-    id: '3', initials: 'DP', avatarBg: '#14532D',
-    name: 'Delta Properties FZCO', email: 'admin@deltaproperties.ae',
-    trn: '100556789600005', vatStatusText: 'VAT Registered',
-    manager: 'Rohit Sharma', managerAvatar: '👨‍💻',
-    status: 'Active', kycStatus: 'Expiring Soon', booksStatus: 'In Progress',
-    vatDue: 'Due in 7 Days', vatDueColor: '#F59E0B',
-    ctDue: 'Due in 12 Days', ctDueColor: '#F59E0B', lastActivity: '6h ago',
-    clientCode: 'ACC-003', industry: 'Real Estate', entityType: 'FZCO',
-    bookkeeper: 'Liam Neeson', financialYear: 'Jan–Dec 2024',
-    qbStatus: 'Syncing', riskLevel: 'Medium', overallProgress: 55,
-    activeTasks: 12, documents: 18, nextDeadline: 'VAT in 7 days',
-    tags: ['KYC Alert'], country: 'UAE', onboardingStage: 'Complete',
-  },
-  {
-    id: '4', initials: 'AT', avatarBg: '#1E3A8A',
-    name: 'Alpha Tech FZCO', email: 'finance@alphatech.ae',
-    trn: '100556789600006', vatStatusText: 'VAT Registered',
-    manager: 'Sneha Iyer', managerAvatar: '👩‍💻',
-    status: 'Active', kycStatus: 'Verified', booksStatus: 'Completed',
-    vatDue: 'Filed', vatDueColor: '#10B981',
-    ctDue: 'Due in 20 Days', ctDueColor: '#F59E0B', lastActivity: '1d ago',
-    clientCode: 'ACC-004', industry: 'Technology', entityType: 'FZCO',
-    bookkeeper: 'Sarah Khan', financialYear: 'Apr–Mar 2024',
-    qbStatus: 'Connected', riskLevel: 'Low', overallProgress: 88,
-    activeTasks: 3, documents: 31, nextDeadline: 'CT in 20 days',
-    tags: ['Premium', 'Tech'], country: 'UAE', onboardingStage: 'Complete',
-  },
-  {
-    id: '5', initials: 'BI', avatarBg: '#3B0764',
-    name: 'Beta Industries LLC', email: 'operations@betaind.ae',
-    trn: '100556789600007', vatStatusText: 'VAT Registered',
-    manager: 'Mahesh Maddu', managerAvatar: '👨‍💼',
-    status: 'Active', kycStatus: 'Pending', booksStatus: 'In Progress',
-    vatDue: 'Due in 1 Day', vatDueColor: '#EF4444',
-    ctDue: 'Due in 3 Days', ctDueColor: '#EF4444', lastActivity: '1d ago',
-    clientCode: 'ACC-005', industry: 'Manufacturing', entityType: 'LLC',
-    bookkeeper: 'Alex Mercer', financialYear: 'Jan–Dec 2024',
-    qbStatus: 'Error', riskLevel: 'High', overallProgress: 38,
-    activeTasks: 15, documents: 9, nextDeadline: 'VAT in 1 day',
-    tags: ['Urgent', 'QBO Error'], country: 'UAE', onboardingStage: 'Complete',
-  },
-  {
-    id: '6', initials: 'GS', avatarBg: '#0F172A',
-    name: 'Gamma Solutions FZCO', email: 'info@gammasolutions.ae',
-    trn: '100556789600008', vatStatusText: 'VAT Registered',
-    manager: 'Priya Nair', managerAvatar: '👩‍💼',
-    status: 'Active', kycStatus: 'Verified', booksStatus: 'Completed',
-    vatDue: 'Filed', vatDueColor: '#10B981',
-    ctDue: 'Filed', ctDueColor: '#10B981', lastActivity: '2d ago',
-    clientCode: 'ACC-006', industry: 'Consulting', entityType: 'FZCO',
-    bookkeeper: 'Emma Watson', financialYear: 'Jan–Dec 2024',
-    qbStatus: 'Connected', riskLevel: 'Low', overallProgress: 100,
-    activeTasks: 0, documents: 56, nextDeadline: 'VAT in 90 days',
-    tags: ['VIP'], country: 'UAE', onboardingStage: 'Complete',
-  },
-  {
-    id: '7', initials: 'NH', avatarBg: '#052E16',
-    name: 'Nova Hospitality LLC', email: 'accounts@novahospitality.ae',
-    trn: '100556789600009', vatStatusText: 'VAT Registered',
-    manager: 'Rohit Sharma', managerAvatar: '👨‍💻',
-    status: 'Onboarding', kycStatus: 'In Review', booksStatus: 'Not Started',
-    vatDue: '-', vatDueColor: 'rgba(42,22,40,0.4)',
-    ctDue: '-', ctDueColor: 'rgba(42,22,40,0.4)', lastActivity: '2d ago',
-    clientCode: 'ACC-007', industry: 'Hospitality', entityType: 'LLC',
-    bookkeeper: 'Liam Neeson', financialYear: 'Jan–Dec 2025',
-    qbStatus: 'Disconnected', riskLevel: 'Medium', overallProgress: 25,
-    activeTasks: 6, documents: 4, nextDeadline: 'KYC Review pending',
-    tags: ['New Client'], country: 'UAE', onboardingStage: 'KYC Verification',
-  },
-  {
-    id: '8', initials: 'PC', avatarBg: '#312E81',
-    name: 'Prime Consultants FZCO', email: 'contact@primeconsultants.ae',
-    trn: '100556789600010', vatStatusText: 'VAT Registered',
-    manager: 'Sneha Iyer', managerAvatar: '👩‍💻',
-    status: 'Active', kycStatus: 'Verified', booksStatus: 'In Progress',
-    vatDue: 'Due in 10 Days', vatDueColor: '#F59E0B',
-    ctDue: 'Due in 18 Days', ctDueColor: '#F59E0B', lastActivity: '3d ago',
-    clientCode: 'ACC-008', industry: 'Consulting', entityType: 'FZCO',
-    bookkeeper: 'Sarah Khan', financialYear: 'Jan–Dec 2024',
-    qbStatus: 'Connected', riskLevel: 'Medium', overallProgress: 65,
-    activeTasks: 5, documents: 28, nextDeadline: 'VAT in 10 days',
-    tags: ['Review'], country: 'UAE', onboardingStage: 'Complete',
-  },
-  {
-    id: '9', initials: 'SS', avatarBg: '#1A2E1A',
-    name: 'Sigma Services LLC', email: 'hello@sigmaservices.ae',
-    trn: '100556789600011', vatStatusText: 'VAT Registered',
-    manager: 'Mahesh Maddu', managerAvatar: '👨‍💼',
-    status: 'Inactive', kycStatus: 'Expired', booksStatus: 'Not Started',
-    vatDue: 'Overdue', vatDueColor: '#EF4444',
-    ctDue: 'Overdue', ctDueColor: '#EF4444', lastActivity: '5d ago',
-    clientCode: 'ACC-009', industry: 'Services', entityType: 'LLC',
-    bookkeeper: 'Alex Mercer', financialYear: 'Jan–Dec 2023',
-    qbStatus: 'Disconnected', riskLevel: 'High', overallProgress: 10,
-    activeTasks: 0, documents: 6, nextDeadline: 'KYC Expired',
-    tags: ['Attention'], country: 'UAE', onboardingStage: 'Complete',
-  },
-  {
-    id: '10', initials: 'TE', avatarBg: '#3B0764',
-    name: 'Vertex Enterprises LLC', email: 'finance@vertex.ae',
-    trn: '100556789600012', vatStatusText: 'VAT Registered',
-    manager: 'Priya Nair', managerAvatar: '👩‍💼',
-    status: 'Active', kycStatus: 'Verified', booksStatus: 'Completed',
-    vatDue: 'Filed', vatDueColor: '#10B981',
-    ctDue: 'Filed', ctDueColor: '#10B981', lastActivity: '5d ago',
-    clientCode: 'ACC-010', industry: 'Trading', entityType: 'LLC',
-    bookkeeper: 'Emma Watson', financialYear: 'Jan–Dec 2024',
-    qbStatus: 'Connected', riskLevel: 'Low', overallProgress: 95,
-    activeTasks: 2, documents: 38, nextDeadline: 'CT in 60 days',
-    tags: ['Premium'], country: 'UAE', onboardingStage: 'Complete',
-  },
-  {
-    id: '11', initials: 'OM', avatarBg: '#7F1D1D',
-    name: 'Omega Media Group', email: 'accounts@omegamedia.ae',
-    trn: '100556789600013', vatStatusText: 'VAT Registered',
-    manager: 'Rohit Sharma', managerAvatar: '👨‍💻',
-    status: 'Active', kycStatus: 'Verified', booksStatus: 'Review',
-    vatDue: 'Due in 14 Days', vatDueColor: '#F59E0B',
-    ctDue: 'Due in 30 Days', ctDueColor: '#F59E0B', lastActivity: '6h ago',
-    clientCode: 'ACC-011', industry: 'Media', entityType: 'LLC',
-    bookkeeper: 'Liam Neeson', financialYear: 'Jan–Dec 2024',
-    qbStatus: 'Syncing', riskLevel: 'Medium', overallProgress: 60,
-    activeTasks: 7, documents: 22, nextDeadline: 'VAT in 14 days',
-    tags: ['Review'], country: 'UAE', onboardingStage: 'Complete',
-  },
-  {
-    id: '12', initials: 'NG', avatarBg: '#064E3B',
-    name: 'NovaTech Gulf FZE', email: 'finance@novatechgulf.ae',
-    trn: '100556789600014', vatStatusText: 'VAT Registered',
-    manager: 'Sneha Iyer', managerAvatar: '👩‍💻',
-    status: 'Onboarding', kycStatus: 'Pending', booksStatus: 'Not Started',
-    vatDue: '-', vatDueColor: 'rgba(42,22,40,0.4)',
-    ctDue: '-', ctDueColor: 'rgba(42,22,40,0.4)', lastActivity: '1d ago',
-    clientCode: 'ACC-012', industry: 'Technology', entityType: 'FZE',
-    bookkeeper: 'Sarah Khan', financialYear: 'Jan–Dec 2025',
-    qbStatus: 'Disconnected', riskLevel: 'Low', overallProgress: 15,
-    activeTasks: 4, documents: 2, nextDeadline: 'KYC Submission',
-    tags: ['New Client', 'Tech'], country: 'UAE', onboardingStage: 'Document Collection',
-  },
-];
 
 export default function ClientListTab() {
-  const [clients, setClients] = useState<ClientItem[]>(INITIAL_CLIENTS);
   const [bulkAction, setBulkAction] = useState<{ type: 'manager' | 'bookkeeper' | 'status' | 'tag' | 'delete' | 'archive' | null, title: string }>({ type: null, title: '' });
   const [bulkValue, setBulkValue] = useState('');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'error' | null }>({ message: '', type: null });
@@ -224,7 +64,6 @@ export default function ClientListTab() {
   const [selectedClients, setSelectedClients] = useState<string[]>([]);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  // const [rowsPerPageOpen, setRowsPerPageOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const searchParams = useSearchParams();
   const actionParam = searchParams.get('action');
@@ -267,6 +106,38 @@ export default function ClientListTab() {
   const [rowActionOpen, setRowActionOpen] = useState<string | null>(null);
   const [advFilterOpen, setAdvFilterOpen] = useState<string | null>(null);
 
+  // ── API Mutators & Queries ──
+  const [addClient] = useAddClientMutation();
+  const [deleteClient] = useDeleteClientMutation();
+  const [bulkUpdateClients] = useBulkUpdateClientsMutation();
+  const [importClients] = useImportClientsMutation();
+
+  const { data: clientsRes, isLoading: clientsLoading } = useGetClientsQuery({
+    page: currentPage,
+    limit: rowsPerPage,
+    search,
+    filters: {
+      ...filters,
+      ...advancedFilters,
+      savedView
+    }
+  });
+
+  const { data: kpisRes } = useGetClientKpisQuery();
+  const { data: drawerDetailsRes } = useGetClientDrawerDetailsQuery(previewClient?.id || '', { skip: !previewClient });
+  const drawerDetails = drawerDetailsRes?.data || { tasks: [], documents: [], activities: [] };
+
+  const clients = clientsRes?.data?.clients || [];
+  const totalItems = clientsRes?.data?.total || 0;
+
+  const kpis = kpisRes?.data || {
+    totalClients: 0,
+    activeClients: 0,
+    overdueBooks: 0,
+    kycWarnings: 0,
+    qboSyncErrors: 0
+  };
+
   const filterOptions = {
     status: ['All', 'Active', 'Onboarding', 'Inactive', 'Archived', 'Suspended'],
     manager: ['All', 'Mahesh Maddu', 'Priya Nair', 'Rohit Sharma', 'Sneha Iyer'],
@@ -287,7 +158,7 @@ export default function ClientListTab() {
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      setSelectedClients(filteredClients.map(c => c.id));
+      setSelectedClients(clients.map((c: any) => c.id));
     } else {
       setSelectedClients([]);
     }
@@ -301,47 +172,7 @@ export default function ClientListTab() {
     }
   };
 
-  const filteredClients = clients.filter(client => {
-    const q = search.toLowerCase();
-    const matchesSearch = !q ||
-      client.name.toLowerCase().includes(q) ||
-      client.email.toLowerCase().includes(q) ||
-      client.trn.toLowerCase().includes(q) ||
-      client.clientCode.toLowerCase().includes(q) ||
-      client.industry.toLowerCase().includes(q) ||
-      client.manager.toLowerCase().includes(q) ||
-      client.bookkeeper.toLowerCase().includes(q) ||
-      (client.tags || []).some(t => t.toLowerCase().includes(q));
-      
-    const matchesStatus = filters.status === 'All' || client.status === filters.status;
-    const matchesManager = filters.manager === 'All' || client.manager === filters.manager;
-    const matchesBookkeeping = filters.bookkeeping === 'All' || client.booksStatus === filters.bookkeeping;
-    const matchesKyc = filters.kyc === 'All' || client.kycStatus === filters.kyc;
-
-    const matchesBookkeeper = advancedFilters.bookkeeper === 'All' || client.bookkeeper === advancedFilters.bookkeeper;
-    const matchesIndustry = advancedFilters.industry === 'All' || client.industry === advancedFilters.industry;
-    const matchesEntityType = advancedFilters.entityType === 'All' || client.entityType === advancedFilters.entityType;
-    const matchesCountry = advancedFilters.country === 'All' || client.country === advancedFilters.country;
-    const matchesFY = advancedFilters.financialYear === 'All' || client.financialYear === advancedFilters.financialYear;
-    const matchesQb = advancedFilters.qbStatus === 'All' || client.qbStatus === advancedFilters.qbStatus;
-    const matchesRisk = advancedFilters.riskLevel === 'All' || client.riskLevel === advancedFilters.riskLevel;
-    
-    let matchesSavedView = true;
-    if (savedView === 'My Clients') matchesSavedView = client.manager === 'Mahesh Maddu' || client.bookkeeper === 'Alex Mercer';
-    else if (savedView === 'Active') matchesSavedView = client.status === 'Active';
-    else if (savedView === 'Onboarding') matchesSavedView = client.status === 'Onboarding';
-    else if (savedView === 'Inactive') matchesSavedView = client.status === 'Inactive';
-    else if (savedView === 'KYC Expiring') matchesSavedView = client.kycStatus === 'Expiring Soon';
-    else if (savedView === 'VAT Due') matchesSavedView = client.vatDue !== 'Filed' && client.vatDue !== '-';
-    else if (savedView === 'CT Due') matchesSavedView = client.ctDue !== 'Filed' && client.ctDue !== '-';
-    else if (savedView === 'High Risk') matchesSavedView = client.riskLevel === 'High';
-    else if (savedView === 'QB Errors') matchesSavedView = client.qbStatus === 'Error';
-    else if (savedView === 'QB Connected') matchesSavedView = client.qbStatus === 'Connected';
-
-    return matchesSearch && matchesStatus && matchesManager && matchesBookkeeping && matchesKyc &&
-      matchesBookkeeper && matchesIndustry && matchesEntityType && matchesCountry && matchesFY &&
-      matchesQb && matchesRisk && matchesSavedView;
-  });
+  const filteredClients = clients;
 
   return (
     <div style={{
@@ -543,7 +374,22 @@ export default function ClientListTab() {
                   <button onClick={() => { setImportOpen(false); setImportFile(null); }} style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', color: '#2A1628', fontFamily: 'inherit' }}>Cancel</button>
                   <button
                     disabled={!importFile}
-                    onClick={() => { triggerToast('Clients imported successfully!', 'success'); setImportOpen(false); setImportFile(null); }}
+                    onClick={async () => {
+                      if (!importFile) return;
+                      const reader = new FileReader();
+                      reader.readAsDataURL(importFile);
+                      reader.onload = async () => {
+                        const base64 = (reader.result as string).split(',')[1];
+                        try {
+                          await importClients({ file: base64 }).unwrap();
+                          triggerToast('Clients imported successfully!', 'success');
+                          setImportOpen(false);
+                          setImportFile(null);
+                        } catch (e: any) {
+                          triggerToast(e?.data?.message || 'Failed to import clients', 'error');
+                        }
+                      };
+                    }}
                     style={{ background: !importFile ? 'rgba(42,22,40,0.12)' : '#2A1628', color: !importFile ? 'rgba(42,22,40,0.3)' : '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: !importFile ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.375rem', fontFamily: 'inherit' }}
                   >
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
@@ -790,10 +636,15 @@ export default function ClientListTab() {
                     style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.6rem 1.25rem', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', color: '#2A1628', fontFamily: 'inherit' }}
                   >Cancel</button>
                   <button
-                    onClick={() => {
-                      // TODO: wire to API
-                      setAddClientOpen(false);
-                      setAddClientForm({ name: '', email: '', trn: '', manager: '', status: 'Active', kycStatus: 'Verified', booksStatus: 'In Progress', vatDue: '', ctDue: '' });
+                    onClick={async () => {
+                      try {
+                        await addClient(addClientForm).unwrap();
+                        triggerToast('Client added successfully!', 'success');
+                        setAddClientOpen(false);
+                        setAddClientForm({ name: '', email: '', trn: '', manager: '', status: 'Active', kycStatus: 'Verified', booksStatus: 'In Progress', vatDue: '', ctDue: '' });
+                      } catch (e: any) {
+                        triggerToast(e?.data?.message || 'Failed to add client', 'error');
+                      }
                     }}
                     style={{ background: '#2A1628', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.6rem 1.5rem', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.375rem', fontFamily: 'inherit', boxShadow: '0 4px 12px rgba(42,22,40,0.2)' }}
                   >
@@ -831,7 +682,7 @@ export default function ClientListTab() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                       {([
                         { id: 'all', label: 'All Clients', sub: 'Export all clients in the system', count: '248' },
-                        { id: 'filtered', label: 'Filtered Results', sub: 'Only clients matching current filters', count: String(INITIAL_CLIENTS.length) },
+                        { id: 'filtered', label: 'Filtered Results', sub: 'Only clients matching current filters', count: String(clients.length) },
                         { id: 'selected', label: 'Selected Clients', sub: 'Only the clients you have checked', count: String(selectedClients.length) },
                         { id: 'custom', label: 'Custom Count', sub: 'Specify exactly how many to export', count: null },
                       ] as const).map(opt => (
@@ -893,7 +744,19 @@ export default function ClientListTab() {
                   <div style={{ display: 'flex', gap: '0.75rem' }}>
                     <button onClick={() => setExportOpen(false)} style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.6rem 1.25rem', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', color: '#2A1628', fontFamily: 'inherit' }}>Cancel</button>
                     <button
-                      onClick={() => { alert(`Exporting ${exportScope === 'custom' ? exportCustomCount : exportScope} clients as .${exportFormat} \u2014 wire to your export logic`); setExportOpen(false); }}
+                      onClick={() => {
+                        const token = localStorage.getItem('crm_access_token');
+                        const queryParams = new URLSearchParams();
+                        if (search) queryParams.append('search', search);
+                        Object.entries(filters).forEach(([key, val]) => {
+                          if (val !== 'All') queryParams.append(key, val);
+                        });
+                        queryParams.append('format', exportFormat);
+                        if (token) queryParams.append('token', token);
+                        // Redirect to the download URL
+                        window.open(`http://localhost:5000/api/v1/clients/export?${queryParams.toString()}`);
+                        setExportOpen(false);
+                      }}
                       style={{ background: '#E8760A', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.6rem 1.5rem', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.375rem', fontFamily: 'inherit', boxShadow: '0 4px 12px rgba(232,118,10,0.25)' }}
                     >
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
@@ -912,8 +775,8 @@ export default function ClientListTab() {
         {[
           {
             label: 'Total Clients',
-            value: '248',
-            sub: '+12 this week',
+            value: String(kpis.totalClients),
+            sub: 'In database',
             bg: 'rgba(232, 118, 10, 0.06)',
             color: '#E8760A',
             icon: (
@@ -927,8 +790,8 @@ export default function ClientListTab() {
           },
           {
             label: 'Active Clients',
-            value: '210',
-            sub: '84.7%',
+            value: String(kpis.activeClients),
+            sub: kpis.totalClients ? `${((kpis.activeClients / kpis.totalClients) * 100).toFixed(1)}%` : '0%',
             bg: 'rgba(232, 118, 10, 0.06)',
             color: '#E8760A',
             icon: (
@@ -940,8 +803,8 @@ export default function ClientListTab() {
           },
           {
             label: 'Onboarding',
-            value: '18',
-            sub: '7.3%',
+            value: String(clients.filter((c: any) => c.status === 'Onboarding').length),
+            sub: 'Clients',
             bg: 'rgba(232, 118, 10, 0.06)',
             color: '#E8760A',
             icon: (
@@ -955,8 +818,8 @@ export default function ClientListTab() {
           },
           {
             label: 'Inactive Clients',
-            value: '20',
-            sub: '8.0%',
+            value: String(clients.filter((c: any) => c.status === 'Inactive').length),
+            sub: 'Clients',
             bg: 'rgba(232, 118, 10, 0.06)',
             color: '#E8760A',
             icon: (
@@ -968,8 +831,8 @@ export default function ClientListTab() {
           },
           {
             label: 'KYC Expiring (30 Days)',
-            value: '11',
-            sub: 'View All',
+            value: String(kpis.kycWarnings),
+            sub: 'Alerts',
             bg: 'rgba(232, 118, 10, 0.06)',
             color: '#E8760A',
             icon: (
@@ -981,9 +844,9 @@ export default function ClientListTab() {
             )
           },
           {
-            label: 'VAT Due This Week',
-            value: '9',
-            sub: 'View All',
+            label: 'VAT Due This Month',
+            value: String(clients.filter((c: any) => c.vatDue !== 'Filed' && c.vatDue !== '-').length),
+            sub: 'Action needed',
             bg: 'rgba(232, 118, 10, 0.06)',
             color: '#E8760A',
             icon: (
@@ -994,9 +857,9 @@ export default function ClientListTab() {
             )
           },
           {
-            label: 'CT Due This Week',
-            value: '4',
-            sub: 'View All',
+            label: 'CT Due This Month',
+            value: String(clients.filter((c: any) => c.ctDue !== 'Filed' && c.ctDue !== '-').length),
+            sub: 'Action needed',
             bg: 'rgba(232, 118, 10, 0.06)',
             color: '#E8760A',
             icon: (
@@ -1048,13 +911,13 @@ export default function ClientListTab() {
       {/* ── KPI ROW 2: QUICKBOOKS & PIPELINE ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
         {[
-          { label: 'QuickBooks Connected', value: '186', sub: '75.0% of clients', color: '#E8760A', bg: 'rgba(232, 118, 10, 0.06)',
+          { label: 'QuickBooks Connected', value: String(kpis.totalClients - kpis.qboSyncErrors), sub: 'Connected clients', color: '#E8760A', bg: 'rgba(232, 118, 10, 0.06)',
             icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> },
-          { label: 'QuickBooks Errors', value: '3', sub: 'Needs attention', color: '#E8760A', bg: 'rgba(232, 118, 10, 0.06)',
+          { label: 'QuickBooks Errors', value: String(kpis.qboSyncErrors), sub: 'Needs attention', color: '#E8760A', bg: 'rgba(232, 118, 10, 0.06)',
             icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> },
-          { label: 'Books Pending', value: '32', sub: 'Action required', color: '#E8760A', bg: 'rgba(232, 118, 10, 0.06)',
+          { label: 'Books Pending', value: String(kpis.overdueBooks), sub: 'Action required', color: '#E8760A', bg: 'rgba(232, 118, 10, 0.06)',
             icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> },
-          { label: 'New This Month', value: '8', sub: '+3 this week', color: '#E8760A', bg: 'rgba(232, 118, 10, 0.06)',
+          { label: 'New This Month', value: String(clients.filter((c: any) => c.status === 'Onboarding').length), sub: 'Onboarding stage', color: '#E8760A', bg: 'rgba(232, 118, 10, 0.06)',
             icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg> },
         ].map((card, i) => (
           <div key={i} style={{ background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: '0 4px 10px rgba(42,22,40,0.02)', minHeight: '90px' }}>
@@ -1071,19 +934,16 @@ export default function ClientListTab() {
       </div>
 
       {/* ── SAVED VIEWS BAR ── */}
-      <div className="no-scrollbar" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
+      <div className="no-scrollbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.25rem', flexWrap: 'wrap' }}>
         {[
-          { id: 'All Clients', label: 'All Clients', count: '248' },
-          { id: 'My Clients', label: 'My Clients', count: '45' },
-          { id: 'Active', label: 'Active', count: '210' },
-          { id: 'Onboarding', label: 'Onboarding', count: '18' },
-          { id: 'Inactive', label: 'Inactive', count: '20' },
-          { id: 'KYC Expiring', label: 'KYC Expiring', count: '11' },
-          { id: 'VAT Due', label: 'VAT Due', count: '9' },
-          { id: 'CT Due', label: 'CT Due', count: '4' },
-          { id: 'High Risk', label: 'High Risk', count: '7' },
-          { id: 'QB Errors', label: 'QB Errors', count: '3' },
-          { id: 'QB Connected', label: 'QB Connected', count: '186' },
+          { id: 'All Clients', label: 'All Clients', count: String(kpis.totalClients) },
+          { id: 'My Clients', label: 'My Clients', count: String(clients.filter((c: any) => c.manager === 'Mahesh Maddu').length) },
+          { id: 'Active', label: 'Active', count: String(kpis.activeClients) },
+          { id: 'Onboarding', label: 'Onboarding', count: String(clients.filter((c: any) => c.status === 'Onboarding').length) },
+          { id: 'Inactive', label: 'Inactive', count: String(clients.filter((c: any) => c.status === 'Inactive').length) },
+          { id: 'KYC Expiring', label: 'KYC Expiring', count: String(kpis.kycWarnings) },
+          { id: 'VAT Due', label: 'VAT Due', count: String(clients.filter((c: any) => c.vatDue !== 'Filed' && c.vatDue !== '-').length) },
+          { id: 'CT Due', label: 'CT Due', count: String(clients.filter((c: any) => c.ctDue !== 'Filed' && c.ctDue !== '-').length) },
         ].map(view => (
           <button
             key={view.id}
@@ -1112,14 +972,17 @@ export default function ClientListTab() {
               { label: 'Send Reminder', ic: '📧', onClick: () => { triggerToast(`Sent compliance reminders to ${selectedClients.length} clients successfully!`, 'success'); setSelectedClients([]); } },
               { label: 'Export', ic: '📤', onClick: () => { setExportScope('selected'); setExportOpen(true); } },
               { label: 'Add Tag', ic: '🏷️', onClick: () => setBulkAction({ type: 'tag', title: 'Add Tag' }) },
-              { label: 'AI Review', ic: '🤖', onClick: () => {
+              { label: 'AI Review', ic: '🤖', onClick: async () => {
                 setAiReviewing(true);
-                setTimeout(() => {
-                  setAiReviewing(false);
-                  setClients(prev => prev.map(c => selectedClients.includes(c.id) ? { ...c, overallProgress: Math.min(c.overallProgress + 15, 100), tags: Array.from(new Set([...(c.tags || []), 'AI Reviewed'])) } : c));
+                try {
+                  await bulkUpdateClients({ ids: selectedClients, action: 'tag', value: 'AI Reviewed' }).unwrap();
                   triggerToast(`AI Review completed for ${selectedClients.length} clients!`, 'success');
+                } catch (err) {
+                  triggerToast('AI Review failed', 'error');
+                } finally {
+                  setAiReviewing(false);
                   setSelectedClients([]);
-                }, 2000);
+                }
               } },
               { label: 'Archive', ic: '🗄️', onClick: () => setBulkAction({ type: 'archive', title: 'Archive Clients' }) },
             ].map((a, i) => (
@@ -1379,7 +1242,7 @@ export default function ClientListTab() {
                 background: '#FAF8F5', 
                 zIndex: 10 
               }}>
-                <input type="checkbox" onChange={handleSelectAll} checked={selectedClients.length === INITIAL_CLIENTS.length} />
+                <input type="checkbox" onChange={handleSelectAll} checked={selectedClients.length === clients.length} />
               </th>
               <th style={{ 
                 padding: '1rem', 
@@ -1391,11 +1254,11 @@ export default function ClientListTab() {
               }}>CLIENT / COMPANY</th>
               <th style={{ padding: '1rem' }}>TRN / VAT NO.</th>
               <th style={{ padding: '1rem' }}>ACCOUNT MANAGER</th>
-              <th style={{ padding: '1rem' }}>STATUS</th>
-              <th style={{ padding: '1rem' }}>KYC STATUS</th>
-              <th style={{ padding: '1rem' }}>BOOKS STATUS</th>
-              <th style={{ padding: '1rem' }}>VAT STATUS</th>
-              <th style={{ padding: '1rem' }}>CT STATUS</th>
+              <th style={{ padding: '1rem', textAlign: 'center' }}>STATUS</th>
+              <th style={{ padding: '1rem', textAlign: 'center' }}>KYC STATUS</th>
+              <th style={{ padding: '1rem', textAlign: 'center' }}>BOOKS STATUS</th>
+              <th style={{ padding: '1rem', textAlign: 'center' }}>VAT STATUS</th>
+              <th style={{ padding: '1rem', textAlign: 'center' }}>CT STATUS</th>
               <th style={{ padding: '1rem' }}>LAST ACTIVITY</th>
               <th style={{ padding: '1rem', textAlign: 'center' }}>ACTIONS</th>
               <th style={{ padding: '1rem' }}>CLIENT CODE</th>
@@ -1412,7 +1275,7 @@ export default function ClientListTab() {
             </tr>
           </thead>
           <tbody>
-            {filteredClients.map((client, idx) => (
+            {filteredClients.map((client: any, idx: number) => (
               <tr key={client.id} style={{
                 borderBottom: idx < filteredClients.length - 1 ? '1px solid rgba(42,22,40,0.04)' : 'none',
                 background: selectedClients.includes(client.id) ? 'rgba(232,118,10,0.02)' : 'transparent'
@@ -1490,7 +1353,7 @@ export default function ClientListTab() {
                 </td>
 
                 {/* Status */}
-                <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
+                <td style={{ padding: '1rem', whiteSpace: 'nowrap', textAlign: 'center' }}>
                   <span style={{
                     fontSize: '0.7rem',
                     fontWeight: 700,
@@ -1502,7 +1365,7 @@ export default function ClientListTab() {
                 </td>
 
                 {/* KYC status */}
-                <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
+                <td style={{ padding: '1rem', whiteSpace: 'nowrap', textAlign: 'center' }}>
                   <span style={{
                     fontSize: '0.7rem',
                     fontWeight: 700,
@@ -1516,7 +1379,7 @@ export default function ClientListTab() {
                 </td>
 
                 {/* Books status */}
-                <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
+                <td style={{ padding: '1rem', whiteSpace: 'nowrap', textAlign: 'center' }}>
                   <span style={{
                     fontSize: '0.7rem',
                     fontWeight: 700,
@@ -1528,10 +1391,10 @@ export default function ClientListTab() {
                 </td>
 
                 {/* VAT Status */}
-                <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
+                <td style={{ padding: '1rem', whiteSpace: 'nowrap', textAlign: 'center' }}>
                   {client.vatDue === 'Filed' ? (
                     <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.25rem 0.5rem', borderRadius: '4px', background: 'rgba(4, 120, 87, 0.08)', color: '#047857' }}>Filed</span>
-                  ) : client.vatDue === '-' ? (
+                  ) : (!client.vatDue || client.vatDue === '-') ? (
                     <span style={{ color: 'rgba(42,22,40,0.4)' }}>-</span>
                   ) : (
                     <span style={{
@@ -1539,17 +1402,17 @@ export default function ClientListTab() {
                       fontWeight: 700,
                       padding: '0.25rem 0.5rem',
                       borderRadius: '4px',
-                      background: client.vatDue.includes('Overdue') ? 'rgba(196, 105, 90, 0.08)' : 'rgba(184, 137, 42, 0.08)',
-                      color: client.vatDue.includes('Overdue') ? '#C4695A' : '#B8892A'
+                      background: (client.vatDue || '').includes('Overdue') ? 'rgba(196, 105, 90, 0.08)' : 'rgba(184, 137, 42, 0.08)',
+                      color: (client.vatDue || '').includes('Overdue') ? '#C4695A' : '#B8892A'
                     }}>{client.vatDue}</span>
                   )}
                 </td>
 
                 {/* CT Status */}
-                <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
+                <td style={{ padding: '1rem', whiteSpace: 'nowrap', textAlign: 'center' }}>
                   {client.ctDue === 'Filed' ? (
                     <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.25rem 0.5rem', borderRadius: '4px', background: 'rgba(4, 120, 87, 0.08)', color: '#047857' }}>Filed</span>
-                  ) : client.ctDue === '-' ? (
+                  ) : (!client.ctDue || client.ctDue === '-') ? (
                     <span style={{ color: 'rgba(42,22,40,0.4)' }}>-</span>
                   ) : (
                     <span style={{
@@ -1557,8 +1420,8 @@ export default function ClientListTab() {
                       fontWeight: 700,
                       padding: '0.25rem 0.5rem',
                       borderRadius: '4px',
-                      background: client.ctDue.includes('Overdue') ? 'rgba(196, 105, 90, 0.08)' : 'rgba(184, 137, 42, 0.08)',
-                      color: client.ctDue.includes('Overdue') ? '#C4695A' : '#B8892A'
+                      background: (client.ctDue || '').includes('Overdue') ? 'rgba(196, 105, 90, 0.08)' : 'rgba(184, 137, 42, 0.08)',
+                      color: (client.ctDue || '').includes('Overdue') ? '#C4695A' : '#B8892A'
                     }}>{client.ctDue}</span>
                   )}
                 </td>
@@ -1603,7 +1466,16 @@ export default function ClientListTab() {
                             { label: 'Notes', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>, action: () => { setPreviewClient(client); setPreviewOpen(true); setPreviewTab('activity'); } },
                             { label: 'Activity Log', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>, action: () => { setPreviewClient(client); setPreviewOpen(true); setPreviewTab('activity'); } },
                             { label: 'Archive', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>, action: () => alert('Archive: ' + client.name) },
-                            { label: 'Delete Client', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>, action: () => alert('Delete: ' + client.name), danger: true },
+                            { label: 'Delete Client', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>, action: async () => {
+                               if (confirm(`Are you sure you want to delete ${client.name}?`)) {
+                                 try {
+                                   await deleteClient(client.id).unwrap();
+                                   triggerToast('Client deleted successfully!', 'success');
+                                 } catch (e: any) {
+                                   triggerToast(e?.data?.message || 'Failed to delete client', 'error');
+                                 }
+                               }
+                             }, danger: true },
                           ].map((item, ai) => (
                             <div key={ai}
                               onClick={() => { item.action(); setRowActionOpen(null); }}
@@ -1679,14 +1551,14 @@ export default function ClientListTab() {
                 </td>
 
                 {/* Next Deadline */}
-                <td style={{ padding: '1rem', whiteSpace: 'nowrap', fontSize: '0.7rem', color: client.nextDeadline.toLowerCase().includes('1 day') || client.nextDeadline.toLowerCase().includes('expired') ? '#EF4444' : client.nextDeadline.toLowerCase().includes('2 day') || client.nextDeadline.toLowerCase().includes('pending') ? '#E8760A' : 'rgba(42,22,40,0.6)', fontWeight: 600 }}>
-                  {client.nextDeadline}
+                <td style={{ padding: '1rem', whiteSpace: 'nowrap', fontSize: '0.7rem', color: (client.nextDeadline || '').toLowerCase().includes('1 day') || (client.nextDeadline || '').toLowerCase().includes('expired') ? '#EF4444' : (client.nextDeadline || '').toLowerCase().includes('2 day') || (client.nextDeadline || '').toLowerCase().includes('pending') ? '#E8760A' : 'rgba(42,22,40,0.6)', fontWeight: 600 }}>
+                  {client.nextDeadline || '-'}
                 </td>
 
                 {/* Tags */}
                 <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
                   <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
-                    {client.tags.slice(0, 2).map(tag => (
+                    {client.tags.slice(0, 2).map((tag: string) => (
                       <span key={tag} style={{ fontSize: '0.6rem', fontWeight: 700, padding: '0.15rem 0.4rem', borderRadius: '4px', background: 'rgba(42,22,40,0.06)', color: 'rgba(42,22,40,0.55)', whiteSpace: 'nowrap' }}>{tag}</span>
                     ))}
                     {client.tags.length > 2 && <span style={{ fontSize: '0.6rem', color: 'rgba(42,22,40,0.35)' }}>+{client.tags.length - 2}</span>}
@@ -1807,15 +1679,13 @@ export default function ClientListTab() {
 
                 {/* Open Tasks Widget */}
                 <div style={{ background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '10px', padding: '1rem' }}>
-                  <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(42,22,40,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.75rem' }}>Open Tasks ({previewClient.activeTasks})</div>
-                  {[
-                    { task: 'Collect VAT Invoices for Q2', done: false },
-                    { task: 'Reconcile 12 QuickBooks Suspense items', done: false },
-                    { task: 'Verify KYC documentation baseline', done: true },
-                  ].map((t, i) => (
+                  <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(42,22,40,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.75rem' }}>Open Tasks ({drawerDetails.tasks.length})</div>
+                  {drawerDetails.tasks.length === 0 ? (
+                    <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.45)', fontStyle: 'italic' }}>No active tasks.</div>
+                  ) : drawerDetails.tasks.map((t: any, i: number) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0' }}>
-                      <input type="checkbox" checked={t.done} readOnly style={{ accentColor: '#E8760A', cursor: 'pointer' }} />
-                      <span style={{ fontSize: '0.75rem', color: t.done ? 'rgba(42,22,40,0.45)' : '#2A1628', textDecoration: t.done ? 'line-through' : 'none', fontWeight: 500 }}>{t.task}</span>
+                      <input type="checkbox" checked={t.status === 'Completed'} readOnly style={{ accentColor: '#E8760A', cursor: 'pointer' }} />
+                      <span style={{ fontSize: '0.75rem', color: t.status === 'Completed' ? 'rgba(42,22,40,0.45)' : '#2A1628', textDecoration: t.status === 'Completed' ? 'line-through' : 'none', fontWeight: 500 }}>{t.name}</span>
                     </div>
                   ))}
                 </div>
@@ -1823,17 +1693,15 @@ export default function ClientListTab() {
                 {/* Recent Documents Widget */}
                 <div style={{ background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '10px', padding: '1rem' }}>
                   <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(42,22,40,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.75rem' }}>Recent Documents</div>
-                  {[
-                    { name: 'VAT_Return_Q1_2025.pdf', size: '2.4 MB', date: '2d ago' },
-                    { name: 'Trade_License_Renewal_2025.pdf', size: '4.1 MB', date: '1w ago' },
-                    { name: 'Q1_Ledger_Extract.xlsx', size: '890 KB', date: '2w ago' },
-                  ].map((doc, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0', borderBottom: i < 2 ? '1px solid rgba(42,22,40,0.04)' : 'none' }}>
+                  {drawerDetails.documents.length === 0 ? (
+                    <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.45)', fontStyle: 'italic' }}>No documents uploaded.</div>
+                  ) : drawerDetails.documents.map((doc: any, i: number) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0', borderBottom: i < drawerDetails.documents.length - 1 ? '1px solid rgba(42,22,40,0.04)' : 'none' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', overflow: 'hidden' }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5" style={{ flexShrink: 0 }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                         <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#2A1628', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{doc.name}</span>
                       </div>
-                      <span style={{ fontSize: '0.625rem', color: 'rgba(42,22,40,0.4)', whiteSpace: 'nowrap' }}>{doc.date}</span>
+                      <span style={{ fontSize: '0.625rem', color: 'rgba(42,22,40,0.4)', whiteSpace: 'nowrap' }}>{String(doc.created_at || '').split('T')[0]}</span>
                     </div>
                   ))}
                 </div>
@@ -2058,28 +1926,20 @@ export default function ClientListTab() {
             <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #DDD0C4', background: '#FAF8F5', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
               <button onClick={() => setBulkAction({ type: null, title: '' })} style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.5rem 1rem', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', color: '#2A1628' }}>Cancel</button>
               <button
-                onClick={() => {
-                  if (bulkAction.type === 'delete') {
-                    setClients(clients.filter(c => !selectedClients.includes(c.id)));
-                    triggerToast(`Permanently deleted ${selectedClients.length} clients.`, 'error');
-                  } else if (bulkAction.type === 'archive') {
-                    setClients(clients.map(c => selectedClients.includes(c.id) ? { ...c, status: 'Archived' } : c));
-                    triggerToast(`Archived ${selectedClients.length} clients successfully!`, 'success');
-                  } else {
-                    setClients(clients.map(c => {
-                      if (selectedClients.includes(c.id)) {
-                        if (bulkAction.type === 'manager') return { ...c, manager: bulkValue || c.manager };
-                        if (bulkAction.type === 'bookkeeper') return { ...c, bookkeeper: bulkValue || c.bookkeeper };
-                        if (bulkAction.type === 'status') return { ...c, status: (bulkValue || c.status) as ClientItem['status'] };
-                        if (bulkAction.type === 'tag') return { ...c, tags: Array.from(new Set([...(c.tags || []), bulkValue])) };
-                      }
-                      return c;
-                    }));
-                    triggerToast(`Successfully updated ${selectedClients.length} clients.`, 'success');
+                onClick={async () => {
+                  try {
+                    await bulkUpdateClients({
+                      ids: selectedClients,
+                      action: bulkAction.type || '',
+                      value: bulkValue
+                    }).unwrap();
+                    triggerToast('Bulk action completed successfully!', 'success');
+                    setSelectedClients([]);
+                    setBulkAction({ type: null, title: '' });
+                    setBulkValue('');
+                  } catch (e: any) {
+                    triggerToast(e?.data?.message || 'Failed to execute bulk action', 'error');
                   }
-                  setSelectedClients([]);
-                  setBulkAction({ type: null, title: '' });
-                  setBulkValue('');
                 }}
                 style={{ background: bulkAction.type === 'delete' ? '#EF4444' : '#2A1628', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.5rem 1.25rem', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}
               >

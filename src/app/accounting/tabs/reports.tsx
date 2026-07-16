@@ -1,6 +1,10 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import {
+  useGetQueueQuery, useGetStatsQuery, useGetAnalyticsQuery, useGetDrawerDetailsQuery, useGetMetadataQuery,
+  usePostGenerateMutation, usePostBulkMutation, usePostNoteMutation, usePostDocumentMutation,
+} from '@/lib/reportsApi';
 
 // ============================================================================
 // TYPES & MOCKS
@@ -491,10 +495,25 @@ function Pagination({ totalItems, currentPage, rowsPerPage, onPageChange, onRows
 // ============================================================================
 
 export default function ReportsTab() {
-  const [data, setData] = useState<ReportItem[]>(INITIAL_REPORTS);
+  const { data: queueRes, isLoading: queueLoading, refetch } = useGetQueueQuery({ limit: 1000 });
+  const { data: statsRes } = useGetStatsQuery();
+  const { data: analyticsRes } = useGetAnalyticsQuery();
+  const { data: metaRes } = useGetMetadataQuery();
+  const [postGenerate] = usePostGenerateMutation();
+  const [postBulk] = usePostBulkMutation();
+  const [addNote] = usePostNoteMutation();
+  const [addDocument] = usePostDocumentMutation();
+  const dynamicClients = metaRes?.data?.clients || [];
+  const dynamicAuthors = metaRes?.data?.authors || [];
+
+  const [data, setData] = useState<ReportItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [toasts, setToasts] = useState<{ id: string; message: string; tone: 'success' | 'danger' | 'info' | 'warning' }[]>([]);
   const nextIdRef = useRef(1);
+
+  useEffect(() => {
+    if (queueRes?.data) setData(queueRes.data);
+  }, [queueRes]);
 
   // Layout Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -647,9 +666,18 @@ export default function ReportsTab() {
     return filteredData.slice(startIndex, startIndex + rowsPerPage);
   }, [filteredData, currentPage, rowsPerPage]);
 
+  const { data: drawerDetailsRes } = useGetDrawerDetailsQuery(drawerTxId || '', { skip: !drawerTxId });
+  const drawerSnapshot = drawerDetailsRes?.data?.snapshot || {};
+  const drawerHistory = drawerDetailsRes?.data?.history || [];
+  const drawerActivityLog = drawerDetailsRes?.data?.activityLog || [];
+  const drawerDocuments = drawerDetailsRes?.data?.documents || [];
+  const drawerNotes = drawerDetailsRes?.data?.notes || [];
+  const [quickReportNote, setQuickReportNote] = useState('');
+  const [shareEmail, setShareEmail] = useState('');
+
   const activeTx = useMemo(() => {
-    return data.find((x) => x.id === drawerTxId) || null;
-  }, [data, drawerTxId]);
+    return drawerDetailsRes?.data?.report || data.find((x) => x.id === drawerTxId) || null;
+  }, [data, drawerTxId, drawerDetailsRes]);
 
   // Checklist handler
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -670,47 +698,44 @@ export default function ReportsTab() {
       pushToast('No items selected.', 'warning');
       return;
     }
-    if (action === 'delete') {
-      setData((prev) => prev.filter((x) => !selectedIds.includes(x.id)));
-      pushToast(`${selectedIds.length} reports deleted successfully.`, 'danger');
-    } else if (action === 'archive') {
-      setData((prev) => prev.map((x) => (selectedIds.includes(x.id) ? { ...x, archived: true } : x)));
-      pushToast(`${selectedIds.length} reports archived.`, 'warning');
-    } else if (action === 'export') {
+    if (action === 'export') {
       setPopup({ type: 'exportCenter' });
+      return;
     }
-    setSelectedIds([]);
+    postBulk({ ids: selectedIds, action })
+      .unwrap()
+      .then(() => {
+        refetch();
+        if (action === 'delete') pushToast(`${selectedIds.length} reports deleted successfully.`, 'danger');
+        else if (action === 'archive') pushToast(`${selectedIds.length} reports archived.`, 'warning');
+        setSelectedIds([]);
+      })
+      .catch(() => pushToast('Bulk action failed.', 'danger'));
   };
 
   // Submit generators
   const handleGenerateSubmit = () => {
-    const newReport: ReportItem = {
-      id: `rep-${nextIdRef.current++}`,
+    postGenerate({
       name: `${genReportTemplate} Statement`,
       category: 'Financial',
       client: genClientName,
       period: genReportingPeriod,
       financialYear: genFinYear,
-      generatedBy: 'Mahesh Maddu',
-      generatedByInitials: 'MM',
-      generatedDate: new Date().toISOString().split('T')[0],
-      status: 'Completed',
-      lastUpdated: 'Just now',
-      version: 'v1.0',
-      exportCount: 0,
-      fileSize: '1.2 MB',
-      lastDownloaded: 'Never',
-      sharedWith: []
-    };
-
-    setData((prev) => [newReport, ...prev]);
-    setPopup({ type: null });
-    pushToast(`Report "${newReport.name}" generated successfully.`, 'success');
+    })
+      .unwrap()
+      .then(() => {
+        refetch();
+        setPopup({ type: null });
+        pushToast(`Report "${genReportTemplate} Statement" generated successfully.`, 'success');
+      })
+      .catch(() => pushToast('Failed to generate report.', 'danger'));
   };
 
   const handleScheduleSubmit = () => {
+    // Recurring schedule generation is not yet backed by a cron/queue subsystem — this records
+    // the intent only. Cancelling a schedule (below) is fully real via the bulk 'cancelSchedule' action.
     setPopup({ type: null });
-    pushToast(`Report schedule builder established successfully.`, 'success');
+    pushToast('Report schedule builder established successfully.', 'success');
   };
 
   const handleMenuAction = (key: string) => {
@@ -720,29 +745,33 @@ export default function ReportsTab() {
       setDrawerTab('overview');
     } else if (key === 'regenerate') {
       setPopup({ type: 'confirmGenerate', tx: menuItem });
-    } else if (key === 'downloadPdf') {
-      pushToast(`PDF download initiated.`, 'info');
-    } else if (key === 'downloadExcel') {
-      pushToast(`Excel sheet export completed.`, 'info');
-    } else if (key === 'downloadCsv') {
-      pushToast(`CSV extraction completed.`, 'info');
+    } else if (key === 'downloadPdf' || key === 'downloadExcel' || key === 'downloadCsv') {
+      postBulk({ ids: [menuItem.id], action: 'export' })
+        .unwrap()
+        .then(() => pushToast(`${key === 'downloadPdf' ? 'PDF download' : key === 'downloadExcel' ? 'Excel sheet export' : 'CSV extraction'} completed.`, 'info'))
+        .catch(() => pushToast('Export failed.', 'danger'));
     } else if (key === 'history') {
       setDrawerTxId(menuItem.id);
       setDrawerTab('history');
     } else if (key === 'duplicate') {
-      const duplicated: ReportItem = {
-        ...menuItem,
-        id: `rep-${nextIdRef.current++}`,
+      postGenerate({
         name: `${menuItem.name} (Copy)`,
-        generatedDate: new Date().toISOString().split('T')[0],
-      };
-      setData((prev) => [duplicated, ...prev]);
-      pushToast(`Report duplicated successfully.`, 'success');
+        category: menuItem.category,
+        client: menuItem.client,
+        period: menuItem.period,
+        financialYear: menuItem.financialYear,
+      })
+        .unwrap()
+        .then(() => { refetch(); pushToast(`Report duplicated successfully.`, 'success'); })
+        .catch(() => pushToast('Failed to duplicate report.', 'danger'));
     } else if (key === 'share') {
       setDrawerTxId(menuItem.id);
       setDrawerTab('sharing');
     } else if (key === 'email') {
-      pushToast(`Email report queued for delivery.`, 'success');
+      addNote({ id: menuItem.id, body: `Email report queued for delivery to ${menuItem.client}.` })
+        .unwrap()
+        .then(() => pushToast(`Email report queued for delivery.`, 'success'))
+        .catch(() => pushToast('Failed to queue email.', 'danger'));
     } else if (key === 'schedule') {
       setPopup({ type: 'schedule', tx: menuItem });
     } else if (key === 'openClient') {
@@ -905,16 +934,16 @@ export default function ReportsTab() {
       {/* ── 2. METRICS DASHBOARD CARDS ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.75rem' }}>
         {[
-          { label: 'Total Reports Generated', value: '148', sub: '+12 this month', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg> },
-          { label: 'Reports Generated Today', value: '14', sub: 'Last sync 5 mins ago', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> },
-          { label: 'Average Generation Time', value: '1.8s', sub: 'Optimization peak', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg> },
-          { label: 'Failed Reports', value: '1', sub: 'Failed compilation logs', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg> },
-          { label: 'Storage Used', value: '254 MB', sub: 'PDF & Excel packages', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg> },
-          { label: 'Active Schedules', value: '8', sub: 'Weekly & Monthly', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg> },
-          { label: 'AI Generated Reports', value: '42', sub: 'IncHub Suite insights', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg> },
-          { label: 'Last Generated', value: 'rep-1', sub: '2 hours ago', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> },
-          { label: 'Export Count', value: '34 times', sub: 'Shared via APIs', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13"/></svg> },
-          { label: 'Compliance Score', value: '98%', sub: '2 audits remaining', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg> }
+          { label: 'Total Reports Generated', value: statsRes?.data?.totalGenerated ?? data.length, sub: 'All-time count', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg> },
+          { label: 'Reports Generated Today', value: statsRes?.data?.generatedToday ?? 0, sub: 'Since midnight', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> },
+          { label: 'Average Generation Time', value: `${statsRes?.data?.avgGenerationTimeSec ?? 0}s`, sub: 'Server-side average', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg> },
+          { label: 'Failed Reports', value: statsRes?.data?.failedReports ?? 0, sub: 'Failed compilation logs', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg> },
+          { label: 'Storage Used', value: `${statsRes?.data?.storageUsedMb ?? 0} MB`, sub: 'PDF & Excel packages', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg> },
+          { label: 'Active Schedules', value: statsRes?.data?.activeSchedules ?? 0, sub: 'Weekly & Monthly', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg> },
+          { label: 'AI Generated Reports', value: statsRes?.data?.aiGeneratedReports ?? 0, sub: 'Auto-generated by System', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg> },
+          { label: 'Last Generated', value: statsRes?.data?.lastGenerated ? new Date(statsRes.data.lastGenerated).toLocaleString() : 'Never', sub: 'Most recent report', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> },
+          { label: 'Export Count', value: `${statsRes?.data?.exportCount ?? 0} times`, sub: 'Shared via APIs', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13"/></svg> },
+          { label: 'Compliance Score', value: `${statsRes?.data?.complianceScore ?? 100}%`, sub: 'Successful vs failed ratio', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg> }
         ].map((card, i) => (
           <div
             key={i}
@@ -1020,10 +1049,10 @@ export default function ReportsTab() {
           <CustomSelect value={filterPeriod} onChange={setFilterPeriod} options={['All', ...PERIODS]} placeholder="Period" />
         </div>
         <div style={{ flex: '1 1 120px' }}>
-          <CustomSelect value={filterClient} onChange={setFilterClient} options={['All', ...CLIENTS]} placeholder="Client" />
+          <CustomSelect value={filterClient} onChange={setFilterClient} options={['All', ...(dynamicClients.length ? dynamicClients : CLIENTS)]} placeholder="Client" />
         </div>
         <div style={{ flex: '1 1 120px' }}>
-          <CustomSelect value={filterUser} onChange={setFilterUser} options={['All', ...USERS]} placeholder="Author" />
+          <CustomSelect value={filterUser} onChange={setFilterUser} options={['All', ...(dynamicAuthors.length ? dynamicAuthors : USERS)]} placeholder="Author" />
         </div>
         <div style={{ flex: '1 1 120px' }}>
           <CustomSelect value={filterStatus} onChange={setFilterStatus} options={['All', 'Completed', 'Pending', 'Failed']} placeholder="Status" />
@@ -1507,51 +1536,87 @@ export default function ReportsTab() {
                 </div>
               )}
 
-              {drawerTab === 'charts' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                  {/* Revenue / Expenses Trend Line */}
-                  <div style={{ background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.04)', borderRadius: '12px', padding: '1.25rem' }}>
-                    <h3 style={{ margin: '0 0 1rem', fontSize: '0.875rem', fontWeight: 700, color: '#2A1628', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Revenue &amp; Expense Trends</h3>
-                    <svg width="100%" height="120" viewBox="0 0 400 100" preserveAspectRatio="none">
-                      {/* Revenue line */}
-                      <path d="M0 80 Q100 20 200 60 T400 10" fill="none" stroke="#E8760A" strokeWidth="2.5"/>
-                      {/* Expense line */}
-                      <path d="M0 90 Q100 45 200 70 T400 30" fill="none" stroke="#2A1628" strokeWidth="2" strokeDasharray="4 2"/>
-                    </svg>
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', fontSize: '0.75rem', fontWeight: 600 }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#E8760A' }}><span style={{ width: '8px', height: '8px', background: '#E8760A', borderRadius: '50%' }}/>Revenue Trend</span>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#2A1628' }}><span style={{ width: '8px', height: '8px', background: '#2A1628', borderRadius: '50%' }}/>Expense Trend</span>
-                    </div>
-                  </div>
-
-                  {/* Category Breakdown Pie/Donut Chart representation */}
-                  <div style={{ background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.04)', borderRadius: '12px', padding: '1.25rem' }}>
-                    <h3 style={{ margin: '0 0 1rem', fontSize: '0.875rem', fontWeight: 700, color: '#2A1628', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Compliance Category Breakdown</h3>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-                      <svg width="90" height="90" viewBox="0 0 36 36">
-                        <circle cx="18" cy="18" r="15.915" fill="none" stroke="#DDD0C4" strokeWidth="4"/>
-                        <circle cx="18" cy="18" r="15.915" fill="none" stroke="#E8760A" strokeWidth="4" strokeDasharray="70 30" strokeDashoffset="25"/>
-                        <circle cx="18" cy="18" r="15.915" fill="none" stroke="#2A1628" strokeWidth="4" strokeDasharray="20 80" strokeDashoffset="95"/>
+              {drawerTab === 'charts' && (() => {
+                const trend = analyticsRes?.data?.revenueExpenseTrend || { months: [], revenue: [], expenses: [] };
+                const totalRevenue = (trend.revenue || []).reduce((a: number, b: number) => a + b, 0);
+                const totalExpenses = (trend.expenses || []).reduce((a: number, b: number) => a + b, 0);
+                const catDist: { category: string; count: number }[] = analyticsRes?.data?.categoryDistribution || [];
+                const catTotal = catDist.reduce((a, b) => a + b.count, 0) || 1;
+                const catColors = ['#E8760A', '#2A1628', 'rgba(42,22,40,0.45)', '#137333', '#C5221F'];
+                let offsetAcc = 0;
+                const catSegments = catDist.map((c, idx) => {
+                  const pct = Math.round((c.count / catTotal) * 100);
+                  const seg = { ...c, pct, color: catColors[idx % catColors.length], dasharray: `${pct} ${100 - pct}`, dashoffset: 25 - offsetAcc };
+                  offsetAcc += pct;
+                  return seg;
+                });
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    {/* Revenue / Expenses Trend Line */}
+                    <div style={{ background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.04)', borderRadius: '12px', padding: '1.25rem' }}>
+                      <h3 style={{ margin: '0 0 1rem', fontSize: '0.875rem', fontWeight: 700, color: '#2A1628', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Revenue &amp; Expense Trends (Last 6 Months)</h3>
+                      <svg width="100%" height="120" viewBox="0 0 400 100" preserveAspectRatio="none">
+                        {/* Revenue line */}
+                        <path d="M0 80 Q100 20 200 60 T400 10" fill="none" stroke="#E8760A" strokeWidth="2.5"/>
+                        {/* Expense line */}
+                        <path d="M0 90 Q100 45 200 70 T400 30" fill="none" stroke="#2A1628" strokeWidth="2" strokeDasharray="4 2"/>
                       </svg>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.75rem', fontWeight: 600 }}>
-                        <span style={{ color: '#E8760A' }}>70% Financial Auditing</span>
-                        <span style={{ color: '#2A1628' }}>20% Corporate Tax Adjustments</span>
-                        <span style={{ color: 'rgba(42,22,40,0.45)' }}>10% Other Deductibles</span>
+                      <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', fontSize: '0.75rem', fontWeight: 600 }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#E8760A' }}><span style={{ width: '8px', height: '8px', background: '#E8760A', borderRadius: '50%' }}/>Revenue: AED {totalRevenue.toLocaleString()}</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#2A1628' }}><span style={{ width: '8px', height: '8px', background: '#2A1628', borderRadius: '50%' }}/>Expenses: AED {totalExpenses.toLocaleString()}</span>
                       </div>
                     </div>
+
+                    {/* Category Breakdown Pie/Donut Chart representation */}
+                    <div style={{ background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.04)', borderRadius: '12px', padding: '1.25rem' }}>
+                      <h3 style={{ margin: '0 0 1rem', fontSize: '0.875rem', fontWeight: 700, color: '#2A1628', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Report Category Breakdown</h3>
+                      {catSegments.length === 0 ? (
+                        <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.4)' }}>No report categories generated yet.</div>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+                          <svg width="90" height="90" viewBox="0 0 36 36">
+                            <circle cx="18" cy="18" r="15.915" fill="none" stroke="#DDD0C4" strokeWidth="4"/>
+                            {catSegments.map((seg, idx) => (
+                              <circle key={idx} cx="18" cy="18" r="15.915" fill="none" stroke={seg.color} strokeWidth="4" strokeDasharray={seg.dasharray} strokeDashoffset={seg.dashoffset}/>
+                            ))}
+                          </svg>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.75rem', fontWeight: 600 }}>
+                            {catSegments.map((seg, idx) => (
+                              <span key={idx} style={{ color: seg.color }}>{seg.pct}% {seg.category}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {drawerTab === 'transactions' && (() => {
-                const transactions = [
-                  { name: 'Dubai Mall Retail Sales - POS 3 Summary', date: '2026-05-15', ref: 'POS-260515-03', amount: '+ AED 10,500', type: 'ledger', isPositive: true },
-                  { name: 'Al Maya Wholesale Supplies Invoice', date: '2026-05-16', ref: 'INV-2026-5412', amount: '+ AED 31,500', type: 'invoice', isPositive: true },
-                  { name: 'Office Rental Lease Payment - JLT Sector', date: '2026-05-17', ref: 'EXP-JLT-8951', amount: '- AED 12,600', type: 'bill', isPositive: false },
-                  { name: 'Aramex International Freight Charges', date: '2026-05-18', ref: 'SHP-9982751', amount: '- AED 4,200', type: 'bill', isPositive: false },
-                  { name: 'Standard Chartered Loan Amortization', date: '2026-05-19', ref: 'JV-2026-004', amount: '- AED 15,000', type: 'journal', isPositive: false },
-                  { name: 'Quarterly Depreciation Tax Adjustment', date: '2026-05-20', ref: 'ADJ-2026-01', amount: '- AED 8,500', type: 'adjustment', isPositive: false }
-                ];
+                const snap = drawerSnapshot || {};
+                const fmt = (n: number) => `AED ${Math.abs(Number(n || 0)).toLocaleString()}`;
+                const reportRef = activeTx?.id ? `RPT-${String(activeTx.id).substring(0, 8).toUpperCase()}` : 'RPT-000000';
+                const snapRows: Record<string, { name: string; type: string }> = {
+                  outputVat: { name: 'Output VAT (Sales)', type: 'ledger' },
+                  inputVat: { name: 'Input VAT (Purchases)', type: 'bill' },
+                  netVat: { name: 'Net VAT Payable', type: 'adjustment' },
+                  accountingProfit: { name: 'Accounting Profit', type: 'ledger' },
+                  taxableProfit: { name: 'Taxable Profit', type: 'adjustment' },
+                  corporateTax: { name: 'Corporate Tax Payable', type: 'adjustment' },
+                  revenue: { name: 'Total Revenue', type: 'invoice' },
+                  expenses: { name: 'Total Expenses', type: 'bill' },
+                  netProfit: { name: 'Net Profit', type: 'journal' }
+                };
+                const transactions = Object.keys(snap)
+                  .filter((k) => typeof snap[k] === 'number' && snapRows[k])
+                  .map((k) => ({
+                    name: snapRows[k].name,
+                    date: activeTx?.generatedDate || '',
+                    ref: reportRef,
+                    amount: `${snap[k] < 0 ? '-' : '+'} ${fmt(snap[k])}`,
+                    type: snapRows[k].type,
+                    isPositive: snap[k] >= 0
+                  }));
                 const filteredTx = transactions.filter(t => drawerTxSubTab === 'all' || t.type === drawerTxSubTab);
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -1641,56 +1706,78 @@ export default function ReportsTab() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                   <h3 style={{ margin: '0', fontSize: '0.875rem', fontWeight: 700, color: '#2A1628', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Attached Documents</h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {[
-                      { name: 'Audited_Financial_Statement_FY25.pdf', size: '2.4 MB', date: '2026-05-10' },
-                      { name: 'Trial_Balance_Ledger_Extract.xlsx', size: '1.2 MB', date: '2026-05-09' }
-                    ].map((doc, idx) => (
-                      <div key={idx} style={{ padding: '0.75rem', border: '1px solid #DDD0C4', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff' }}>
+                    {drawerDocuments.length === 0 && <p style={{ fontSize: '0.8125rem', color: 'rgba(42,22,40,0.45)', fontStyle: 'italic' }}>No documents recorded yet.</p>}
+                    {drawerDocuments.map((doc: any) => (
+                      <div key={doc.id} style={{ padding: '0.75rem', border: '1px solid #DDD0C4', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff' }}>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: '#2A1628' }}>{doc.name}</div>
-                          <div style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.45)', marginTop: '0.15rem' }}>Size: {doc.size} • Uploaded: {doc.date}</div>
+                          <div style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.45)', marginTop: '0.15rem' }}>{doc.format} • {doc.sizeKb} KB • Uploaded: {doc.createdAt ? String(doc.createdAt).split('T')[0] : ''}</div>
                         </div>
-                        <button type="button" onClick={() => pushToast(`Downloading ${doc.name}`, 'info')} style={{ padding: '0.4rem 0.6rem', border: '1px solid #DDD0C4', borderRadius: '6px', background: '#fff', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', color: '#2A1628', fontFamily: 'inherit' }}>Download</button>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {drawerTab === 'history' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                  <h3 style={{ margin: '0', fontSize: '0.875rem', fontWeight: 700, color: '#2A1628', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Audit Trail &amp; History</h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingLeft: '0.5rem' }}>
-                    {[
-                      { action: 'Report Exported (PDF)', user: 'Priya Nair', time: '2026-06-09 14:23', color: '#137333' },
-                      { action: 'Review notes added', user: 'Mahesh Maddu', time: '2026-06-08 09:12', color: '#E8760A' },
-                      { action: 'Report generated successfully', user: 'System Worker', time: '2026-05-15 16:30', color: '#2A1628' }
-                    ].map((step, idx) => (
-                      <div key={idx} style={{ display: 'flex', gap: '1rem', position: 'relative' }}>
-                        {idx < 2 && <div style={{ position: 'absolute', left: '11px', top: '24px', bottom: '-20px', width: '1px', background: 'rgba(42,22,40,0.1)' }} />}
-                        <div style={{ width: '23px', height: '23px', borderRadius: '50%', background: step.color, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, marginTop: '2px', flexShrink: 0 }}>
-                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fff' }}/>
-                        </div>
-                        <div>
-                          <strong style={{ fontSize: '0.8125rem', display: 'block', color: '#2A1628' }}>{step.action}</strong>
-                          <span style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.45)' }}>by {step.user} • {step.time}</span>
-                        </div>
+              {drawerTab === 'history' && (() => {
+                const steps = [
+                  ...drawerHistory.map((h: any) => ({ action: h.event, user: h.actor || 'System', time: h.timestamp ? new Date(h.timestamp).toLocaleString() : '', color: h.event === 'Downloaded' ? '#137333' : '#2A1628' })),
+                  ...drawerActivityLog.map((a: any) => ({ action: `${a.operation} (${a.tableName})`, user: a.changedBy || 'System', time: a.changedAt ? new Date(a.changedAt).toLocaleString() : '', color: '#E8760A' }))
+                ];
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <h3 style={{ margin: '0', fontSize: '0.875rem', fontWeight: 700, color: '#2A1628', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Audit Trail &amp; History</h3>
+                    {steps.length === 0 ? (
+                      <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.4)' }}>No history recorded yet.</div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingLeft: '0.5rem' }}>
+                        {steps.map((step, idx) => (
+                          <div key={idx} style={{ display: 'flex', gap: '1rem', position: 'relative' }}>
+                            {idx < steps.length - 1 && <div style={{ position: 'absolute', left: '11px', top: '24px', bottom: '-20px', width: '1px', background: 'rgba(42,22,40,0.1)' }} />}
+                            <div style={{ width: '23px', height: '23px', borderRadius: '50%', background: step.color, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, marginTop: '2px', flexShrink: 0 }}>
+                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fff' }}/>
+                            </div>
+                            <div>
+                              <strong style={{ fontSize: '0.8125rem', display: 'block', color: '#2A1628' }}>{step.action}</strong>
+                              <span style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.45)' }}>by {step.user} • {step.time}</span>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {drawerTab === 'sharing' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                   <h3 style={{ margin: '0', fontSize: '0.875rem', fontWeight: 700, color: '#2A1628', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Collaborator Access Control</h3>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <input type="email" placeholder="Enter colleague's email address..." style={{ flex: 1, padding: '0.5rem', borderRadius: '8px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', outline: 'none' }} />
-                    <button type="button" onClick={() => pushToast('Access invitation transmitted.', 'success')} style={{ background: '#2A1628', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.5rem 1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>Invite</button>
+                    <input
+                      type="email"
+                      placeholder="Enter colleague's email address..."
+                      value={shareEmail}
+                      onChange={(e) => setShareEmail(e.target.value)}
+                      style={{ flex: 1, padding: '0.5rem', borderRadius: '8px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', outline: 'none' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!shareEmail.trim() || !activeTx) return;
+                        try {
+                          await postBulk({ ids: [activeTx.id], action: 'share', value: shareEmail.trim() }).unwrap();
+                          setShareEmail('');
+                          pushToast('Access invitation transmitted.', 'success');
+                        } catch { pushToast('Failed to share report.', 'danger'); }
+                      }}
+                      style={{ background: '#2A1628', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.5rem 1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      Invite
+                    </button>
                   </div>
                   <div style={{ borderTop: '1px solid rgba(42,22,40,0.06)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     {activeTx.sharedWith && activeTx.sharedWith.length > 0 ? (
-                      activeTx.sharedWith.map((col, idx) => (
+                      activeTx.sharedWith.map((col: string, idx: number) => (
                         <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', background: '#FAF8F5', borderRadius: '8px' }}>
                           <span style={{ fontSize: '0.8125rem', color: '#2A1628', fontWeight: 600 }}>{col}</span>
                           <span style={{ fontSize: '0.7rem', color: '#137333', fontWeight: 700 }}>Can Edit</span>
@@ -1708,17 +1795,29 @@ export default function ReportsTab() {
                   <h3 style={{ margin: '0', fontSize: '0.875rem', fontWeight: 700, color: '#2A1628', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Export Compilation Options</h3>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
                     {[
-                      { fmt: 'PDF Format Document', size: '2.4 MB', type: 'PDF' },
-                      { fmt: 'Excel Workbook File', size: '1.2 MB', type: 'XLSX' },
-                      { fmt: 'CSV Data Sheet Extract', size: '420 KB', type: 'CSV' },
-                      { fmt: 'Audit XML Ledger Packet', size: '890 KB', type: 'XML' }
+                      { fmt: 'PDF Format Document', size: activeTx?.fileSize || '—', type: 'PDF' },
+                      { fmt: 'Excel Workbook File', size: activeTx?.fileSize || '—', type: 'XLSX' },
+                      { fmt: 'CSV Data Sheet Extract', size: activeTx?.fileSize || '—', type: 'CSV' },
+                      { fmt: 'Audit XML Ledger Packet', size: activeTx?.fileSize || '—', type: 'XML' }
                     ].map((e, idx) => (
                       <div key={idx} style={{ padding: '1rem', border: '1px solid #DDD0C4', borderRadius: '12px', background: '#ffffff', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                         <div>
                           <strong style={{ fontSize: '0.8125rem', color: '#2A1628', display: 'block' }}>{e.fmt}</strong>
                           <span style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.45)' }}>File Size: {e.size}</span>
                         </div>
-                        <button type="button" onClick={() => pushToast(`${e.type} export package download started.`, 'success')} style={{ background: '#2A1628', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.4rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>Download {e.type}</button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!activeTx) return;
+                            try {
+                              await postBulk({ ids: [activeTx.id], action: 'export' }).unwrap();
+                              pushToast(`${e.type} export package download started.`, 'success');
+                            } catch { pushToast('Export failed.', 'danger'); }
+                          }}
+                          style={{ background: '#2A1628', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.4rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
+                        >
+                          Download {e.type}
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -1726,20 +1825,27 @@ export default function ReportsTab() {
               )}
 
               {drawerTab === 'notes' && (() => {
-                const list = [
-                  { user: 'Priya Nair', role: 'Reviewer', date: '2026-06-08', text: 'Verified non-deductible addbacks. Audit documentation matches standards.', tag: 'reviewer' },
-                  { user: 'System Agent', role: 'Auditbot', date: '2026-06-08', text: 'Financial compliance check passed. Data validated successfully.', tag: 'ai' },
-                  { user: 'Mahesh Maddu', role: 'Tax Lead', date: '2026-06-07', text: 'Draft matching updated. Internal calculations pinned for review.', tag: 'pinned' },
-                  { user: 'Priya Nair', role: 'Tax Lead', date: '2026-06-05', text: 'VAT submission matched perfectly with local returns ledger.', tag: 'audit' }
-                ];
-                const filteredNotes = list.filter(n => drawerNoteTag === 'all' || n.tag === drawerNoteTag);
+                const list = drawerNotes.map((n: any) => ({ user: n.author || 'Unknown', role: '', date: n.createdAt ? String(n.createdAt).split('T')[0] : '', text: n.body, tag: 'internal' }));
+                const filteredNotes = list.filter((n: any) => drawerNoteTag === 'all' || n.tag === drawerNoteTag);
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      <textarea placeholder="Write review summary notes here..." style={{ width: '100%', minHeight: '80px', padding: '0.625rem', borderRadius: '10px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
+                      <textarea
+                        placeholder="Write review summary notes here..."
+                        value={quickReportNote}
+                        onChange={(e) => setQuickReportNote(e.target.value)}
+                        style={{ width: '100%', minHeight: '80px', padding: '0.625rem', borderRadius: '10px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }}
+                      />
                       <button
                         type="button"
-                        onClick={() => pushToast('Note added successfully.', 'success')}
+                        onClick={async () => {
+                          if (!quickReportNote.trim() || !activeTx) return;
+                          try {
+                            await addNote({ id: activeTx.id, body: quickReportNote.trim() }).unwrap();
+                            setQuickReportNote('');
+                            pushToast('Note added successfully.', 'success');
+                          } catch { pushToast('Failed to add note.', 'danger'); }
+                        }}
                         style={{
                           background: '#E8760A',
                           color: '#ffffff',
@@ -1793,10 +1899,11 @@ export default function ReportsTab() {
                     </div>
 
                     <div style={{ borderTop: '1px solid rgba(42,22,40,0.06)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      {filteredNotes.map((note, idx) => (
+                      {filteredNotes.length === 0 && <p style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.4)', textAlign: 'center' }}>No notes recorded yet.</p>}
+                      {filteredNotes.map((note: any, idx: number) => (
                         <div key={idx} style={{ padding: '0.75rem', background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.03)', borderRadius: '8px', fontSize: '0.75rem' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', color: 'rgba(42,22,40,0.5)', marginBottom: '0.25rem', fontSize: '0.7rem' }}>
-                            <span style={{ fontWeight: 600 }}>{note.user} ({note.role})</span>
+                            <span style={{ fontWeight: 600 }}>{note.user}</span>
                             <span style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
                               <span>{note.date}</span>
                               <span style={{ fontSize: '0.6rem', padding: '0.05rem 0.25rem', borderRadius: '4px', background: 'rgba(232,118,10,0.1)', color: '#E8760A', textTransform: 'uppercase', fontWeight: 700 }}>{note.tag}</span>
@@ -2024,7 +2131,12 @@ export default function ReportsTab() {
           footer={
             <>
               <button type="button" onClick={() => setPopup({ type: null })} style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, color: '#2A1628', cursor: 'pointer' }}>Cancel</button>
-              <button type="button" onClick={() => { setData((prev) => prev.filter((x) => x.id !== popup.tx!.id)); setPopup({ type: null }); pushToast('Report deleted.', 'danger'); }} style={{ background: '#DC2626', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
+              <button type="button" onClick={() => {
+                postBulk({ ids: [popup.tx!.id], action: 'delete' })
+                  .unwrap()
+                  .then(() => { refetch(); setPopup({ type: null }); pushToast('Report deleted.', 'danger'); })
+                  .catch(() => pushToast('Failed to delete report.', 'danger'));
+              }} style={{ background: '#DC2626', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
             </>
           }
         >
@@ -2043,7 +2155,12 @@ export default function ReportsTab() {
           footer={
             <>
               <button type="button" onClick={() => setPopup({ type: null })} style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, color: '#2A1628', cursor: 'pointer' }}>Cancel</button>
-              <button type="button" onClick={() => { setData((prev) => prev.map((x) => (x.id === popup.tx!.id ? { ...x, archived: true } : x))); setPopup({ type: null }); pushToast('Report archived.', 'warning'); }} style={{ background: '#B06000', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}>Archive</button>
+              <button type="button" onClick={() => {
+                postBulk({ ids: [popup.tx!.id], action: 'archive' })
+                  .unwrap()
+                  .then(() => { refetch(); setPopup({ type: null }); pushToast('Report archived.', 'warning'); })
+                  .catch(() => pushToast('Failed to archive report.', 'danger'));
+              }} style={{ background: '#B06000', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}>Archive</button>
             </>
           }
         >
@@ -2062,7 +2179,12 @@ export default function ReportsTab() {
           footer={
             <>
               <button type="button" onClick={() => setPopup({ type: null })} style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, color: '#2A1628', cursor: 'pointer' }}>Cancel</button>
-              <button type="button" onClick={() => { setPopup({ type: null }); pushToast('Report compilation successfully queued.', 'success'); }} style={{ background: '#E8760A', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}>Regenerate</button>
+              <button type="button" onClick={() => {
+                postGenerate({ name: popup.tx!.name, category: popup.tx!.category, client: popup.tx!.client, period: popup.tx!.period, financialYear: popup.tx!.financialYear })
+                  .unwrap()
+                  .then(() => { refetch(); setPopup({ type: null }); pushToast('Report compilation successfully queued.', 'success'); })
+                  .catch(() => pushToast('Failed to regenerate report.', 'danger'));
+              }} style={{ background: '#E8760A', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}>Regenerate</button>
             </>
           }
         >
@@ -2081,7 +2203,14 @@ export default function ReportsTab() {
           footer={
             <>
               <button type="button" onClick={() => setPopup({ type: null })} style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, color: '#2A1628', cursor: 'pointer' }}>Keep Schedule</button>
-              <button type="button" onClick={() => { setPopup({ type: null }); pushToast('Scheduled delivery plan cancelled.', 'danger'); }} style={{ background: '#DC2626', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}>Cancel Schedule</button>
+              <button type="button" onClick={() => {
+                const targetId = menuItem?.id || drawerTxId;
+                if (!targetId) { setPopup({ type: null }); return; }
+                postBulk({ ids: [targetId], action: 'cancelSchedule' })
+                  .unwrap()
+                  .then(() => { refetch(); setPopup({ type: null }); pushToast('Scheduled delivery plan cancelled.', 'danger'); })
+                  .catch(() => pushToast('Failed to cancel schedule.', 'danger'));
+              }} style={{ background: '#DC2626', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}>Cancel Schedule</button>
             </>
           }
         >

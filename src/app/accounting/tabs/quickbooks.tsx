@@ -2,6 +2,10 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Pagination from '@/components/ui/Pagination';
+import {
+  useGetQueueQuery, useGetStatsQuery, useGetAnalyticsQuery, useGetDrawerDetailsQuery, useGetMetadataQuery,
+  usePostConnectMutation, usePostBulkMutation, usePostNoteMutation, usePostDocumentMutation,
+} from '@/lib/qboConnectionsApi';
 
 // ============================================================================
 // Types
@@ -775,9 +779,24 @@ function CustomSelect({ value, onChange, options, placeholder = 'Select...', ico
 }
 
 export default function QuickBooksTab() {
-  const [data, setData] = useState<QboConnectionItem[]>(INITIAL_CONNECTIONS);
+  const { data: queueRes, isLoading: queueLoading, refetch } = useGetQueueQuery({ limit: 1000 });
+  const { data: statsRes } = useGetStatsQuery();
+  const { data: analyticsRes } = useGetAnalyticsQuery();
+  const { data: metaRes } = useGetMetadataQuery();
+  const [postConnect] = usePostConnectMutation();
+  const [postBulk] = usePostBulkMutation();
+  const [addNote] = usePostNoteMutation();
+  const [addDocument] = usePostDocumentMutation();
+  const dynamicManagers = metaRes?.data?.managers?.length ? metaRes.data.managers : MANAGERS;
+  const dynamicClients = metaRes?.data?.clients || [];
+
+  const [data, setData] = useState<QboConnectionItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const nextIdRef = useRef(100);
+
+  useEffect(() => {
+    if (queueRes?.data) setData(queueRes.data);
+  }, [queueRes]);
 
   // Filter bar states
   const [filterManager, setFilterManager] = useState('All');
@@ -943,9 +962,22 @@ export default function QuickBooksTab() {
     return filteredData.slice(startIndex, startIndex + rowsPerPage);
   }, [filteredData, currentPage, rowsPerPage]);
 
+  const { data: drawerDetailsRes } = useGetDrawerDetailsQuery(drawerTxId || '', { skip: !drawerTxId });
+  const drawerMappings = drawerDetailsRes?.data?.mappings || [];
+  const drawerJournalEntries = drawerDetailsRes?.data?.journalEntries || [];
+  const drawerInvoices = drawerDetailsRes?.data?.invoices || [];
+  const drawerPayments = drawerDetailsRes?.data?.payments || [];
+  const drawerSyncLogs = drawerDetailsRes?.data?.syncLogs || [];
+  const drawerValidationChecks = drawerDetailsRes?.data?.validationChecks || [];
+  const drawerTimeline = drawerDetailsRes?.data?.timeline || [];
+  const drawerActivityLog = drawerDetailsRes?.data?.activityLog || [];
+  const drawerDocuments = drawerDetailsRes?.data?.documents || [];
+  const drawerNotes = drawerDetailsRes?.data?.notes || [];
+  const [quickQboNote, setQuickQboNote] = useState('');
+
   const activeTx = useMemo(() => {
-    return data.find((x) => x.id === drawerTxId) || null;
-  }, [data, drawerTxId]);
+    return drawerDetailsRes?.data?.connection || data.find((x) => x.id === drawerTxId) || null;
+  }, [data, drawerTxId, drawerDetailsRes]);
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
@@ -960,20 +992,19 @@ export default function QuickBooksTab() {
   };
 
   const triggerBulkAction = (action: string) => {
-    if (action === 'delete') {
-      setData((prev) => prev.filter((x) => !selectedIds.includes(x.id)));
-      pushToast(`${selectedIds.length} QuickBooks connections removed.`, 'danger');
-      setSelectedIds([]);
-    } else if (action === 'sync') {
-      pushToast(`Triggered QuickBooks sync jobs for ${selectedIds.length} companies.`, 'success');
-      setSelectedIds([]);
-    } else if (action === 'pause') {
-      setData((prev) =>
-        prev.map((x) => (selectedIds.includes(x.id) ? { ...x, connectionStatus: 'Paused' } : x))
-      );
-      pushToast(`Synchronization paused for ${selectedIds.length} companies.`, 'warning');
-      setSelectedIds([]);
-    }
+    if (selectedIds.length === 0) { pushToast('No connections selected.', 'warning'); return; }
+    const actionMap: Record<string, string> = { delete: 'deleteConnections', sync: 'startSync', pause: 'pauseSync' };
+    const backendAction = actionMap[action] || action;
+    postBulk({ ids: selectedIds, action: backendAction })
+      .unwrap()
+      .then(() => {
+        refetch();
+        if (action === 'delete') pushToast(`${selectedIds.length} QuickBooks connections removed.`, 'danger');
+        else if (action === 'sync') pushToast(`Triggered QuickBooks sync jobs for ${selectedIds.length} companies.`, 'success');
+        else if (action === 'pause') pushToast(`Synchronization paused for ${selectedIds.length} companies.`, 'warning');
+        setSelectedIds([]);
+      })
+      .catch(() => pushToast('Bulk action failed.', 'danger'));
   };
 
   // Context Actions Menu state
@@ -1011,39 +1042,20 @@ export default function QuickBooksTab() {
     }
   };
 
-  // Connection Submit
+  // Connection Submit — real OAuth: opens the QuickBooks authorization URL for the selected client
   const handleConnectSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newRealmId) {
-      pushToast('Realm ID / Company ID is required.', 'warning');
-      return;
-    }
-    const newObj: QboConnectionItem = {
-      id: `qbo-${nextIdRef.current++}`,
-      company: newCompany,
-      qboCompanyId: newRealmId,
-      connectionStatus: 'Connected',
-      syncType: 'Full Sync',
-      lastSync: 'Just now',
-      invoicesCount: 0,
-      paymentsCount: 0,
-      journalEntriesCount: 0,
-      syncErrorsCount: 0,
-      successRate: 100,
-      manager: newManager,
-      updated: new Date().toISOString().split('T')[0],
-      priority: 'Medium',
-      realmId: newRealmId,
-      apiVersion: 'v3',
-      environment: newEnv,
-      connectedUser: 'inc.hub.qbo@intuit.com',
-      scopes: ['com.intuit.quickbooks.accounting', 'com.intuit.quickbooks.payment'],
-      autoSync: true,
-      syncFrequency: 'Daily'
-    };
-    setData([newObj, ...data]);
-    setPopup({ type: null });
-    pushToast(`Successfully linked company: ${newCompany}`, 'success');
+    postConnect({ company: newCompany })
+      .unwrap()
+      .then((res: any) => {
+        setPopup({ type: null });
+        if (res?.data?.authUrl && typeof window !== 'undefined') {
+          window.open(res.data.authUrl, '_blank', 'noopener,noreferrer');
+        }
+        refetch();
+        pushToast(`Redirecting to QuickBooks authorization for ${newCompany}...`, 'success');
+      })
+      .catch(() => pushToast('Failed to start QuickBooks connection.', 'danger'));
   };
 
   return (
@@ -1151,14 +1163,14 @@ export default function QuickBooksTab() {
         {[
           { label: 'Connected Companies', value: stats.connected, sub: 'Active Integrations', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18.36 6.64a9 9 0 0 1 0 12.73M6.01 7.97a5 5 0 0 1 0 8.06M12 2v20M17 12h5M2 12h5" /></svg> },
           { label: 'Pending Sync Jobs', value: data.filter(x => x.connectionStatus === 'Pending Sync').length, sub: 'Queued API Queue', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg> },
-          { label: 'Successful Sync Today', value: '428', sub: 'All Jobs Cleared', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg> },
+          { label: 'Successful Sync Today', value: statsRes?.data?.syncedToday ?? 0, sub: 'Jobs Synced Today', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg> },
           { label: 'Failed Sync Jobs', value: stats.failed, sub: 'Requires Authentication', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg> },
-          { label: 'Total Journal Entries', value: stats.journals.toLocaleString(), sub: 'Double-entry Logs', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5V4.5z" /></svg> },
-          { label: 'Synced Invoices', value: stats.invoices.toLocaleString(), sub: 'Receivables Synced', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg> },
-          { label: 'Synced Payments', value: stats.payments.toLocaleString(), sub: 'Settlements Reconciled', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg> },
-          { label: 'Last Sync Time', value: '7 mins ago', sub: 'Cron Auto Daemon', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg> },
-          { label: 'Sync Success Rate', value: '98.6%', sub: 'API Call Quality Ratio', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg> },
-          { label: 'Active API Connections', value: '8', sub: 'OAuth 2.0 Client Tokens', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5l-3-3" /></svg> },
+          { label: 'Total Journal Entries', value: (statsRes?.data?.totalJournalEntries ?? stats.journals).toLocaleString(), sub: 'Double-entry Logs', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5V4.5z" /></svg> },
+          { label: 'Synced Invoices', value: (statsRes?.data?.syncedInvoices ?? stats.invoices).toLocaleString(), sub: 'Receivables Synced', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg> },
+          { label: 'Synced Payments', value: (statsRes?.data?.syncedPayments ?? stats.payments).toLocaleString(), sub: 'Settlements Reconciled', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg> },
+          { label: 'Last Sync Time', value: statsRes?.data?.lastSyncTime ? new Date(statsRes.data.lastSyncTime).toLocaleString() : 'Never', sub: 'Most Recent Sync', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg> },
+          { label: 'Sync Success Rate', value: `${statsRes?.data?.syncSuccessRate ?? 100}%`, sub: 'API Call Quality Ratio', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg> },
+          { label: 'Active API Connections', value: statsRes?.data?.activeApiConnections ?? stats.connected, sub: 'OAuth 2.0 Client Tokens', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5l-3-3" /></svg> },
         ].map((card, idx) => (
           <div
             key={idx}
@@ -1357,7 +1369,7 @@ export default function QuickBooksTab() {
           </div>
         </div>
 
-        <CustomSelect value={filterManager} onChange={setFilterManager} options={['All', ...MANAGERS]} placeholder="Manager" />
+        <CustomSelect value={filterManager} onChange={setFilterManager} options={['All', ...dynamicManagers]} placeholder="Manager" />
         <CustomSelect value={filterStatus} onChange={setFilterStatus} options={CONNECTION_STATUSES} placeholder="Status" />
         <CustomSelect value={filterSyncType} onChange={setFilterSyncType} options={SYNC_TYPES} placeholder="Sync Type" />
         <CustomSelect value={filterEnvironment} onChange={setFilterEnvironment} options={ENVIRONMENTS} placeholder="Environment" />
@@ -1964,24 +1976,25 @@ export default function QuickBooksTab() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
                     <thead>
                       <tr style={{ background: '#FAF8F5', borderBottom: '1px solid rgba(42,22,40,0.06)', color: 'rgba(42,22,40,0.5)' }}>
-                        <th style={{ padding: '0.5rem', textAlign: 'left' }}>IncHub Field</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'left' }}>QuickBooks Equivalent</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'left' }}>Local ID</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'left' }}>QuickBooks ID</th>
                         <th style={{ padding: '0.5rem', textAlign: 'center' }}>Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {[
-                        { src: 'Accounts Receivable', qbo: 'Debtors (QBO-123)', st: 'Mapped' },
-                        { src: 'Accounts Payable', qbo: 'Creditors (QBO-981)', st: 'Mapped' },
-                        { src: 'Standard Sales Tax (5%)', qbo: 'VAT Standard 5%', st: 'Mapped' },
-                        { src: 'Zero Rated Returns', qbo: 'VAT Zero 0%', st: 'Mapped' }
-                      ].map((mapRow, idx) => (
-                        <tr key={idx} style={{ borderBottom: '1px solid rgba(42,22,40,0.04)' }}>
-                          <td style={{ padding: '0.5rem', fontWeight: 600 }}>{mapRow.src}</td>
-                          <td style={{ padding: '0.5rem' }}>{mapRow.qbo}</td>
-                          <td style={{ padding: '0.5rem', textAlign: 'center' }}><span style={{ color: '#137333', background: 'rgba(19,115,51,0.08)', padding: '0.1rem 0.35rem', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 700 }}>{mapRow.st}</span></td>
-                        </tr>
-                      ))}
+                      {drawerMappings
+                        .filter((m: any) => {
+                          const typeMap: Record<string, string[]> = { accounts: ['Account'], taxCodes: ['TaxCode'], customers: ['Customer'], vendors: ['Vendor'] };
+                          return (typeMap[mappingSubTab] || []).includes(m.entityType);
+                        })
+                        .map((mapRow: any) => (
+                          <tr key={mapRow.id} style={{ borderBottom: '1px solid rgba(42,22,40,0.04)' }}>
+                            <td style={{ padding: '0.5rem', fontWeight: 600 }}>{String(mapRow.localId).slice(0, 8)}</td>
+                            <td style={{ padding: '0.5rem' }}>{mapRow.qboId || '—'}</td>
+                            <td style={{ padding: '0.5rem', textAlign: 'center' }}><span style={{ color: mapRow.lastSyncStatus === 'Synced' ? '#137333' : '#C5221F', background: mapRow.lastSyncStatus === 'Synced' ? 'rgba(19,115,51,0.08)' : 'rgba(197,34,31,0.08)', padding: '0.1rem 0.35rem', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 700 }}>{mapRow.lastSyncStatus}</span></td>
+                          </tr>
+                        ))}
+                      {drawerMappings.length === 0 && <tr><td colSpan={3} style={{ padding: '1rem', textAlign: 'center', color: 'rgba(42,22,40,0.45)' }}>No mappings recorded yet.</td></tr>}
                     </tbody>
                   </table>
                 </div>
@@ -2007,32 +2020,25 @@ export default function QuickBooksTab() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
                     <thead>
                       <tr style={{ background: '#FAF8F5', borderBottom: '1px solid rgba(42,22,40,0.06)' }}>
-                        <th style={{ padding: '0.5rem', textAlign: 'left' }}>Ref</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'left' }}>Description</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'right' }}>Debit (AED)</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'right' }}>Credit (AED)</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'left' }}>Local ID</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'left' }}>QBO ID</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'right' }}>Sync Version</th>
                         <th style={{ padding: '0.5rem', textAlign: 'center' }}>Sync</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {[
-                        { ref: 'JV-2026-001', desc: 'Retained Earnings Adjustment', dr: 45000, cr: 0, st: 'Synced' },
-                        { ref: 'JV-2026-002', desc: 'Prepaid Lease Accrual Closeout', dr: 0, cr: 45000, st: 'Synced' }
-                      ].map((jv, idx) => (
-                        <tr key={idx} style={{ borderBottom: '1px solid rgba(42,22,40,0.04)' }}>
-                          <td style={{ padding: '0.5rem', fontWeight: 600 }}>{jv.ref}</td>
-                          <td style={{ padding: '0.5rem' }}>{jv.desc}</td>
-                          <td style={{ padding: '0.5rem', textAlign: 'right' }}>{jv.dr.toLocaleString()}</td>
-                          <td style={{ padding: '0.5rem', textAlign: 'right' }}>{jv.cr.toLocaleString()}</td>
-                          <td style={{ padding: '0.5rem', textAlign: 'center' }}><span style={{ color: '#137333', fontWeight: 700 }}>{jv.st}</span></td>
+                      {drawerJournalEntries.map((jv: any) => (
+                        <tr key={jv.id} style={{ borderBottom: '1px solid rgba(42,22,40,0.04)' }}>
+                          <td style={{ padding: '0.5rem', fontWeight: 600 }}>{String(jv.localId).slice(0, 8)}</td>
+                          <td style={{ padding: '0.5rem' }}>{jv.qboId || '—'}</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'right' }}>{jv.syncVersion}</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'center' }}><span style={{ color: jv.lastSyncStatus === 'Synced' ? '#137333' : '#C5221F', fontWeight: 700 }}>{jv.lastSyncStatus}</span></td>
                         </tr>
                       ))}
+                      {drawerJournalEntries.length === 0 && <tr><td colSpan={4} style={{ padding: '1rem', textAlign: 'center', color: 'rgba(42,22,40,0.45)' }}>No journal entries synced yet.</td></tr>}
                     </tbody>
                   </table>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'rgba(42,22,40,0.5)', marginTop: '0.25rem' }}>
-                    <span>Showing 1-2 of 2 journals</span>
-                    <span style={{ fontWeight: 600, cursor: 'pointer' }}>Next Page →</span>
-                  </div>
+                  <div style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.5)', marginTop: '0.25rem' }}>Showing {drawerJournalEntries.length} journal entr{drawerJournalEntries.length === 1 ? 'y' : 'ies'}</div>
                 </div>
               )}
 
@@ -2056,30 +2062,25 @@ export default function QuickBooksTab() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
                     <thead>
                       <tr style={{ background: '#FAF8F5', borderBottom: '1px solid rgba(42,22,40,0.06)' }}>
-                        <th style={{ padding: '0.5rem', textAlign: 'left' }}>Invoice #</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'left' }}>Customer</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'right' }}>Amount (AED)</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'left' }}>Local ID</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'left' }}>QBO ID</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'left' }}>Entity Type</th>
                         <th style={{ padding: '0.5rem', textAlign: 'center' }}>Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {[
-                        { no: 'INV-2026-99', cust: 'Dubai Mall Retail', amt: 125000, st: 'Synced' },
-                        { no: 'INV-2026-100', cust: 'Al Maya Wholesale', amt: 45000, st: 'Synced' }
-                      ].map((inv, idx) => (
-                        <tr key={idx} style={{ borderBottom: '1px solid rgba(42,22,40,0.04)' }}>
-                          <td style={{ padding: '0.5rem', fontWeight: 600 }}>{inv.no}</td>
-                          <td style={{ padding: '0.5rem' }}>{inv.cust}</td>
-                          <td style={{ padding: '0.5rem', textAlign: 'right' }}>{inv.amt.toLocaleString()}</td>
-                          <td style={{ padding: '0.5rem', textAlign: 'center' }}><span style={{ color: '#137333', background: 'rgba(19,115,51,0.08)', padding: '0.1rem 0.35rem', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 700 }}>{inv.st}</span></td>
+                      {drawerInvoices.map((inv: any) => (
+                        <tr key={inv.id} style={{ borderBottom: '1px solid rgba(42,22,40,0.04)' }}>
+                          <td style={{ padding: '0.5rem', fontWeight: 600 }}>{String(inv.localId).slice(0, 8)}</td>
+                          <td style={{ padding: '0.5rem' }}>{inv.qboId || '—'}</td>
+                          <td style={{ padding: '0.5rem' }}>{inv.entityType}</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'center' }}><span style={{ color: inv.lastSyncStatus === 'Synced' ? '#137333' : '#C5221F', background: inv.lastSyncStatus === 'Synced' ? 'rgba(19,115,51,0.08)' : 'rgba(197,34,31,0.08)', padding: '0.1rem 0.35rem', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 700 }}>{inv.lastSyncStatus}</span></td>
                         </tr>
                       ))}
+                      {drawerInvoices.length === 0 && <tr><td colSpan={4} style={{ padding: '1rem', textAlign: 'center', color: 'rgba(42,22,40,0.45)' }}>No invoices synced yet.</td></tr>}
                     </tbody>
                   </table>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'rgba(42,22,40,0.5)', marginTop: '0.25rem' }}>
-                    <span>Showing 1-2 of 2 invoices</span>
-                    <span style={{ fontWeight: 600, cursor: 'pointer' }}>Next Page →</span>
-                  </div>
+                  <div style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.5)', marginTop: '0.25rem' }}>Showing {drawerInvoices.length} invoice{drawerInvoices.length === 1 ? '' : 's'}</div>
                 </div>
               )}
 
@@ -2103,30 +2104,25 @@ export default function QuickBooksTab() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
                     <thead>
                       <tr style={{ background: '#FAF8F5', borderBottom: '1px solid rgba(42,22,40,0.06)' }}>
-                        <th style={{ padding: '0.5rem', textAlign: 'left' }}>Payment ID</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'left' }}>Method</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'right' }}>Amount (AED)</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'left' }}>Local ID</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'left' }}>Entity Type</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'left' }}>QBO ID</th>
                         <th style={{ padding: '0.5rem', textAlign: 'center' }}>Sync</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {[
-                        { pid: 'PAY-8821', method: 'Bank Transfer', amt: 125000, st: 'Success' },
-                        { pid: 'PAY-8822', method: 'Credit Card', amt: 45000, st: 'Success' }
-                      ].map((pay, idx) => (
-                        <tr key={idx} style={{ borderBottom: '1px solid rgba(42,22,40,0.04)' }}>
-                          <td style={{ padding: '0.5rem', fontWeight: 600 }}>{pay.pid}</td>
-                          <td style={{ padding: '0.5rem' }}>{pay.method}</td>
-                          <td style={{ padding: '0.5rem', textAlign: 'right' }}>{pay.amt.toLocaleString()}</td>
-                          <td style={{ padding: '0.5rem', textAlign: 'center' }}><span style={{ color: '#137333', fontWeight: 700 }}>{pay.st}</span></td>
+                      {drawerPayments.map((pay: any) => (
+                        <tr key={pay.id} style={{ borderBottom: '1px solid rgba(42,22,40,0.04)' }}>
+                          <td style={{ padding: '0.5rem', fontWeight: 600 }}>{String(pay.localId).slice(0, 8)}</td>
+                          <td style={{ padding: '0.5rem' }}>{pay.entityType}</td>
+                          <td style={{ padding: '0.5rem' }}>{pay.qboId || '—'}</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'center' }}><span style={{ color: pay.lastSyncStatus === 'Synced' ? '#137333' : '#C5221F', fontWeight: 700 }}>{pay.lastSyncStatus}</span></td>
                         </tr>
                       ))}
+                      {drawerPayments.length === 0 && <tr><td colSpan={4} style={{ padding: '1rem', textAlign: 'center', color: 'rgba(42,22,40,0.45)' }}>No payments synced yet.</td></tr>}
                     </tbody>
                   </table>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'rgba(42,22,40,0.5)', marginTop: '0.25rem' }}>
-                    <span>Showing 1-2 of 2 payments</span>
-                    <span style={{ fontWeight: 600, cursor: 'pointer' }}>Next Page →</span>
-                  </div>
+                  <div style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.5)', marginTop: '0.25rem' }}>Showing {drawerPayments.length} payment{drawerPayments.length === 1 ? '' : 's'}</div>
                 </div>
               )}
 
@@ -2147,32 +2143,28 @@ export default function QuickBooksTab() {
                     </button>
                   </div>
 
-                  {[
-                    { time: '2026-05-07 09:42', type: 'Full Sync Run', st: 'Success', dur: '02m 34s', msg: 'Sync completed cleanly. 12,548 records updated.' },
-                    { time: '2026-05-07 07:15', type: 'Invoice Sync Run', st: 'Success', dur: '01m 12s', msg: 'Invoice sync completed cleanly. 2,145 records updated.' }
-                  ].map((logItem, idx) => (
-                    <div key={idx} style={{ padding: '0.75rem', background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.03)', borderRadius: '8px', fontSize: '0.75rem' }}>
+                  {drawerSyncLogs.map((logItem: any) => (
+                    <div key={logItem.id} style={{ padding: '0.75rem', background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.03)', borderRadius: '8px', fontSize: '0.75rem' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', color: 'rgba(42,22,40,0.5)', marginBottom: '0.25rem' }}>
-                        <span style={{ fontWeight: 700 }}>{logItem.type}</span>
-                        <span>{logItem.time} ({logItem.dur})</span>
+                        <span style={{ fontWeight: 700 }}>{logItem.entityType} — {logItem.syncStatus}</span>
+                        <span>{logItem.lastAttemptAt ? String(logItem.lastAttemptAt).replace('T', ' ').split('.')[0] : 'Not attempted'}</span>
                       </div>
-                      <div style={{ color: '#2A1628' }}>{logItem.msg}</div>
+                      <div style={{ color: '#2A1628' }}>{logItem.failureReason || `Retry count: ${logItem.retryCount}`}</div>
                     </div>
                   ))}
+                  {drawerSyncLogs.length === 0 && <p style={{ fontSize: '0.8125rem', color: 'rgba(42,22,40,0.45)', fontStyle: 'italic' }}>No sync log entries yet.</p>}
                 </div>
               )}
 
               {drawerTab === 'validation' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {[
-                    { check: 'API connection certificate verification', res: 'Passed' },
-                    { check: 'Chart of Accounts integration tree mapping', res: 'Passed' },
-                    { check: 'VAT tax codes lookup sync check', res: 'Passed' },
-                    { check: 'OAuth token expiry status verification', res: 'Passed' }
-                  ].map((chk, idx) => (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.03)', borderRadius: '8px', fontSize: '0.75rem' }}>
-                      <span style={{ color: '#2A1628', fontWeight: 550 }}>{chk.check}</span>
-                      <span style={{ color: '#137333', fontWeight: 700 }}>{chk.res}</span>
+                  {drawerValidationChecks.map((chk: any) => (
+                    <div key={chk.key} style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', padding: '0.75rem', background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.03)', borderRadius: '8px', fontSize: '0.75rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#2A1628', fontWeight: 550 }}>{chk.label}</span>
+                        <span style={{ color: chk.status === 'pass' ? '#137333' : chk.status === 'warning' ? '#c2410c' : '#C5221F', fontWeight: 700 }}>{chk.status.toUpperCase()}</span>
+                      </div>
+                      <span style={{ color: 'rgba(42,22,40,0.5)' }}>{chk.detail}</span>
                     </div>
                   ))}
                 </div>
@@ -2180,10 +2172,7 @@ export default function QuickBooksTab() {
 
               {drawerTab === 'timeline' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderLeft: '2px solid rgba(232,118,10,0.2)', paddingLeft: '1rem', marginLeft: '0.5rem' }}>
-                  {[
-                    { title: 'Full synchronization run finished', date: '2026-05-07 09:42', desc: '12,548 journal balances updated to QuickBooks ledger.', type: 'success', user: 'Mahesh Maddu', avatar: 'MM', duration: '2m 30s' },
-                    { title: 'QuickBooks Online OAuth connection created', date: '2026-01-15 14:20', desc: 'Linked realm ID 901927384 under credentials authorization.', type: 'info', user: 'System Agent', avatar: 'SA', duration: '12s' }
-                  ].map((tl, idx) => (
+                  {drawerTimeline.map((tl: any, idx: number) => (
                     <div key={idx} style={{ position: 'relative' }}>
                       <span style={{
                         position: 'absolute',
@@ -2192,46 +2181,35 @@ export default function QuickBooksTab() {
                         width: '10px',
                         height: '10px',
                         borderRadius: '50%',
-                        background: tl.type === 'success' ? '#137333' : '#E8760A',
+                        background: tl.status === 'done' ? '#137333' : '#DDD0C4',
                         border: '2px solid #fff'
                       }} />
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#2A1628' }}>{tl.title}</div>
-                        <span style={{ fontSize: '0.6rem', padding: '0.1rem 0.35rem', borderRadius: '4px', background: tl.type === 'success' ? 'rgba(19,115,51,0.08)' : 'rgba(232,118,10,0.08)', color: tl.type === 'success' ? '#137333' : '#E8760A', fontWeight: 700, textTransform: 'uppercase' }}>{tl.type}</span>
+                        <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#2A1628' }}>{tl.stage}</div>
+                        <span style={{ fontSize: '0.6rem', padding: '0.1rem 0.35rem', borderRadius: '4px', background: tl.status === 'done' ? 'rgba(19,115,51,0.08)' : 'rgba(42,22,40,0.06)', color: tl.status === 'done' ? '#137333' : 'rgba(42,22,40,0.5)', fontWeight: 700, textTransform: 'uppercase' }}>{tl.status}</span>
                       </div>
                       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.65rem', color: 'rgba(42,22,40,0.45)', margin: '0.2rem 0' }}>
-                        <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#2A1628', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.5rem', fontWeight: 700 }}>{tl.avatar}</div>
-                        <span>{tl.user}</span>
+                        <span>{tl.actor || 'System'}</span>
                         <span>•</span>
-                        <span>{tl.date}</span>
-                        <span>•</span>
-                        <span>Duration: {tl.duration}</span>
+                        <span>{tl.timestamp ? String(tl.timestamp).replace('T', ' ').split('.')[0] : 'Pending'}</span>
                       </div>
-                      <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.65)', lineHeight: 1.3 }}>{tl.desc}</div>
                     </div>
                   ))}
+                  {drawerTimeline.length === 0 && <p style={{ fontSize: '0.8125rem', color: 'rgba(42,22,40,0.45)', fontStyle: 'italic' }}>No timeline events yet.</p>}
                 </div>
               )}
 
               {drawerTab === 'activity' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {[
-                    { act: 'OAuth access credentials token refreshed', user: 'System Auto Agent', avatar: 'SA', ip: '192.168.1.100', browser: 'Chrome v124', device: 'Ubuntu Server', badge: 'AUTH', date: '2026-05-07 09:00' },
-                    { act: 'QuickBooks client configurations updated', user: 'Mahesh Maddu', avatar: 'MM', ip: '185.22.45.1', browser: 'Safari v17', device: 'macOS Apple M3', badge: 'CONFIG', date: '2026-05-06 17:40' }
-                  ].map((actItem, idx) => (
-                    <div key={idx} style={{ padding: '0.75rem', background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.03)', borderRadius: '8px', fontSize: '0.75rem' }}>
+                  {drawerActivityLog.length === 0 && <p style={{ fontSize: '0.8125rem', color: 'rgba(42,22,40,0.45)', fontStyle: 'italic' }}>No activity recorded yet.</p>}
+                  {drawerActivityLog.map((actItem: any) => (
+                    <div key={actItem.id} style={{ padding: '0.75rem', background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.03)', borderRadius: '8px', fontSize: '0.75rem' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#2A1628', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 700 }}>{actItem.avatar}</div>
-                          <span style={{ fontWeight: 700, color: '#2A1628' }}>{actItem.user}</span>
-                        </div>
-                        <span style={{ fontSize: '0.6rem', background: 'rgba(42,22,40,0.08)', color: '#2A1628', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 700 }}>{actItem.badge}</span>
+                        <span style={{ fontWeight: 700, color: '#2A1628' }}>{actItem.changedBy || 'System'}</span>
+                        <span style={{ fontSize: '0.6rem', background: 'rgba(42,22,40,0.08)', color: '#2A1628', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 700 }}>{actItem.operation}</span>
                       </div>
-                      <div style={{ color: '#2A1628', fontWeight: 550, marginBottom: '0.35rem' }}>{actItem.act}</div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', color: 'rgba(42,22,40,0.45)', fontSize: '0.65rem' }}>
-                        <span>IP: {actItem.ip} • {actItem.browser} ({actItem.device})</span>
-                        <span>{actItem.date}</span>
-                      </div>
+                      <div style={{ color: '#2A1628', fontWeight: 550, marginBottom: '0.35rem' }}>{String(actItem.tableName).replace(/_/g, ' ')} updated</div>
+                      <div style={{ color: 'rgba(42,22,40,0.45)', fontSize: '0.65rem' }}>{actItem.changedAt ? String(actItem.changedAt).replace('T', ' ').split('.')[0] : ''}</div>
                     </div>
                   ))}
                 </div>
@@ -2241,31 +2219,31 @@ export default function QuickBooksTab() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   {/* File Upload Zone */}
                   <div
-                    onClick={() => pushToast('Opening system file selector...', 'info')}
+                    onClick={() => {
+                      const name = window.prompt('Document name (metadata only — no real file upload in this build):');
+                      if (!name || !activeTx) return;
+                      addDocument({ id: activeTx.id, name, type: 'Supporting Doc' })
+                        .unwrap()
+                        .then(() => pushToast('Document recorded.', 'success'))
+                        .catch(() => pushToast('Failed to record document.', 'danger'));
+                    }}
                     style={{ border: '1.5px dashed #DDD0C4', borderRadius: '12px', padding: '1rem', textAlign: 'center', background: '#FAF8F5', cursor: 'pointer' }}
                   >
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#E8760A' }}>+ Upload New Document</span>
-                    <p style={{ margin: '0.2rem 0 0', fontSize: '0.65rem', color: 'rgba(42,22,40,0.45)' }}>Supports PDF, XLSX, PNG up to 10MB</p>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#E8760A' }}>+ Add Document</span>
+                    <p style={{ margin: '0.2rem 0 0', fontSize: '0.65rem', color: 'rgba(42,22,40,0.45)' }}>Metadata record — supports PDF, XLSX, PNG</p>
                   </div>
 
+                  {drawerDocuments.length === 0 && <p style={{ fontSize: '0.8125rem', color: 'rgba(42,22,40,0.45)', fontStyle: 'italic' }}>No documents recorded yet.</p>}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
-                    {[
-                      { doc: 'Sync_Error_Report_Q1.pdf', size: '420 KB', by: 'Mahesh Maddu', date: '2026-05-06' },
-                      { doc: 'QuickBooks_Ledger_Snapshot.xlsx', size: '1.4 MB', by: 'System Agent', date: '2026-05-05' }
-                    ].map((doc, idx) => (
-                      <div key={idx} style={{ padding: '1rem', border: '1px solid #DDD0C4', borderRadius: '12px', background: '#ffffff', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem' }}>
+                    {drawerDocuments.map((doc: any) => (
+                      <div key={doc.id} style={{ padding: '1rem', border: '1px solid #DDD0C4', borderRadius: '12px', background: '#ffffff', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem' }}>
                         <div>
-                          <strong style={{ color: '#2A1628', display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{doc.doc}</strong>
+                          <strong style={{ color: '#2A1628', display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{doc.name}</strong>
                           <div style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.5)', marginTop: '0.2rem', display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
-                            <span>Size: {doc.size}</span>
-                            <span>Uploaded by: {doc.by}</span>
-                            <span>Date: {doc.date}</span>
+                            <span>Type: {doc.type}</span>
+                            <span>Uploaded by: {doc.uploadedBy || 'Unknown'}</span>
+                            <span>Date: {doc.createdAt ? String(doc.createdAt).split('T')[0] : ''}</span>
                           </div>
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.35rem' }}>
-                          <button type="button" onClick={() => pushToast(`Previewing ${doc.doc}...`, 'info')} style={{ flex: 1, background: '#FAF8F5', border: '1px solid #DDD0C4', borderRadius: '6px', padding: '0.35rem', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', color: '#2A1628' }}>Preview</button>
-                          <button type="button" onClick={() => pushToast(`${doc.doc} downloaded.`, 'success')} style={{ flex: 1, background: '#2A1628', color: '#fff', border: 'none', borderRadius: '6px', padding: '0.35rem', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer' }}>Download</button>
-                          <button type="button" onClick={() => pushToast(`${doc.doc} deleted.`, 'danger')} style={{ background: 'rgba(197,34,31,0.06)', border: '1px solid rgba(197,34,31,0.15)', color: '#C5221F', borderRadius: '6px', padding: '0.35rem', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer' }}>✕</button>
                         </div>
                       </div>
                     ))}
@@ -2287,83 +2265,47 @@ export default function QuickBooksTab() {
                 </div>
               )}
 
-              {drawerTab === 'notes' && (() => {
-                const list = [
-                  { id: '1', user: 'Mahesh Maddu', role: 'Tax Lead', date: '2026-05-06', text: 'Confirmed QBO COA structure matches local accounting tree mappings.', tag: 'reviewer', pinned: true }
-                ];
-                const filteredNotes = list.filter(n => drawerNoteTag === 'all' || n.tag === drawerNoteTag);
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      <textarea placeholder="Write review summary notes here... (Use @ to mention users, attach files)" style={{ width: '100%', minHeight: '80px', padding: '0.625rem', borderRadius: '10px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.45)', cursor: 'pointer' }}>📎 Attach reference file</span>
-                        <button
-                          type="button"
-                          onClick={() => pushToast('Note added successfully.', 'success')}
-                          style={{ background: '#E8760A', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '0.5rem 1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
-                        >
-                          Add Note
-                        </button>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '0.25rem', overflowX: 'auto', paddingBottom: '0.25rem' }} className="hide-scrollbar">
-                      {[
-                        { key: 'all' as const, label: 'All Notes' },
-                        { key: 'internal' as const, label: 'Internal' },
-                        { key: 'ai' as const, label: 'AI Summary' },
-                        { key: 'audit' as const, label: 'Audit Notes' },
-                        { key: 'pinned' as const, label: 'Pinned Notes' },
-                        { key: 'reviewer' as const, label: 'Reviewer Notes' }
-                      ].map((pill) => {
-                        const isPillActive = drawerNoteTag === pill.key;
-                        return (
-                          <button
-                            key={pill.key}
-                            type="button"
-                            onClick={() => setDrawerNoteTag(pill.key)}
-                            style={{
-                              padding: '0.25rem 0.6rem',
-                              borderRadius: '6px',
-                              border: isPillActive ? '1px solid #E8760A' : '1px solid rgba(42,22,40,0.15)',
-                              background: isPillActive ? 'rgba(232,118,10,0.06)' : 'transparent',
-                              color: isPillActive ? '#E8760A' : 'rgba(42,22,40,0.6)',
-                              fontSize: '0.7rem',
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                              whiteSpace: 'nowrap',
-                              fontFamily: 'inherit'
-                            }}
-                          >
-                            {pill.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    <div style={{ borderTop: '1px solid rgba(42,22,40,0.06)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      {filteredNotes.map((note, idx) => (
-                        <div key={idx} style={{ padding: '0.75rem', background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.03)', borderRadius: '8px', fontSize: '0.75rem', position: 'relative' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'rgba(42,22,40,0.5)', marginBottom: '0.25rem', fontSize: '0.7rem' }}>
-                            <span style={{ fontWeight: 600 }}>{note.user} ({note.role}) {note.pinned && '📌'}</span>
-                            <span style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                              <span>{note.date}</span>
-                              <span style={{ fontSize: '0.6rem', padding: '0.05rem 0.25rem', borderRadius: '4px', background: 'rgba(232,118,10,0.1)', color: '#E8760A', textTransform: 'uppercase', fontWeight: 700 }}>{note.tag}</span>
-                            </span>
-                          </div>
-                          <div style={{ color: '#2A1628', lineHeight: 1.3, marginBottom: '0.5rem' }}>{note.text}</div>
-                          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', fontSize: '0.65rem' }}>
-                            <span style={{ color: '#E8760A', cursor: 'pointer', fontWeight: 600 }} onClick={() => pushToast('Editing note...', 'info')}>Edit</span>
-                            <span style={{ color: '#C5221F', cursor: 'pointer', fontWeight: 600 }} onClick={() => pushToast('Note deleted.', 'danger')}>Delete</span>
-                            <span style={{ color: '#2A1628', cursor: 'pointer', fontWeight: 600 }} onClick={() => pushToast('Note status updated.', 'success')}>Pin</span>
-                          </div>
-                        </div>
-                      ))}
+              {drawerTab === 'notes' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <textarea
+                      placeholder="Write review summary notes here..."
+                      value={quickQboNote}
+                      onChange={(e) => setQuickQboNote(e.target.value)}
+                      style={{ width: '100%', minHeight: '80px', padding: '0.625rem', borderRadius: '10px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                      <button
+                        type="button"
+                        disabled={!quickQboNote.trim()}
+                        onClick={() => {
+                          if (!activeTx || !quickQboNote.trim()) return;
+                          addNote({ id: activeTx.id, body: quickQboNote })
+                            .unwrap()
+                            .then(() => { setQuickQboNote(''); pushToast('Note added successfully.', 'success'); })
+                            .catch(() => pushToast('Failed to add note.', 'danger'));
+                        }}
+                        style={{ background: '#E8760A', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '0.5rem 1rem', fontSize: '0.75rem', fontWeight: 700, cursor: quickQboNote.trim() ? 'pointer' : 'not-allowed', opacity: quickQboNote.trim() ? 1 : 0.6, fontFamily: 'inherit' }}
+                      >
+                        Add Note
+                      </button>
                     </div>
                   </div>
-                );
-              })()}
+
+                  <div style={{ borderTop: '1px solid rgba(42,22,40,0.06)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {drawerNotes.length === 0 && <p style={{ fontSize: '0.8125rem', color: 'rgba(42,22,40,0.45)', fontStyle: 'italic' }}>No notes yet.</p>}
+                    {drawerNotes.map((note: any) => (
+                      <div key={note.id} style={{ padding: '0.75rem', background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.03)', borderRadius: '8px', fontSize: '0.75rem', position: 'relative' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'rgba(42,22,40,0.5)', marginBottom: '0.25rem', fontSize: '0.7rem' }}>
+                          <span style={{ fontWeight: 600 }}>{note.author || 'Unknown'}</span>
+                          <span>{note.createdAt ? String(note.createdAt).split('T')[0] : ''}</span>
+                        </div>
+                        <div style={{ color: '#2A1628', lineHeight: 1.3 }}>{note.body}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -2386,7 +2328,7 @@ export default function QuickBooksTab() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Select Target Company</label>
-              <CustomSelect value={newCompany} onChange={setNewCompany} options={['ABC Trading LLC', 'XYZ Holdings Limited', 'Alpha Tech FZCO', 'Delta Properties FZCO', 'Beta Industries LLC']} />
+              <CustomSelect value={newCompany} onChange={setNewCompany} options={dynamicClients.length ? dynamicClients.map((c: any) => c.name) : ['ABC Trading LLC', 'XYZ Holdings Limited', 'Alpha Tech FZCO', 'Delta Properties FZCO', 'Beta Industries LLC']} />
             </div>
             <div>
               <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Realm ID / Company ID</label>
@@ -2438,9 +2380,10 @@ export default function QuickBooksTab() {
             <>
               <button type="button" onClick={() => setPopup({ type: null })} style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, color: '#2A1628', cursor: 'pointer' }}>Cancel</button>
               <button type="button" onClick={() => {
-                setData((prev) => prev.map((x) => (x.id === popup.tx?.id ? { ...x, connectionStatus: 'Disconnected' } : x)));
-                setPopup({ type: null });
-                pushToast('QuickBooks Online company disconnected.', 'danger');
+                postBulk({ ids: [popup.tx!.id], action: 'disconnect' })
+                  .unwrap()
+                  .then(() => { refetch(); setPopup({ type: null }); pushToast('QuickBooks Online company disconnected.', 'danger'); })
+                  .catch(() => pushToast('Failed to disconnect.', 'danger'));
               }} style={{ background: '#DC2626', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}>Disconnect</button>
             </>
           }
@@ -2461,9 +2404,15 @@ export default function QuickBooksTab() {
             <>
               <button type="button" onClick={() => setPopup({ type: null })} style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, color: '#2A1628', cursor: 'pointer' }}>Cancel</button>
               <button type="button" onClick={() => {
-                setData((prev) => prev.map((x) => (x.id === popup.tx?.id ? { ...x, connectionStatus: 'Connected' } : x)));
-                setPopup({ type: null });
-                pushToast('QuickBooks connection successfully re-established.', 'success');
+                postConnect({ tenantId: popup.tx!.id })
+                  .unwrap()
+                  .then((res: any) => {
+                    setPopup({ type: null });
+                    if (res?.data?.authUrl && typeof window !== 'undefined') window.open(res.data.authUrl, '_blank', 'noopener,noreferrer');
+                    refetch();
+                    pushToast('Redirecting to QuickBooks re-authorization...', 'success');
+                  })
+                  .catch(() => pushToast('Failed to start reconnection.', 'danger'));
               }} style={{ background: '#2A1628', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}>Reconnect</button>
             </>
           }
@@ -2484,13 +2433,10 @@ export default function QuickBooksTab() {
             <>
               <button type="button" onClick={() => setPopup({ type: null })} style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, color: '#2A1628', cursor: 'pointer' }}>Cancel</button>
               <button type="button" onClick={() => {
-                setData((prev) => prev.map((x) => (x.id === popup.tx?.id ? { ...x, connectionStatus: 'Syncing' } : x)));
-                setPopup({ type: null });
-                pushToast('Synchronization cycle queued for execution.', 'success');
-                setTimeout(() => {
-                  setData((prev) => prev.map((x) => (x.id === popup.tx?.id ? { ...x, connectionStatus: 'Connected', lastSync: 'Just now' } : x)));
-                  pushToast('Sync job completed successfully.', 'success');
-                }, 3000);
+                postBulk({ ids: [popup.tx!.id], action: 'startSync' })
+                  .unwrap()
+                  .then(() => { refetch(); setPopup({ type: null }); pushToast('Sync job completed successfully.', 'success'); })
+                  .catch(() => pushToast('Sync job failed.', 'danger'));
               }} style={{ background: '#E8760A', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}>Start Sync</button>
             </>
           }
@@ -2511,9 +2457,10 @@ export default function QuickBooksTab() {
             <>
               <button type="button" onClick={() => setPopup({ type: null })} style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, color: '#2A1628', cursor: 'pointer' }}>Keep Syncing</button>
               <button type="button" onClick={() => {
-                setData((prev) => prev.map((x) => (x.id === popup.tx?.id ? { ...x, connectionStatus: 'Paused' } : x)));
-                setPopup({ type: null });
-                pushToast('Automatic sync jobs paused.', 'warning');
+                postBulk({ ids: [popup.tx!.id], action: 'pauseSync' })
+                  .unwrap()
+                  .then(() => { refetch(); setPopup({ type: null }); pushToast('Automatic sync jobs paused.', 'warning'); })
+                  .catch(() => pushToast('Failed to pause sync.', 'danger'));
               }} style={{ background: '#E8760A', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}>Pause Sync</button>
             </>
           }
@@ -2534,9 +2481,10 @@ export default function QuickBooksTab() {
             <>
               <button type="button" onClick={() => setPopup({ type: null })} style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, color: '#2A1628', cursor: 'pointer' }}>Cancel</button>
               <button type="button" onClick={() => {
-                setData((prev) => prev.filter((x) => x.id !== popup.tx?.id));
-                setPopup({ type: null });
-                pushToast('QuickBooks Online link successfully removed.', 'danger');
+                postBulk({ ids: [popup.tx!.id], action: 'deleteConnections' })
+                  .unwrap()
+                  .then(() => { refetch(); setPopup({ type: null }); pushToast('QuickBooks Online link successfully removed.', 'danger'); })
+                  .catch(() => pushToast('Failed to remove connection.', 'danger'));
               }} style={{ background: '#DC2626', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
             </>
           }
@@ -2557,9 +2505,10 @@ export default function QuickBooksTab() {
             <>
               <button type="button" onClick={() => setPopup({ type: null })} style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, color: '#2A1628', cursor: 'pointer' }}>Cancel</button>
               <button type="button" onClick={() => {
-                setData((prev) => prev.map((x) => (x.id === popup.tx?.id ? { ...x, connectionStatus: 'Archived' } : x)));
-                setPopup({ type: null });
-                pushToast('QuickBooks connection archived.', 'info');
+                postBulk({ ids: [popup.tx!.id], action: 'archive' })
+                  .unwrap()
+                  .then(() => { refetch(); setPopup({ type: null }); pushToast('QuickBooks connection archived.', 'info'); })
+                  .catch(() => pushToast('Failed to archive connection.', 'danger'));
               }} style={{ background: '#2A1628', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}>Archive</button>
             </>
           }

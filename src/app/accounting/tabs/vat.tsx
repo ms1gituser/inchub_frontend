@@ -1,7 +1,22 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import Pagination from '@/components/ui/Pagination';
+import {
+  useGetQueueQuery,
+  useGetStatsQuery,
+  useGetAnalyticsQuery,
+  useGetDrawerDetailsQuery,
+  useGetMetadataQuery,
+  usePostFileMutation,
+  usePostAmendMutation,
+  useAddVatReturnMutation,
+  usePostBulkMutation,
+  useImportReturnsMutation,
+  usePostNoteMutation,
+  usePostDocumentMutation
+} from '@/lib/vatApi';
 
 // ============================================================================
 // Types
@@ -613,10 +628,36 @@ function CustomSelect({ value, onChange, options, placeholder = 'Select...', ico
 // Core Dashboard Component
 // ============================================================================
 
+function Portal({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+  return mounted ? createPortal(children, document.body) : null;
+}
+
 export default function VatCenterTab() {
+  const { data: queueRes, isLoading: queueLoading, refetch } = useGetQueueQuery({ limit: 1000 });
+  const [fileReturn] = usePostFileMutation();
+  const [amendReturn] = usePostAmendMutation();
+  const [addVatReturn] = useAddVatReturnMutation();
+  const [postBulk] = usePostBulkMutation();
+  const [importReturns] = useImportReturnsMutation();
+  const { data: analyticsRes } = useGetAnalyticsQuery();
+  const { data: metaRes } = useGetMetadataQuery();
+  const dynamicReviewers = metaRes?.data?.reviewers ? [...metaRes.data.reviewers, 'Unassigned'] : REVIEWERS;
+  const dynamicManagers = metaRes?.data?.managers ? [...metaRes.data.managers, 'Unassigned'] : ['Mahesh Maddu', 'Priya Nair', 'Rohit Sharma', 'Sneha Iyer', 'Unassigned'];
+
   // Local state datasets
-  const [data, setData] = useState<VatReturnItem[]>(MOCK_RETURNS);
+  const [data, setData] = useState<VatReturnItem[]>([]);
   const [toasts, setToasts] = useState<{ id: string; message: string; tone: 'success' | 'danger' | 'info' | 'warning' }[]>([]);
+
+  useEffect(() => {
+    if (queueRes?.data) {
+      setData(queueRes.data);
+    }
+  }, [queueRes]);
 
   // Export Modal Configuration states
   const [exportScope, setExportScope] = useState<'all' | 'filtered' | 'selected'>('filtered');
@@ -693,16 +734,19 @@ export default function VatCenterTab() {
   const [newFormType, setNewFormType] = useState<'Mainland' | 'Free Zone'>('Mainland');
   const [newFormOutput, setNewFormOutput] = useState('');
   const [newFormInput, setNewFormInput] = useState('');
-  const [newFormReviewer, setNewFormReviewer] = useState(REVIEWERS[0]);
+  const [newFormReviewer, setNewFormReviewer] = useState('Alex Mercer');
+  const [newFormManager, setNewFormManager] = useState('Mahesh Maddu');
 
   // Import form state
   const [importTab, setImportTab] = useState<'local' | 'gdrive' | 'onedrive'>('local');
   const [importFile, setImportFile] = useState('');
+  const [importBase64, setImportBase64] = useState('');
+  const importFileInputRef = useRef<HTMLInputElement>(null);
   const [importTrn, setImportTrn] = useState('');
   const [importQuarter, setImportQuarter] = useState('Q1');
 
   // Notes state
-  const [assignedReviewerSelection, setAssignedReviewerSelection] = useState(REVIEWERS[0]);
+  const [assignedReviewerSelection, setAssignedReviewerSelection] = useState('Alex Mercer');
 
   // Toast utility helper
   const pushToast = (message: string, tone: 'success' | 'danger' | 'info' | 'warning') => {
@@ -763,10 +807,19 @@ export default function VatCenterTab() {
   }, [filteredData, currentPage, rowsPerPage]);
 
 
-  // Active drawer transaction details object
-  const activeTx = useMemo(() => {
-    return data.find((x) => x.id === drawerTxId) || null;
-  }, [data, drawerTxId]);
+  // Drawer details query
+  const { data: drawerDetailsRes } = useGetDrawerDetailsQuery(drawerTxId || '', { skip: !drawerTxId });
+  const activeTx = drawerDetailsRes?.data?.vatReturn || data.find((x) => x.id === drawerTxId) || null;
+  const drawerTransactions = drawerDetailsRes?.data?.transactions || [];
+  const drawerTimeline = drawerDetailsRes?.data?.timeline || [];
+  const drawerActivityLog = drawerDetailsRes?.data?.activityLog || [];
+  const drawerBreakdown = drawerDetailsRes?.data?.breakdown || null;
+  const drawerValidationChecks = drawerDetailsRes?.data?.validationChecks || [];
+  const drawerDocuments = drawerDetailsRes?.data?.documents || [];
+  const drawerNotes = drawerDetailsRes?.data?.notes || [];
+  const [addVatNote] = usePostNoteMutation();
+  const [addVatDocument] = usePostDocumentMutation();
+  const [quickVatNote, setQuickVatNote] = useState('');
 
   // Row selection handlers
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -787,80 +840,75 @@ export default function VatCenterTab() {
   const handleCreateReturn = () => {
     const outVal = parseFloat(newFormOutput) || 0;
     const inVal = parseFloat(newFormInput) || 0;
-    const newItem: VatReturnItem = {
-      id: `vat-${Date.now()}`,
-      client: newFormName.trim() || 'New Client Entity',
+    addVatReturn({
+      client: newFormName.trim() || undefined,
       trn: newFormTrn.trim() || '100556789600000',
       quarter: newFormQuarter,
       year: newFormYear,
-      country: 'UAE',
       vatType: newFormType,
       outputVat: outVal,
       inputVat: inVal,
-      netVat: outVal - inVal,
-      status: 'Draft',
       reviewer: newFormReviewer,
-      manager: 'John Doe',
-      priority: 'Medium',
+      manager: newFormManager,
       dueDate: `${newFormYear}-06-28`,
-      risk: 'Low',
-      lastUpdated: new Date().toISOString().split('T')[0],
-      taxRate: 5,
-      tags: ['Logged'],
-    };
-    setData((prev) => [newItem, ...prev]);
-    setPopup({ type: null });
-    pushToast('New VAT Return logged successfully.', 'success');
+    })
+      .unwrap()
+      .then(() => {
+        refetch();
+        setPopup({ type: null });
+        pushToast('New VAT Return logged successfully.', 'success');
+      })
+      .catch(() => pushToast('Failed to create VAT return.', 'danger'));
   };
 
   const handleImportData = () => {
-    const importItem: VatReturnItem = {
-      id: `vat-${Date.now()}`,
-      client: 'Imported Business LLC',
-      trn: importTrn || '100556789600999',
-      quarter: importQuarter,
-      year: '2026',
-      country: 'UAE',
-      vatType: 'Mainland',
-      outputVat: 67200,
-      inputVat: 41800,
-      netVat: 25400,
-      status: 'Pending',
-      reviewer: 'Unassigned',
-      manager: 'Sneha Iyer',
-      priority: 'High',
-      dueDate: '2026-07-28',
-      risk: 'Medium',
-      lastUpdated: new Date().toISOString().split('T')[0],
-      taxRate: 5,
-      tags: ['Imported', importFile ? 'File Upload' : 'Cloud Drive'],
-    };
-    setData((prev) => [importItem, ...prev]);
-    setPopup({ type: null });
-    pushToast('VAT Ledger data imported successfully.', 'success');
+    if (!importBase64) {
+      pushToast('Please select a file to import.', 'warning');
+      return;
+    }
+    importReturns({ file: importBase64 })
+      .unwrap()
+      .then((res: any) => {
+        refetch();
+        setPopup({ type: null });
+        pushToast(`Imported ${res?.data?.count ?? 0} VAT return(s) successfully.`, 'success');
+      })
+      .catch(() => pushToast('Failed to import VAT returns.', 'danger'));
   };
 
   const handleAssignReviewerBulk = () => {
-    setData((prev) =>
-      prev.map((x) =>
-        selectedIds.includes(x.id) ? { ...x, reviewer: assignedReviewerSelection } : x
-      )
-    );
-    setSelectedIds([]);
-    setPopup({ type: null });
-    pushToast(`Reviewer assigned to selected returns.`, 'success');
+    postBulk({ ids: selectedIds, action: 'assignReviewer', value: { reviewer: assignedReviewerSelection } })
+      .unwrap()
+      .then(() => {
+        refetch();
+        setSelectedIds([]);
+        setPopup({ type: null });
+        pushToast('Reviewer assigned to selected returns.', 'success');
+      })
+      .catch(() => pushToast('Failed to assign reviewer.', 'danger'));
   };
 
   const handleUpdateStatusBulk = (status: VatReturnItem['status']) => {
-    setData((prev) =>
-      prev.map((x) => (selectedIds.includes(x.id) ? { ...x, status } : x))
-    );
-    setSelectedIds([]);
-    pushToast(`Selected returns marked as ${status}.`, 'success');
+    const action = status === 'Ready To File' ? 'markReady' : status === 'Filed' ? 'markFiled' : status === 'Archived' ? 'archive' : null;
+    if (!action) {
+      pushToast(`Bulk update to status "${status}" is not supported.`, 'warning');
+      return;
+    }
+    postBulk({ ids: selectedIds, action })
+      .unwrap()
+      .then(() => {
+        refetch();
+        setSelectedIds([]);
+        pushToast(`Selected returns marked as ${status}.`, 'success');
+      })
+      .catch(() => pushToast('Failed to update status.', 'danger'));
   };
 
   const handleDeleteReturn = (id: string) => {
-    setData((prev) => prev.filter((x) => x.id !== id));
+    postBulk({ ids: [id], action: 'delete' })
+      .unwrap()
+      .then(() => refetch())
+      .catch(() => pushToast('Failed to delete VAT return.', 'danger'));
     setSelectedIds((prev) => prev.filter((x) => x !== id));
     if (drawerTxId === id) setDrawerTxId(null);
     setPopup({ type: null });
@@ -884,6 +932,8 @@ export default function VatCenterTab() {
       netPayable: 0,
       highRisk: 0,
       totalReturns: 0,
+      outputVatTotal: 0,
+      inputVatTotal: 0,
       q1: 0,
       q2: 0,
       q3: 0,
@@ -902,6 +952,8 @@ export default function VatCenterTab() {
 
       if (x.netVat > 0) results.payable += x.netVat;
       if (x.netVat < 0) results.receivable += Math.abs(x.netVat);
+      results.outputVatTotal += x.outputVat;
+      results.inputVatTotal += x.inputVat;
       if (x.risk === 'High') results.highRisk++;
 
       if (x.quarter === 'Q1') results.q1++;
@@ -1007,8 +1059,8 @@ export default function VatCenterTab() {
           <button
             type="button"
             onClick={() => {
-              setData(MOCK_RETURNS);
-              pushToast('VAT registry dataset reloaded.', 'info');
+              refetch();
+              pushToast('VAT registry dataset reloaded from database.', 'info');
             }}
             style={{
               background: '#2A1628',
@@ -1039,11 +1091,11 @@ export default function VatCenterTab() {
           { label: 'VAT Payable', value: `AED ${stats.payable.toLocaleString()}`, sub: 'Output liabilities logged', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
           { label: 'VAT Receivable', value: `AED ${stats.receivable.toLocaleString()}`, sub: 'Input credits reclaimable', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><polyline points="19 12 12 19 5 12" /></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
           { label: 'Net VAT Position', value: `AED ${stats.netPayable.toLocaleString()}`, sub: 'Net payable balance', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
-          { label: 'Output VAT', value: `AED ${(stats.payable * 1.15).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, sub: 'Sales tax logged', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
-          { label: 'Input VAT', value: `AED ${(stats.receivable * 1.08).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, sub: 'Purchase tax logged', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6" /><polyline points="17 18 23 18 23 12" /></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
+          { label: 'Output VAT', value: `AED ${stats.outputVatTotal.toLocaleString()}`, sub: 'Sales tax logged', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
+          { label: 'Input VAT', value: `AED ${stats.inputVatTotal.toLocaleString()}`, sub: 'Purchase tax logged', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6" /><polyline points="17 18 23 18 23 12" /></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
           { label: 'Returns Pending', value: `${stats.pending + stats.ready} returns`, sub: 'Needs review / Ready', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
           { label: 'Returns Filed', value: `${stats.filed} returns`, sub: 'FTA portal confirmed', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
-          { label: 'Compliance Score', value: '94.2%', sub: 'Audit matching rate', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
+          { label: 'Compliance Score', value: `${analyticsRes?.data?.accuracyTrend?.[analyticsRes.data.accuracyTrend.length - 1] || 98}%`, sub: 'Audit matching rate', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
           { label: 'High Risk Returns', value: `${stats.highRisk} returns`, sub: 'Require checklist audit', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
           { label: 'Filing Deadline', value: '28 Jul 2026', sub: 'Q2 Return Schedule', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>, bg: 'rgba(232,118,10,0.06)', color: '#E8760A' },
         ].map((card, idx) => (
@@ -1104,65 +1156,7 @@ export default function VatCenterTab() {
             badgeColor: isActive ? '#fff' : 'rgba(42,22,40,0.5)'
           };
 
-          if (isActive) {
-            if (tab.label === 'Filed') {
-              tabColors = {
-                border: '1.5px solid #137333',
-                bg: '#E6F4EA',
-                color: '#137333',
-                badgeBg: '#137333',
-                badgeColor: '#ffffff'
-              };
-            } else if (tab.label === 'Overdue') {
-              tabColors = {
-                border: '1.5px solid #D32F2F',
-                bg: '#FEE2E2',
-                color: '#D32F2F',
-                badgeBg: '#D32F2F',
-                badgeColor: '#ffffff'
-              };
-            } else if (tab.label === 'Ready To File') {
-              tabColors = {
-                border: '1.5px solid #1A73E8',
-                bg: '#E8F0FE',
-                color: '#1A73E8',
-                badgeBg: '#1A73E8',
-                badgeColor: '#ffffff'
-              };
-            } else if (tab.label === 'Draft') {
-              tabColors = {
-                border: '1.5px solid #5F6368',
-                bg: '#F1F3F4',
-                color: '#5F6368',
-                badgeBg: '#5F6368',
-                badgeColor: '#ffffff'
-              };
-            } else if (tab.label === 'Exception') {
-              tabColors = {
-                border: '1.5px solid #b45309',
-                bg: 'rgba(180,83,9,0.06)',
-                color: '#b45309',
-                badgeBg: '#b45309',
-                badgeColor: '#ffffff'
-              };
-            } else if (tab.label === 'Amended') {
-              tabColors = {
-                border: '1.5px solid #7c3aed',
-                bg: 'rgba(124,58,237,0.06)',
-                color: '#7c3aed',
-                badgeBg: '#7c3aed',
-                badgeColor: '#ffffff'
-              };
-            } else if (tab.label === 'Archived') {
-              tabColors = {
-                border: '1.5px solid #475569',
-                bg: 'rgba(71,85,105,0.06)',
-                color: '#475569',
-                badgeBg: '#475569',
-                badgeColor: '#ffffff'
-              };
-            }
-          }
+          // Keep uniform active tab colors matching the orange UI theme
 
           return (
             <button
@@ -1310,7 +1304,7 @@ export default function VatCenterTab() {
             <CustomSelect
               value={filterManager === 'All' ? '' : filterManager}
               onChange={(v) => { setFilterManager(v || 'All'); setCurrentPage(1); }}
-              options={['All', ...MANAGERS]}
+              options={['All', ...(metaRes?.data?.managers || MANAGERS)]}
               placeholder="Manager: All"
             />
           </div>
@@ -1696,25 +1690,25 @@ export default function VatCenterTab() {
             <div style={{ position: 'relative', width: '130px', height: '130px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width="130" height="130" viewBox="0 0 36 36" style={{ transform: 'rotate(-90deg)' }}>
                 <circle cx="18" cy="18" r="15.915" fill="none" stroke="#FAF4EE" strokeWidth="3" />
-                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#E8760A" strokeWidth="3" strokeDasharray="94 6" />
+                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#E8760A" strokeWidth="3" strokeDasharray={`${analyticsRes?.data?.accuracyTrend?.[analyticsRes.data.accuracyTrend.length - 1] || 98} ${100 - (analyticsRes?.data?.accuracyTrend?.[analyticsRes.data.accuracyTrend.length - 1] || 98)}`} />
               </svg>
               <div style={{ position: 'absolute', textAlign: 'center' }}>
-                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#2A1628', lineHeight: 1 }}>94.2%</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#2A1628', lineHeight: 1 }}>{analyticsRes?.data?.accuracyTrend?.[analyticsRes.data.accuracyTrend.length - 1] || 98}%</div>
                 <div style={{ fontSize: '0.6rem', color: 'rgba(42,22,40,0.45)', marginTop: '4px' }}>Audited Clean</div>
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, marginLeft: '1.5rem', fontSize: '0.75rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Clean Filings</span>
-                <strong>94.2%</strong>
+                <strong>{analyticsRes?.data?.accuracyTrend?.[analyticsRes.data.accuracyTrend.length - 1] || 98}%</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Warning Flagged</span>
-                <strong>4.8%</strong>
+                <strong>1.5%</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Filing Errors</span>
-                <strong>1.0%</strong>
+                <strong>0.5%</strong>
               </div>
             </div>
           </div>
@@ -1723,10 +1717,10 @@ export default function VatCenterTab() {
 
       {/* ── FLOATING ACTION MENU PORTAL ── */}
       {activeMenuId && menuPos && menuItem && (
-        <>
+        <Portal>
           {/* Invisible overlay to close on outside click */}
           <div
-            style={{ position: 'fixed', inset: 0, zIndex: 8998 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 99998 }}
             onClick={() => { setActiveMenuId(null); setMenuPos(null); setMenuItem(null); }}
           />
           <div
@@ -1738,7 +1732,7 @@ export default function VatCenterTab() {
               border: '1px solid #E5DDD8',
               borderRadius: '12px',
               boxShadow: '0 16px 48px rgba(42,22,40,0.16)',
-              zIndex: 8999,
+              zIndex: 99999,
               minWidth: '210px',
               maxHeight: '300px',
               overflowY: 'auto',
@@ -1785,7 +1779,7 @@ export default function VatCenterTab() {
               </div>
             ))}
           </div>
-        </>
+        </Portal>
       )}
 
       {/* ── 8. RIGHT DETAILS DRAWER ── */}
@@ -1945,7 +1939,7 @@ export default function VatCenterTab() {
                     </button>
                   </div>
 
-                  {MOCK_TXS.map((tx) => (
+                  {drawerTransactions.map((tx: any) => (
                     <div key={tx.id} style={{ padding: '0.85rem', background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.04)', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
                         <div style={{ fontWeight: 600, fontSize: '0.8125rem' }}>{tx.description}</div>
@@ -1965,35 +1959,31 @@ export default function VatCenterTab() {
               {drawerTab === 'breakdown' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem', fontSize: '0.8125rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed rgba(42,22,40,0.08)', paddingBottom: '0.5rem' }}>
-                    <span>Standard Rated Sales (5%)</span>
-                    <strong>AED {(activeTx.outputVat * 20).toLocaleString()}</strong>
+                    <span>Sales (from ledger transactions)</span>
+                    <strong>AED {(drawerBreakdown?.sales ?? 0).toLocaleString()}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed rgba(42,22,40,0.08)', paddingBottom: '0.5rem' }}>
-                    <span>Zero Rated Sales (0%)</span>
-                    <strong>AED {(activeTx.outputVat * 3).toLocaleString()}</strong>
+                    <span>Purchases (from ledger transactions)</span>
+                    <strong>AED {(drawerBreakdown?.purchases ?? 0).toLocaleString()}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed rgba(42,22,40,0.08)', paddingBottom: '0.5rem' }}>
-                    <span>Exempt Sales</span>
-                    <strong>AED {(activeTx.outputVat * 1.5).toLocaleString()}</strong>
+                    <span>Output VAT (from ledger transactions)</span>
+                    <strong>AED {(drawerBreakdown?.outputVatFromTxs ?? 0).toLocaleString()}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed rgba(42,22,40,0.08)', paddingBottom: '0.5rem' }}>
-                    <span>Reverse Charge Liabilities</span>
-                    <strong>AED {Math.round(activeTx.outputVat * 0.12).toLocaleString()}</strong>
+                    <span>Input VAT (from ledger transactions)</span>
+                    <strong>AED {(drawerBreakdown?.inputVatFromTxs ?? 0).toLocaleString()}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed rgba(42,22,40,0.08)', paddingBottom: '0.5rem' }}>
-                    <span>VAT Adjustments</span>
-                    <strong>AED {(0).toLocaleString()}</strong>
+                    <span>Ledger Transaction Count</span>
+                    <strong>{drawerBreakdown?.transactionCount ?? 0}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed rgba(42,22,40,0.08)', paddingBottom: '0.5rem' }}>
-                    <span>Credit Notes Issued</span>
-                    <strong>AED {Math.round(activeTx.outputVat * 0.45).toLocaleString()}</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed rgba(42,22,40,0.08)', paddingBottom: '0.5rem' }}>
-                    <span>Output VAT (Liabilities)</span>
+                    <span>Output VAT (Filed Return)</span>
                     <strong>AED {activeTx.outputVat.toLocaleString()}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed rgba(42,22,40,0.08)', paddingBottom: '0.5rem' }}>
-                    <span>Input VAT (Recoverable)</span>
+                    <span>Input VAT (Filed Return)</span>
                     <strong>AED {activeTx.inputVat.toLocaleString()}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.25rem' }}>
@@ -2005,26 +1995,28 @@ export default function VatCenterTab() {
 
               {drawerTab === 'validation' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {/* Progress Header */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: '#F0FDF4', border: '1px solid #DCFCE7', borderRadius: '12px', padding: '1rem', marginBottom: '0.5rem' }}>
-                    <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#15803d' }}>95%</div>
-                    <div>
-                      <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#166534' }}>Rule checks passed</div>
-                      <div style={{ fontSize: '0.7rem', color: '#15803d' }}>Passed 14/15 rules • 1 Warning</div>
-                    </div>
-                  </div>
+                  {(() => {
+                    const passed = drawerValidationChecks.filter((c: any) => c.status === 'pass').length;
+                    const totalChecks = drawerValidationChecks.length || 1;
+                    const pct = Math.round((passed / totalChecks) * 100);
+                    return (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: pct === 100 ? '#F0FDF4' : '#FFF7ED', border: `1px solid ${pct === 100 ? '#DCFCE7' : '#FED7AA'}`, borderRadius: '12px', padding: '1rem', marginBottom: '0.5rem' }}>
+                        <div style={{ fontSize: '1.75rem', fontWeight: 800, color: pct === 100 ? '#15803d' : '#c2410c' }}>{pct}%</div>
+                        <div>
+                          <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: pct === 100 ? '#166534' : '#9a3412' }}>Rule checks passed</div>
+                          <div style={{ fontSize: '0.7rem', color: pct === 100 ? '#15803d' : '#c2410c' }}>Passed {passed}/{drawerValidationChecks.length} checks</div>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
-                  {[
-                    { label: 'TRN Format Check', desc: 'Confirm number follows FTA standard structure', status: 'Passed' },
-                    { label: 'Variance Threshold Verification', desc: 'Sales ledger aligns with invoice summary', status: 'Passed' },
-                    { label: 'Zero-Rate Customs Entry Audit', desc: 'No export invoices missing custom bill records', status: 'Passed' },
-                  ].map((chk, idx) => (
+                  {drawerValidationChecks.map((chk: any, idx: number) => (
                     <div key={idx} style={{ padding: '0.75rem 1rem', border: '1px solid rgba(42,22,40,0.05)', borderRadius: '10px', background: '#FAF8F5' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <strong style={{ fontSize: '0.8125rem' }}>{chk.label}</strong>
-                        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#047857' }}>{chk.status}</span>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: chk.status === 'pass' ? '#047857' : chk.status === 'warning' ? '#c2410c' : '#C5221F' }}>{chk.status.toUpperCase()}</span>
                       </div>
-                      <p style={{ margin: '0.2rem 0 0', fontSize: '0.7rem', color: 'rgba(42,22,40,0.5)', lineHeight: 1.3 }}>{chk.desc}</p>
+                      <p style={{ margin: '0.2rem 0 0', fontSize: '0.7rem', color: 'rgba(42,22,40,0.5)', lineHeight: 1.3 }}>{chk.detail}</p>
                     </div>
                   ))}
                 </div>
@@ -2032,19 +2024,15 @@ export default function VatCenterTab() {
 
               {drawerTab === 'timeline' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', paddingLeft: '0.5rem' }}>
-                  {[
-                    { label: 'Filing logged', user: 'Priya Nair', time: '2026-06-09 14:23', icon: <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg> },
-                    { label: 'Compliance Audited', user: 'System Agent', time: '2026-06-08 09:12', icon: <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> },
-                    { label: 'Filing Created', user: 'Sneha Iyer', time: '2026-06-01 16:30', icon: <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><path d="M12 5v14M5 12h14"/></svg> },
-                  ].map((step, idx) => (
+                  {drawerTimeline.map((step: any, idx: number) => (
                     <div key={idx} style={{ display: 'flex', gap: '1rem', position: 'relative' }}>
-                      {idx < 2 && <div style={{ position: 'absolute', left: '11px', top: '24px', bottom: '-20px', width: '1px', background: 'rgba(42,22,40,0.1)' }} />}
-                      <div style={{ width: '23px', height: '23px', borderRadius: '50%', background: '#E8760A', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, marginTop: '2px', flexShrink: 0 }}>
-                        {step.icon}
+                      {idx < drawerTimeline.length - 1 && <div style={{ position: 'absolute', left: '11px', top: '24px', bottom: '-20px', width: '1px', background: 'rgba(42,22,40,0.1)' }} />}
+                      <div style={{ width: '23px', height: '23px', borderRadius: '50%', background: step.status === 'done' ? '#E8760A' : 'rgba(42,22,40,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, marginTop: '2px', flexShrink: 0 }}>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
                       </div>
                       <div>
-                        <strong style={{ fontSize: '0.8125rem', display: 'block' }}>{step.label}</strong>
-                        <span style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.45)' }}>by {step.user} • {step.time}</span>
+                        <strong style={{ fontSize: '0.8125rem', display: 'block' }}>{step.stage}</strong>
+                        <span style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.45)' }}>by {step.actor || 'System'} • {step.timestamp ? step.timestamp.split('T')[0] : 'Pending'}</span>
                       </div>
                     </div>
                   ))}
@@ -2053,7 +2041,7 @@ export default function VatCenterTab() {
 
               {drawerTab === 'activity' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {MOCK_ACTIVITY.map((act, idx) => {
+                  {drawerActivityLog.map((act: any, idx: number) => {
                     const isApproved = act.action.includes('Filed') || act.action.includes('Approved');
                     const isCreated = act.action.includes('Created') || act.action.includes('Imported');
                     const isRejected = act.action.includes('Rejected') || act.action.includes('Failed');
@@ -2065,7 +2053,7 @@ export default function VatCenterTab() {
                           <span style={{ background: badgeBg, color: badgeColor, padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 700 }}>
                             {act.action}
                           </span>
-                          <span style={{ color: 'rgba(42,22,40,0.45)' }}>{act.timestamp}</span>
+                          <span style={{ color: 'rgba(42,22,40,0.45)' }}>{act.timestamp ? act.timestamp.split('T')[0] : ''}</span>
                         </div>
                         <div style={{ marginTop: '0.35rem', color: 'rgba(42,22,40,0.6)' }}>
                           User: {act.user} • Old: &quot;{act.oldVal}&quot; • New: &quot;{act.newVal}&quot;
@@ -2078,52 +2066,26 @@ export default function VatCenterTab() {
 
               {drawerTab === 'documents' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {MOCK_DOCS.map((doc, idx) => (
-                    <div key={idx} style={{ padding: '0.75rem', border: '1px solid #DDD0C4', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const name = window.prompt('Document name (metadata only — no real file upload in this build):');
+                      if (!name || !activeTx) return;
+                      addVatDocument({ id: activeTx.id, name, type: 'Supporting Doc' })
+                        .unwrap()
+                        .then(() => pushToast('Document recorded.', 'success'))
+                        .catch(() => pushToast('Failed to record document.', 'danger'));
+                    }}
+                    style={{ alignSelf: 'flex-start', padding: '0.4rem 0.75rem', border: '1px solid #DDD0C4', borderRadius: '6px', background: '#fff', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', color: '#2A1628', fontFamily: 'inherit' }}
+                  >
+                    + Add Document
+                  </button>
+                  {drawerDocuments.length === 0 && <p style={{ fontSize: '0.8125rem', color: 'rgba(42,22,40,0.45)', fontStyle: 'italic' }}>No documents recorded yet.</p>}
+                  {drawerDocuments.map((doc: any) => (
+                    <div key={doc.id} style={{ padding: '0.75rem', border: '1px solid #DDD0C4', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff' }}>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: 600, fontSize: '0.8125rem' }}>{doc.name}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.45)', marginTop: '0.15rem' }}>Size: {doc.size} • Uploaded: {doc.date}</div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '0.35rem' }}>
-                        <button
-                          type="button"
-                          onClick={() => pushToast(`Previewing ${doc.name}`, 'info')}
-                          style={{ padding: '0.4rem 0.6rem', border: '1px solid #DDD0C4', borderRadius: '6px', background: '#fff', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', color: '#2A1628', fontFamily: 'inherit' }}
-                        >
-                          Preview
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => pushToast(`${doc.name} download started.`, 'info')}
-                          style={{ padding: '0.4rem 0.6rem', border: '1px solid #DDD0C4', borderRadius: '6px', background: '#fff', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', color: '#2A1628', fontFamily: 'inherit' }}
-                        >
-                          Download
-                        </button>
-                        {(() => {
-                          const isSystemGenerated = doc.name.includes('VAT_Return_Draft') || doc.name.includes('VAT_Audit_Report');
-                          return (
-                            <button
-                              type="button"
-                              disabled={isSystemGenerated}
-                              onClick={() => pushToast(`${doc.name} deleted.`, 'warning')}
-                              style={{
-                                padding: '0.4rem 0.6rem',
-                                border: isSystemGenerated ? '1px solid rgba(42,22,40,0.06)' : '1px solid #FCE8E6',
-                                borderRadius: '6px',
-                                background: '#fff',
-                                fontSize: '0.7rem',
-                                fontWeight: 700,
-                                cursor: isSystemGenerated ? 'not-allowed' : 'pointer',
-                                color: isSystemGenerated ? 'rgba(42,22,40,0.3)' : '#C5221F',
-                                fontFamily: 'inherit',
-                                opacity: isSystemGenerated ? 0.6 : 1
-                              }}
-                              title={isSystemGenerated ? 'System generated documents cannot be deleted' : 'Delete document'}
-                            >
-                              Delete
-                            </button>
-                          );
-                        })()}
+                        <div style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.45)', marginTop: '0.15rem' }}>{doc.type} • {doc.sizeKb} KB • Uploaded by {doc.uploadedBy || 'Unknown'} on {doc.createdAt ? String(doc.createdAt).split('T')[0] : ''}</div>
                       </div>
                     </div>
                   ))}
@@ -2169,27 +2131,37 @@ export default function VatCenterTab() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     <textarea
                       placeholder="Type a new internal audit note..."
+                      value={quickVatNote}
+                      onChange={(e) => setQuickVatNote(e.target.value)}
                       style={{ width: '100%', minHeight: '80px', padding: '0.625rem', borderRadius: '10px', border: '1px solid #DDD0C4', outline: 'none', fontSize: '0.8125rem', boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical' }}
                     />
                     <button
                       type="button"
-                      onClick={() => pushToast('Note added successfully.', 'success')}
-                      style={{ background: '#E8760A', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.5rem 1rem', width: 'fit-content', alignSelf: 'flex-end', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                      disabled={!quickVatNote.trim()}
+                      onClick={() => {
+                        if (!activeTx || !quickVatNote.trim()) return;
+                        addVatNote({ id: activeTx.id, body: quickVatNote })
+                          .unwrap()
+                          .then(() => {
+                            setQuickVatNote('');
+                            pushToast('Note added successfully.', 'success');
+                          })
+                          .catch(() => pushToast('Failed to add note.', 'danger'));
+                      }}
+                      style={{ background: '#E8760A', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.5rem 1rem', width: 'fit-content', alignSelf: 'flex-end', fontSize: '0.75rem', fontWeight: 700, cursor: quickVatNote.trim() ? 'pointer' : 'not-allowed', opacity: quickVatNote.trim() ? 1 : 0.6, fontFamily: 'inherit' }}
                     >
                       Add Note
                     </button>
                   </div>
                   <div style={{ borderTop: '1px solid rgba(42,22,40,0.06)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {[
-                      { user: 'Priya Nair', role: 'Reviewer', date: '2026-06-08', text: 'Verified standard rated calculations against the bank statement transactions. No deviations found.' },
-                      { user: 'System Agent', role: 'Auditbot', date: '2026-06-08', text: 'Auto-auditor confirmed TRN matches FTA public registry record.' }
-                    ].map((note, idx) => (
-                      <div key={idx} style={{ padding: '0.75rem', background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.03)', borderRadius: '8px', fontSize: '0.75rem' }}>
+                    {drawerNotes.length === 0 && <p style={{ fontSize: '0.8125rem', color: 'rgba(42,22,40,0.45)', fontStyle: 'italic' }}>No notes yet.</p>}
+                    {drawerNotes.map((note: any) => (
+                      <div key={note.id} style={{ padding: '0.75rem', background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.03)', borderRadius: '8px', fontSize: '0.75rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', color: 'rgba(42,22,40,0.5)', marginBottom: '0.25rem', fontSize: '0.7rem' }}>
-                          <span style={{ fontWeight: 600 }}>{note.user} ({note.role})</span>
-                          <span>{note.date}</span>
+                          <span style={{ fontWeight: 600 }}>{note.author || 'Unknown'}</span>
+                          <span>{note.createdAt ? String(note.createdAt).split('T')[0] : ''}</span>
                         </div>
-                        <div style={{ color: '#2A1628', lineHeight: 1.3 }}>{note.text}</div>
+                        <div style={{ color: '#2A1628', lineHeight: 1.3 }}>{note.body}</div>
                       </div>
                     ))}
                   </div>
@@ -2207,11 +2179,13 @@ export default function VatCenterTab() {
                   if (activeTx.status === 'Filed') {
                     pushToast('VAT Return PDF download started.', 'info');
                   } else {
-                    setData((prev) =>
-                      prev.map((x) => (x.id === activeTx.id ? { ...x, status: 'Filed' } : x))
-                    );
-                    setDrawerTxId(null);
-                    pushToast(`Return marked as Filed.`, 'success');
+                    fileReturn({ id: activeTx.id })
+                      .unwrap()
+                      .then(() => {
+                        setDrawerTxId(null);
+                        pushToast(`Return marked as Filed.`, 'success');
+                      })
+                      .catch(() => pushToast('Failed to file VAT return.', 'danger'));
                   }
                 }}
                 style={{ flex: 1, padding: '0.6rem', background: activeTx.status === 'Filed' ? '#137333' : '#E8760A', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}
@@ -2318,11 +2292,25 @@ export default function VatCenterTab() {
                   background: importFile ? 'rgba(4,120,87,0.02)' : '#FAF8F5',
                   transition: 'all 0.15s ease'
                 }}
-                onClick={() => {
-                  setImportFile('VAT_Ledger_Extract_Q1.xlsx');
-                  setImportTrn('100556789600003');
-                }}
+                onClick={() => importFileInputRef.current?.click()}
               >
+                <input
+                  ref={importFileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (!f) return;
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      const result = reader.result as string;
+                      setImportBase64(result.split(',')[1] || '');
+                      setImportFile(f.name);
+                    };
+                    reader.readAsDataURL(f);
+                  }}
+                />
                 <div style={{
                   width: '42px',
                   height: '42px',
@@ -2593,13 +2581,23 @@ export default function VatCenterTab() {
               </div>
             </div>
 
-            <div>
-              <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Assign Reviewer</label>
-              <CustomSelect
-                value={newFormReviewer}
-                onChange={setNewFormReviewer}
-                options={REVIEWERS}
-              />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Assign Reviewer</label>
+                <CustomSelect
+                  value={newFormReviewer}
+                  onChange={setNewFormReviewer}
+                  options={dynamicReviewers}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Assign Manager</label>
+                <CustomSelect
+                  value={newFormManager}
+                  onChange={setNewFormManager}
+                  options={dynamicManagers}
+                />
+              </div>
             </div>
           </div>
         </ModalShell>
@@ -2767,7 +2765,7 @@ export default function VatCenterTab() {
               <CustomSelect
                 value={assignedReviewerSelection}
                 onChange={setAssignedReviewerSelection}
-                options={REVIEWERS}
+                options={dynamicReviewers}
               />
             </div>
           </div>
@@ -2820,11 +2818,15 @@ export default function VatCenterTab() {
               <button
                 type="button"
                 onClick={() => {
-                  setData((prev) =>
-                    prev.map((x) => (x.id === popup.tx!.id ? { ...x, status: 'Filed', lastUpdated: new Date().toISOString().split('T')[0] } : x))
-                  );
-                  setPopup({ type: null });
-                  pushToast('VAT Return submitted successfully to FTA portal.', 'success');
+                  fileReturn({ id: popup.tx!.id })
+                    .unwrap()
+                    .then(() => {
+                      pushToast('VAT Return submitted successfully to FTA portal.', 'success');
+                      setPopup({ type: null });
+                    })
+                    .catch((err) => {
+                      pushToast(err?.data?.message || 'Failed to submit VAT return.', 'danger');
+                    });
                 }}
                 style={{ background: '#047857', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}
               >

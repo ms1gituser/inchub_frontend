@@ -1,0 +1,323 @@
+/* Enterprise Brand Font System */
+
+/* CORPORATE SERVICES THEME (Cognac & Gold) + FINANCIAL SERVICES THEME (Aubergine & Saffron) */
+
+/* Cormorant Garamond - Serif Headlines (300, 400, 500, 600) */
+@font-face {
+  font-family: 'Cormorant Garamond';
+  src: url('/fonts/CormorantGaramond-Light.woff2') format('woff2'),
+       url('/fonts/CormorantGaramond-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  display: swap;
+}
+
+@font-face {
+  font-family: 'Cormorant Garamond';
+  src: url('/fonts/CormorantGaramond-Regular.woff2') format('woff2'),
+       url('/fonts/CormorantGaramond-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  display: swap;
+}
+
+@font-face {
+  font-family: 'Cormorant Garamond';
+  src: url('/fonts/CormorantGaramond-Medium.woff2') format('woff2'),
+       url('/fonts/CormorantGaramond-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  display: swap;
+}
+
+@font-face {
+  font-family: 'Cormorant Garamond';
+  src: url('/fonts/CormorantGaramond-SemiBold.woff2') format('woff2'),
+       url('/fonts/CormorantGaramond-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  display: swap;
+}
+
+/* Inter - Sans Serif Body & UI (300, 400, 500, 600) */
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/Inter-Light.woff2') format('woff2'),
+       url('/fonts/Inter-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  display: swap;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/Inter-Regular.woff2') format('woff2'),
+       url('/fonts/Inter-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  display: swap;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/Inter-Medium.woff2') format('woff2'),
+       url('/fonts/Inter-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  display: swap;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/Inter-SemiBold.woff2') format('woff2'),
+       url('/fonts/Inter-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  display: swap;
+}
+
+/* Global Typography Defaults */
+:root {
+  --font-serif: 'Cormorant Garamond', serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+
+  /* Corporate Services Theme */
+  --color-primary-cognac: #8B4513;
+  --color-accent-gold: #D4AF37;
+
+  /* Financial Services Theme */
+  --color-primary-aubergine: #2A1628;
+  --color-accent-saffron: #F59E0B;
+}
+
+html {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: #1f2937;
+}
+
+/* Headline Hierarchy */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  line-height: 1.2;
+  color: #111827;
+}
+
+h1 {
+  font-size: 3rem;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  font-size: 2.25rem;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+h3 {
+  font-size: 1.875rem;
+  font-weight: 500;
+}
+
+h4 {
+  font-size: 1.5rem;
+  font-weight: 500;
+}
+
+h5 {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+h6 {
+  font-size: 1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Paragraph & Text */
+p {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+small {
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+strong, .font-semibold {
+  font-weight: 600;
+}
+
+em, .font-italic {
+  font-style: italic;
+}
+
+/* Link Styling */
+a {
+  color: var(--color-primary-aubergine);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+a:hover {
+  color: var(--color-accent-saffron);
+  text-decoration: underline;
+}
+
+/* Button Typography */
+button {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+}
+
+/* Input & Form Typography */
+input, textarea, select {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+/* Code & Monospace */
+code, pre, .font-mono {
+  font-family: 'Fira Code', 'Monaco', 'Courier New', monospace;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
+pre {
+  background: #f3f4f6;
+  padding: 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+
+code {
+  background: #f3f4f6;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+}
+
+pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+/* Utility Classes */
+.text-headline {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.text-subtitle {
+  font-family: var(--font-sans);
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.text-body {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+.text-label {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #374151;
+}
+
+.text-caption {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: #6b7280;
+}
+
+.text-error {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.text-success {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.text-warning {
+  color: #ea580c;
+  font-weight: 600;
+}
+
+.text-info {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+/* Theme Brand Colors */
+.brand-cognac {
+  color: var(--color-primary-cognac);
+}
+
+.brand-gold {
+  color: var(--color-accent-gold);
+}
+
+.brand-aubergine {
+  color: var(--color-primary-aubergine);
+}
+
+.brand-saffron {
+  color: var(--color-accent-saffron);
+}
+
+/* Responsive Typography */
+@media (max-width: 768px) {
+  html {
+    font-size: 14px;
+  }
+
+  h1 {
+    font-size: 2rem;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+  }
+
+  h3 {
+    font-size: 1.25rem;
+  }
+
+  h4 {
+    font-size: 1.125rem;
+  }
+
+  p {
+    font-size: 0.8125rem;
+  }
+}
