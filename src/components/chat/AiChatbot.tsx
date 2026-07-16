@@ -45,6 +45,14 @@ function mkHtml(text: string, streaming: boolean) {
   return { __html: renderMarkdown(text) + cursor }; // nosec
 }
 
+function getNowTimestamp() {
+  return Date.now();
+}
+
+function getNowDate() {
+  return new Date();
+}
+
 const SUGGESTED_PROMPTS = [
   { icon: '📊', text: "What's the VAT status for all my clients?", color: '#E8760A' },
   { icon: '⚠️', text: "Which clients have overdue KYC documents?", color: '#D32F2F' },
@@ -87,13 +95,39 @@ export default function AiChatbot() {
     const handleKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === '/') {
         e.preventDefault();
-        setIsOpen(prev => !prev);
+        setIsOpen(prev => {
+          const next = !prev;
+          if (next) setUnreadCount(0);
+          return next;
+        });
       }
       if (e.key === 'Escape' && isOpen) setIsOpen(false);
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [isOpen]);
+
+  // ── Fetch conversation history ────────────────────────────────────────────
+  const fetchHistory = useCallback(async () => {
+    try {
+      const token = resolveToken();
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+      const res = await fetch(`${baseUrl}/chat/history?limit=30`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const msgs: Message[] = (data.data || []).map((m: any) => ({
+          id: m.id || `hist-${Math.random()}`,
+          sender: m.role === 'user' ? 'user' : 'ai',
+          text: m.text,
+          timestamp: new Date(m.timestamp),
+          msgId: m.id,
+        }));
+        setHistoryMessages(msgs);
+      }
+    } catch { /* ignore */ }
+  }, []);
 
   // ── Socket setup ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -124,10 +158,10 @@ export default function AiChatbot() {
         setMessages(prev => {
           if (prev.some(p => p.id === msg.id)) return prev;
           return [...prev, {
-            id: msg.id || `msg-${Date.now()}`,
+            id: msg.id || `msg-${getNowTimestamp()}`,
             sender: isAi ? 'ai' : 'user',
             text: msg.text,
-            timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
+            timestamp: msg.timestamp ? new Date(msg.timestamp) : getNowDate(),
             actionCard: msg.actionCard,
           }];
         });
@@ -141,7 +175,7 @@ export default function AiChatbot() {
           id,
           sender: 'ai',
           text: '',
-          timestamp: new Date(),
+          timestamp: getNowDate(),
           streaming: true,
         }]);
       });
@@ -180,38 +214,14 @@ export default function AiChatbot() {
         socketRef.current = null;
       }
     };
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (isOpen) setUnreadCount(0);
-  }, [isOpen]);
+  }, [isOpen, fetchHistory]);
 
   // ── Auto-scroll ───────────────────────────────────────────────────────────
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  // ── Fetch conversation history ────────────────────────────────────────────
-  const fetchHistory = useCallback(async () => {
-    try {
-      const token = resolveToken();
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
-      const res = await fetch(`${baseUrl}/chat/history?limit=30`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const msgs: Message[] = (data.data || []).map((m: any) => ({
-          id: m.id || `hist-${Math.random()}`,
-          sender: m.role === 'user' ? 'user' : 'ai',
-          text: m.text,
-          timestamp: new Date(m.timestamp),
-          msgId: m.id,
-        }));
-        setHistoryMessages(msgs);
-      }
-    } catch { /* ignore */ }
-  }, []);
+  // Removed duplicate fetchHistory declaration from bottom
 
   // ── Send message ──────────────────────────────────────────────────────────
   const handleSend = (text?: string) => {
@@ -219,10 +229,10 @@ export default function AiChatbot() {
     if (!msg) return;
 
     const userMsg: Message = {
-      id: `user-${Date.now()}`,
+      id: `user-${getNowTimestamp()}`,
       sender: 'user',
       text: msg,
-      timestamp: new Date(),
+      timestamp: getNowDate(),
     };
     setMessages(prev => [...prev, userMsg]);
     setInputValue('');
@@ -234,10 +244,10 @@ export default function AiChatbot() {
       // HTTP fallback
       setIsTyping(false);
       setMessages(prev => [...prev, {
-        id: `ai-${Date.now()}`,
+        id: `ai-${getNowTimestamp()}`,
         sender: 'ai',
         text: 'Reconnecting... Please try again in a moment.',
-        timestamp: new Date(),
+        timestamp: getNowDate(),
       }]);
     }
   };

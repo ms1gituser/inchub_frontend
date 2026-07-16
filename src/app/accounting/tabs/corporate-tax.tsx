@@ -504,9 +504,12 @@ export default function CorporateTaxTab() {
   const [toasts, setToasts] = useState<{ id: string; message: string; tone: 'success' | 'danger' | 'info' | 'warning' }[]>([]);
   const nextIdRef = useRef(1);
 
-  useEffect(() => {
-    if (queueRes?.data) setData(queueRes.data);
-  }, [queueRes]);
+  // Sync queueRes.data into local state when it updates
+  const prevQueueDataRef = useRef<CtReturnItem[] | undefined>(undefined);
+  if (queueRes?.data && queueRes.data !== prevQueueDataRef.current) {
+    prevQueueDataRef.current = queueRes.data;
+    setData(queueRes.data);
+  }
 
   // Export Modal Configuration states
   const [exportScope, setExportScope] = useState<'all' | 'filtered' | 'selected'>('filtered');

@@ -8762,6 +8762,9 @@ function ReconciliationCenterInner() {
   const [pageSize, setPageSize] = useState(persisted.pageSize ?? 10);
   const [currentPage, setCurrentPage] = useState(1);
 
+  const [drawerTxId, setDrawerTxId] = useState<string | null>(null);
+  const [drawerTab, setDrawerTab] = useState<DrawerTabKey>(persisted.lastDrawerTab ?? 'overview');
+
   // Hydrate column/density preferences from the server-side store once, then keep it in sync on change.
   const preferencesHydrated = useRef(false);
   useEffect(() => {
@@ -8783,14 +8786,11 @@ function ReconciliationCenterInner() {
     }, 800);
     return () => clearTimeout(handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [columnOrder, hiddenColumns, columnWidths, density, freezeFirstColumn, pageSize]);
+  }, [columnOrder, hiddenColumns, columnWidths, density, freezeFirstColumn, pageSize, drawerTab]);
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
   const [focusedRowId, setFocusedRowId] = useState<string | null>(null);
-
-  const [drawerTxId, setDrawerTxId] = useState<string | null>(null);
-  const [drawerTab, setDrawerTab] = useState<DrawerTabKey>(persisted.lastDrawerTab ?? 'overview');
 
   const [popup, setPopup] = useState<PopupState>(null);
   const [refreshing, setRefreshing] = useState(false);
