@@ -47,8 +47,9 @@ function AppLayout({
     if (pathname.startsWith('/settings') && role !== UserRole.ADMIN && role !== UserRole.CEO) {
       router.replace('/');
     }
-    // accounting is restricted to admin, ceo, accountant
-    if (pathname.startsWith('/accounting') && role !== UserRole.ADMIN && role !== UserRole.CEO && role !== UserRole.ACCOUNTANT) {
+    // accounting is restricted to admin, ceo, accountant (except for specific client-facing pages)
+    const isClientAccounting = pathname === '/accounting-client' || pathname.startsWith('/accounting/pl') || pathname.startsWith('/accounting/archive');
+    if ((pathname === '/accounting' || pathname.startsWith('/accounting/')) && !isClientAccounting && role !== UserRole.ADMIN && role !== UserRole.CEO && role !== UserRole.ACCOUNTANT) {
       router.replace('/');
     }
   }, [pathname, role, loading, router]);

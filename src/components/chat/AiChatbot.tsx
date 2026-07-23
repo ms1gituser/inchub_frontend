@@ -647,7 +647,8 @@ export default function AiChatbot() {
       </div>
 
       {/* ── Global Animations ── */}
-      <style dangerouslySetInnerHTML={{ __html: ` // nosec
+      <style dangerouslySetInnerHTML={{ // nosec
+        __html: `
         @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
         @keyframes bounce { 0%,80%,100% { transform: scale(0) } 40% { transform: scale(1) } }
         @keyframes blink { 0%,100% { opacity: 1 } 50% { opacity: 0 } }

@@ -52,3 +52,4 @@ temp_auto_push.bat
 temp_interactive_push.bat
 config.bat
 .git_backup_temp/
+yarn.lock

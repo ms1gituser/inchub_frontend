@@ -63,6 +63,15 @@ function UserIcon(props: IconProps) {
   );
 }
 
+function MessageIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+      <polyline points="22,6 12,13 2,6" />
+    </svg>
+  );
+}
+
 /* ── Notification data ────────────────────────────────────────────────────── */
 const NOTIFICATIONS = [
   { id: 1, text: 'New lead assigned: Acme Corp', time: '2 min ago',  dot: '#B8892A' },
@@ -79,6 +88,7 @@ interface TopNavbarProps {
 export default function TopNavbar({}: TopNavbarProps) {
   const { permissions, allAvailablePermissions, togglePermission, currentBrand, email, role } = usePermission();
   const [notifOpen, setNotifOpen]   = useState(false);
+  const [msgOpen, setMsgOpen]       = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [shieldOpen, setShieldOpen]   = useState(false);
   const [kycStatus, setKycStatus] = useState<'GREEN' | 'AMBER' | 'RED' | null>(null);
@@ -88,6 +98,7 @@ export default function TopNavbar({}: TopNavbarProps) {
   const userInitials = role ? role.substring(0, 2).toUpperCase() : 'US';
   
   const notifRef   = useRef<HTMLDivElement>(null);
+  const msgRef     = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const shieldRef  = useRef<HTMLDivElement>(null);
 
@@ -138,6 +149,7 @@ export default function TopNavbar({}: TopNavbarProps) {
   useEffect(() => {
     function handler(e: MouseEvent) {
       if (notifRef.current && !notifRef.current.contains(e.target as Node))   setNotifOpen(false);
+      if (msgRef.current && !msgRef.current.contains(e.target as Node))       setMsgOpen(false);
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false);
       if (shieldRef.current && !shieldRef.current.contains(e.target as Node))   setShieldOpen(false);
     }
@@ -257,7 +269,7 @@ export default function TopNavbar({}: TopNavbarProps) {
         <button
           id="rbac-shield-btn"
           aria-label="Dynamic RBAC permissions"
-          onClick={() => { setShieldOpen(!shieldOpen); setNotifOpen(false); setProfileOpen(false); }}
+          onClick={() => { setShieldOpen(!shieldOpen); setNotifOpen(false); setMsgOpen(false); setProfileOpen(false); }}
           style={{
             position: 'relative', width: 36, height: 36,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -347,12 +359,64 @@ export default function TopNavbar({}: TopNavbarProps) {
         )}
       </div>
 
+      {/* ── Messages ── */}
+      <div ref={msgRef} style={{ position: 'relative' }}>
+        <button
+          id="messages-btn"
+          aria-label="Messages"
+          onClick={() => { setMsgOpen(!msgOpen); setNotifOpen(false); setProfileOpen(false); setShieldOpen(false); }}
+          style={{
+            position: 'relative', width: 36, height: 36,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            border: '1px solid var(--border-subtle)', borderRadius: 8,
+            background: msgOpen ? (isFinancial ? '#EDE6DE' : '#EDE7D8') : 'var(--bg-page)',
+            color: isFinancial ? 'rgba(42,22,40,0.6)' : 'rgba(44,26,14,0.6)', cursor: 'pointer', transition: 'all 150ms',
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = isFinancial ? '#EDE6DE' : '#EDE7D8'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-primary)'; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = msgOpen ? (isFinancial ? '#EDE6DE' : '#EDE7D8') : 'var(--bg-page)'; (e.currentTarget as HTMLButtonElement).style.color = isFinancial ? 'rgba(42,22,40,0.6)' : 'rgba(44,26,14,0.6)'; }}
+        >
+          <MessageIcon style={{ width: 18, height: 18 }} />
+        </button>
+
+        {/* Messages dropdown */}
+        {msgOpen && (
+          <div
+            style={{
+              position: 'absolute', top: 'calc(100% + 8px)', right: 0,
+              width: 320, background: '#ffffff',
+              border: '1px solid var(--border-subtle)', borderRadius: 12,
+              boxShadow: '0 10px 40px rgba(44,26,14,0.12)',
+              zIndex: 50, overflow: 'hidden',
+            }}
+          >
+            <div style={{ padding: '0.875rem 1rem', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--color-primary)' }}>Messages</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-accent)', cursor: 'pointer', fontWeight: 500 }}>New Message</span>
+            </div>
+            <div style={{ padding: '2rem 1rem', textAlign: 'center' }}>
+              <p style={{ margin: 0, fontSize: '0.875rem', color: 'rgba(0,0,0,0.5)' }}>No new messages.</p>
+            </div>
+            <Link
+              href="/messages"
+              style={{
+                display: 'block', textAlign: 'center', padding: '0.75rem',
+                fontSize: '0.8125rem', color: 'var(--color-accent)', fontWeight: 500,
+                textDecoration: 'none', borderTop: '1px solid var(--border-subtle)'
+              }}
+              onClick={() => setMsgOpen(false)}
+            >
+              View all messages →
+            </Link>
+          </div>
+        )}
+      </div>
+
       {/* ── Notifications ── */}
       <div ref={notifRef} style={{ position: 'relative' }}>
         <button
           id="notifications-btn"
           aria-label="Notifications"
-          onClick={() => { setNotifOpen(!notifOpen); setProfileOpen(false); }}
+          onClick={() => { setNotifOpen(!notifOpen); setMsgOpen(false); setProfileOpen(false); setShieldOpen(false); }}
           style={{
             position: 'relative', width: 36, height: 36,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -428,7 +492,7 @@ export default function TopNavbar({}: TopNavbarProps) {
         <button
           id="profile-menu-btn"
           aria-label="Profile menu"
-          onClick={() => { setProfileOpen(!profileOpen); setNotifOpen(false); }}
+          onClick={() => { setProfileOpen(!profileOpen); setNotifOpen(false); setMsgOpen(false); setShieldOpen(false); }}
           style={{
             display: 'flex', alignItems: 'center', gap: '0.5rem',
             height: 36, padding: '0 0.5rem 0 0.375rem',

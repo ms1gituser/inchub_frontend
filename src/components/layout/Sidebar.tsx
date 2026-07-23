@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { usePathname, useSearchParams } from 'next/navigation';
 import type { NavSection } from '@/types/navigation';
 import { usePermission, UserRole } from '@/context/PermissionContext';
+import { get } from '@/lib/apiClient';
 
 /* ── SVG Icons (inline, zero-dependency) ─────────────────────────────────── */
 type IconProps = React.SVGProps<SVGSVGElement>;
@@ -104,30 +105,97 @@ function AccountingIcon(props: IconProps) {
 const NAV_SECTIONS: NavSection[] = [
   {
     items: [
-      { label: 'Dashboard',  href: '/',          icon: DashboardIcon },
+      { label: 'Dashboard', href: '/', icon: DashboardIcon },
     ],
   },
   {
     title: 'CRM',
     items: [
-      { label: 'Contacts',  href: '/contacts',  icon: ContactsIcon, badge: 248 },
-      { label: 'Leads',     href: '/leads',     icon: LeadsIcon,    badge: 12  },
-      { label: 'Deals',     href: '/deals',     icon: DealsIcon                },
-      { label: 'Tasks',     href: '/tasks',     icon: TasksIcon,    badge: 5   },
-      { label: 'Accounting', href: '/accounting', icon: AccountingIcon         },
+      { label: 'Contacts', href: '/contacts', icon: ContactsIcon, badge: 248 },
+      { label: 'Leads', href: '/leads', icon: LeadsIcon, badge: 12 },
+      { label: 'Deals', href: '/deals', icon: DealsIcon },
+      { label: 'Tasks', href: '/tasks', icon: TasksIcon, badge: 5 },
+      { label: 'Accounting', href: '/accounting', icon: AccountingIcon },
     ],
   },
   {
     title: 'Tools',
     items: [
-      { label: 'Email',     href: '/email',     icon: EmailIcon    },
-      { label: 'Reports',   href: '/reports',   icon: ReportsIcon  },
+      { label: 'Email', href: '/email', icon: EmailIcon },
+      { label: 'Reports', href: '/reports', icon: ReportsIcon },
     ],
   },
   {
     title: 'System',
     items: [
-      { label: 'Settings',  href: '/settings',  icon: SettingsIcon },
+      { label: 'Settings', href: '/settings', icon: SettingsIcon },
+    ],
+  },
+];
+
+const CLIENT_NAV_SECTIONS: NavSection[] = [
+  {
+    items: [
+      { label: 'Home', href: '/', icon: DashboardIcon },
+    ],
+  },
+  {
+    title: 'Meetings',
+    items: [
+      { label: 'Book Consultation', href: '/meetings/book', icon: ContactsIcon },
+      { label: 'Meeting History', href: '/meetings/history', icon: ReportsIcon },
+      { label: 'Notes & Actions', href: '/meetings/notes', icon: TasksIcon },
+    ],
+  },
+  {
+    title: 'Proposal & Payments',
+    items: [
+      { label: 'Engagement Letter', href: '/proposal', icon: EmailIcon },
+      { label: 'Invoices & Payments', href: '/payments', icon: AccountingIcon },
+    ],
+  },
+  {
+    title: 'Project',
+    items: [
+      { label: 'Project Tracker', href: '/project', icon: DealsIcon },
+      { label: 'Task Status', href: '/project/tasks', icon: TasksIcon },
+      { label: 'Upload Documents', href: '/project/upload', icon: EmailIcon },
+      { label: 'Download Documents', href: '/project/download', icon: EmailIcon },
+    ],
+  },
+  {
+    title: 'Compliance',
+    items: [
+      { label: 'KYC & Documents', href: '/compliance/kyc', icon: ContactsIcon },
+    ],
+  },
+  {
+    title: 'Testing & QA',
+    items: [
+      { label: 'UAT Checklist', href: '/testing/uat', icon: ReportsIcon },
+      { label: 'Feedback & Bugs', href: '/testing/bugs', icon: TasksIcon },
+    ],
+  },
+  {
+    title: 'Accounting',
+    items: [
+      { label: 'Accounting Dashboard', href: '/accounting-client', icon: AccountingIcon },
+      { label: 'Annual P&L', href: '/accounting/pl', icon: ReportsIcon },
+      { label: 'CT Year-End', href: '/accounting/archive', icon: ReportsIcon },
+    ],
+  },
+  {
+    title: 'Growth',
+    items: [
+      { label: 'Renewal Summary', href: '/growth/renewals', icon: DealsIcon },
+      { label: 'Add-On Services', href: '/growth/addons', icon: LeadsIcon },
+    ],
+  },
+
+  {
+    title: 'Support',
+    items: [
+      { label: 'Help Centre / FAQs', href: '/support', icon: SettingsIcon },
     ],
   },
 ];
@@ -146,14 +214,37 @@ export default function Sidebar({ collapsed, hidden, onToggle, activeBrand }: Si
   const searchParams = useSearchParams();
   const currentTab = searchParams.get('tab') || '';
   const { role } = usePermission();
+  const isClient = role === UserRole.CLIENT;
   const isFinancial = activeBrand === 'financial' || pathname === '/accounting' || pathname.startsWith('/accounting/');
   const [accountingExpanded, setAccountingExpanded] = useState(pathname.startsWith('/accounting'));
+  const [clientStage, setClientStage] = useState(1);
 
   useEffect(() => {
     if (pathname.startsWith('/accounting')) {
       setAccountingExpanded(true);
     }
   }, [pathname]);
+
+  useEffect(() => {
+    if (isClient) {
+      // Fetch the stage so we can lock/unlock sidebar items
+      const fetchProfile = async () => {
+        try {
+          const res = await get<{ success: boolean; data: any }>('/bookkeeping/profile');
+          if (res?.success && res.data?.onboarding_stage) {
+            setClientStage(res.data.onboarding_stage);
+          }
+        } catch (e) {
+          // ignore
+        }
+      };
+      fetchProfile();
+
+      // Poll every few seconds since the UAT simulator on Home might change it
+      const interval = setInterval(fetchProfile, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [isClient]);
 
   // Brand details
   const dotColor = isFinancial ? '#E8760A' : '#B8892A';
@@ -243,7 +334,7 @@ export default function Sidebar({ collapsed, hidden, onToggle, activeBrand }: Si
 
       {/* ── Navigation ── */}
       <nav style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '0.75rem 0' }}>
-        {NAV_SECTIONS.map((section, si) => (
+        {(isClient ? CLIENT_NAV_SECTIONS : NAV_SECTIONS).map((section, si) => (
           <div key={si} style={{ marginBottom: '0.25rem' }}>
             {/* Section title */}
             {section.title && (
@@ -273,6 +364,7 @@ export default function Sidebar({ collapsed, hidden, onToggle, activeBrand }: Si
             {/* Items */}
             {section.items
               .filter((item) => {
+                if (isClient) return true;
                 // Settings is admin/ceo only
                 if (item.href === '/settings' && role !== UserRole.ADMIN && role !== UserRole.CEO) {
                   return false;
@@ -287,16 +379,122 @@ export default function Sidebar({ collapsed, hidden, onToggle, activeBrand }: Si
                 const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
                 const Icon = item.icon;
 
+                let isLocked = false;
+                let lockReason = '';
+
+                if (isClient) {
+                  switch (item.label) {
+                    case 'Book Consultation':
+                      if (clientStage > 2) {
+                        isLocked = true;
+                        lockReason = 'Your consultation is already booked or in progress. We will reactivate this if you need to schedule another meeting.';
+                      }
+                      break;
+                    case 'Meeting History':
+                      if (clientStage < 2) {
+                        isLocked = true;
+                        lockReason = 'Your meeting history will appear here after your first consultation with our team.';
+                      }
+                      break;
+                    case 'Notes & Actions':
+                      if (clientStage < 2) {
+                        isLocked = true;
+                        lockReason = 'Notes from your meetings will appear here after your first consultation.';
+                      }
+                      break;
+                    case 'Engagement Letter':
+                      if (clientStage < 3) {
+                        isLocked = true;
+                        lockReason = 'Your personalised proposal will appear here once it has been prepared and sent to you.';
+                      }
+                      break;
+                    case 'Invoices & Payments':
+                      if (clientStage < 4) {
+                        isLocked = true;
+                        lockReason = 'Your invoice will appear here once your proposal has been approved and confirmed.';
+                      }
+                      break;
+                    case 'Project Tracker':
+                      if (clientStage < 5) {
+                        isLocked = true;
+                        lockReason = 'Your project tracker will be activated once your payment is confirmed.';
+                      }
+                      break;
+                    case 'Task Status':
+                      if (clientStage < 6) {
+                        isLocked = true;
+                        lockReason = 'Live task updates will appear here once your project is officially activated by our team.';
+                      }
+                      break;
+                    case 'Upload Documents':
+                      if (clientStage < 6) {
+                        isLocked = true;
+                        lockReason = 'Document upload will be available here once your project begins.';
+                      }
+                      break;
+                    case 'Download Documents':
+                      if (clientStage < 6) {
+                        isLocked = true;
+                        lockReason = 'Your completed documents will appear here as they are issued by the relevant authorities.';
+                      }
+                      break;
+                    case 'KYC & Documents':
+                      if (clientStage < 5) {
+                        isLocked = true;
+                        lockReason = 'KYC documents will be requested once your project is active.';
+                      }
+                      break;
+                    case 'UAT Checklist':
+                    case 'Feedback & Bugs':
+                      if (clientStage < 6) {
+                        isLocked = true;
+                        lockReason = 'Testing features will unlock once the project is in active development.';
+                      }
+                      break;
+                    case 'Accounting Dashboard':
+                      if (clientStage < 7) {
+                        isLocked = true;
+                        lockReason = 'Your accounting dashboard will be activated after your first monthly report is completed.';
+                      }
+                      break;
+                    case 'Annual P&L':
+                    case 'CT Year-End':
+                      if (clientStage < 7) {
+                        isLocked = true;
+                        lockReason = 'Your annual P&L summary will appear here after your corporate tax return is submitted.';
+                      }
+                      break;
+                    case 'Renewal Summary':
+                      if (clientStage < 7) {
+                        isLocked = true;
+                        lockReason = 'Your renewal summary will appear here once your project is complete.';
+                      }
+                      break;
+                    case 'Add-On Services':
+                      if (clientStage < 7) {
+                        isLocked = true;
+                        lockReason = 'Our full service catalogue will be available here once your project is complete. You will be able to purchase additional services directly from here.';
+                      }
+                      break;
+                  }
+                }
+
+                const LinkWrapper: any = (isLocked || !item.href) ? 'div' : Link;
+
                 return (
-                  <React.Fragment key={item.href}>
-                    <Link
-                      href={item.href === '/accounting' ? '/accounting?tab=dashboard' : item.href}
-                      onClick={() => {
+                  <React.Fragment key={item.href || item.label}>
+                    <LinkWrapper
+                      {...(!isLocked && item.href ? { href: item.href === '/accounting' ? '/accounting?tab=dashboard' : item.href } : {})}
+                      onClick={(e: React.MouseEvent) => {
+                        if (isLocked) {
+                          e.preventDefault();
+                          return;
+                        }
                         if (item.href === '/accounting') {
                           setAccountingExpanded(!accountingExpanded);
                         }
                       }}
-                      title={collapsed ? item.label : undefined}
+                      title={isLocked ? lockReason : (collapsed ? item.label : undefined)}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -305,13 +503,13 @@ export default function Sidebar({ collapsed, hidden, onToggle, activeBrand }: Si
                         margin: '0.125rem 0.5rem',
                         borderRadius: '0.5rem',
                         textDecoration: 'none',
-                        color: isActive ? '#ffffff' : 'rgba(246,241,232,0.5)',
-                        background: isActive
+                        color: isLocked ? 'rgba(246,241,232,0.2)' : isActive ? '#ffffff' : 'rgba(246,241,232,0.5)',
+                        background: isActive && !isLocked
                           ? isFinancial
                             ? 'linear-gradient(135deg, rgba(232,118,10,0.2) 0%, rgba(42,22,40,0.3) 100%)'
                             : 'linear-gradient(135deg, rgba(184,137,42,0.2) 0%, rgba(44,26,14,0.3) 100%)'
                           : 'transparent',
-                        boxShadow: isActive
+                        boxShadow: isActive && !isLocked
                           ? isFinancial
                             ? 'inset 0 0 0 1px rgba(232,118,10,0.25)'
                             : 'inset 0 0 0 1px rgba(184,137,42,0.25)'
@@ -321,17 +519,18 @@ export default function Sidebar({ collapsed, hidden, onToggle, activeBrand }: Si
                         overflow: 'hidden',
                         justifyContent: collapsed ? 'center' : 'flex-start',
                         position: 'relative',
+                        cursor: isLocked ? 'not-allowed' : 'pointer',
                       }}
-                      onMouseEnter={(e) => {
-                        if (!isActive) {
-                          (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.06)';
-                          (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(246,241,232,0.85)';
+                      onMouseEnter={(e: React.MouseEvent<HTMLElement>) => {
+                        if (!isActive && !isLocked) {
+                          e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                          e.currentTarget.style.color = 'rgba(246,241,232,0.85)';
                         }
                       }}
-                      onMouseLeave={(e) => {
-                        if (!isActive) {
-                          (e.currentTarget as HTMLAnchorElement).style.background = 'transparent';
-                          (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(246,241,232,0.5)';
+                      onMouseLeave={(e: React.MouseEvent<HTMLElement>) => {
+                        if (!isActive && !isLocked) {
+                          e.currentTarget.style.background = 'transparent';
+                          e.currentTarget.style.color = 'rgba(246,241,232,0.5)';
                         }
                       }}
                     >
@@ -365,6 +564,25 @@ export default function Sidebar({ collapsed, hidden, onToggle, activeBrand }: Si
                       }}>
                         {item.label}
                       </span>
+
+                      {isLocked && !collapsed && (
+                        <svg
+                          style={{
+                            width: '12px',
+                            height: '12px',
+                            marginLeft: 'auto',
+                            opacity: 0.5,
+                            flexShrink: 0
+                          }}
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                        >
+                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                        </svg>
+                      )}
 
                       {item.label === 'Accounting' && !collapsed && (
                         <svg
@@ -410,10 +628,10 @@ export default function Sidebar({ collapsed, hidden, onToggle, activeBrand }: Si
                           {item.badge}
                         </span>
                       )}
-                    </Link>
+                    </LinkWrapper>
 
                     {/* Accounting Submenus */}
-                    {item.label === 'Accounting' && accountingExpanded && !collapsed && (
+                    {item.label === 'Accounting' && !isClient && accountingExpanded && !collapsed && (
                       <div style={{
                         display: 'flex',
                         flexDirection: 'column',
@@ -434,7 +652,7 @@ export default function Sidebar({ collapsed, hidden, onToggle, activeBrand }: Si
                           { label: 'Vendors', tab: 'vendors' }
                         ].map((subItem) => {
                           const isSubActive = pathname === '/accounting' && (
-                            currentTab === subItem.tab || 
+                            currentTab === subItem.tab ||
                             (subItem.tab === 'dashboard' && !currentTab)
                           );
                           return (
