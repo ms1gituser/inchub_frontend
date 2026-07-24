@@ -8,7 +8,7 @@ COPY package*.json tsconfig.json ./
 COPY scripts ./scripts
 
 # Install dependencies
-RUN npm ci
+RUN npm install --legacy-peer-deps
 
 # Copy source code and configuration files
 COPY src ./src
