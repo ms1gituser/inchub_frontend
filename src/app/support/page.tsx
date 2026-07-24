@@ -144,7 +144,7 @@ export default function HelpCentrePage() {
                     </div>
                   );
                 }) : (
-                  <p style={{ color: 'rgba(0,0,0,0.5)', fontSize: '0.9375rem' }}>No results found for "{searchQuery}".</p>
+                  <p style={{ color: 'rgba(0,0,0,0.5)', fontSize: '0.9375rem' }}>No results found for &quot;{searchQuery}&quot;.</p>
                 )}
               </div>
             </div>
@@ -216,7 +216,7 @@ export default function HelpCentrePage() {
       {/* Fallback Support Banner */}
       <div style={{ marginTop: '3rem', background: 'var(--bg-page)', border: `1px solid ${cardBorderColor}`, padding: '2rem', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem', textAlign: 'center' }}>
         <div>
-          <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem', fontWeight: 600, color: primaryBg, fontFamily: 'var(--font-serif)' }}>Didn't find what you need?</h2>
+          <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem', fontWeight: 600, color: primaryBg, fontFamily: 'var(--font-serif)' }}>Didn&apos;t find what you need?</h2>
           <p style={{ margin: 0, fontSize: '0.9375rem', color: 'rgba(0,0,0,0.6)' }}>Our support team and AI assistant are available to help you immediately.</p>
         </div>
         <div style={{ display: 'flex', gap: '1rem' }}>

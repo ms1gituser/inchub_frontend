@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const ExcelJS = require('exceljs');
 
 async function readExcel() {

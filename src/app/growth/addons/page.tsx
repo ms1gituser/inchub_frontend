@@ -219,7 +219,7 @@ export default function AddOnServicesPage() {
               </div>
 
               <div style={{ background: 'rgba(0,0,0,0.02)', padding: '1rem', borderRadius: '6px', border: `1px dashed ${cardBorderColor}` }}>
-                <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', fontWeight: 600, color: primaryBg }}>What's Included:</p>
+                <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', fontWeight: 600, color: primaryBg }}>What&apos;s Included:</p>
                 <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.875rem', color: 'rgba(0,0,0,0.7)', lineHeight: 1.6 }}>
                   <li>Dedicated account manager assigned to your case</li>
                   <li>Document preparation and government liaising</li>

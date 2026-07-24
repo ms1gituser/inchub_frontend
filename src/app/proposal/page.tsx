@@ -206,7 +206,7 @@ export default function ProposalPage() {
           </h4>
           <p style={{ margin: 0, fontSize: '0.875rem', color: 'rgba(0,0,0,0.7)', lineHeight: 1.6 }}>
             This proposal is valid for 14 days from the date of issue (until July 10, 2026). Standard government fees are subject to change without prior notice. 
-            By approving this proposal, you agree to IncHub's standard terms of service.
+            By approving this proposal, you agree to IncHub&apos;s standard terms of service.
           </p>
         </section>
 
