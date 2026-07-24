@@ -23,7 +23,7 @@ jobs:
 
     # 3. Install Dependencies
     - name: Install dependencies
-      run: npm ci
+      run: npm install --legacy-peer-deps
 
     # 4. Run Pre-flight Security Audit (Blocks pipeline on failure)
     - name: Run Pre-flight Security Scan
