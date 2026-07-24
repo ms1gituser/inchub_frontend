@@ -5,6 +5,12 @@ import { get } from '@/lib/apiClient';
 import { usePermission } from '@/context/PermissionContext';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 
+const TrendArrow = ({ up }: { up: boolean }) => (
+  <span style={{ color: up ? '#10b981' : '#ef4444', display: 'inline-flex', alignItems: 'center', fontSize: '0.875rem' }}>
+    {up ? '▲' : '▼'}
+  </span>
+);
+
 export default function AccountingDashboardPage() {
   const { currentBrand } = usePermission();
   const [stage, setStage] = useState<number | null>(null);
@@ -62,12 +68,6 @@ export default function AccountingDashboardPage() {
   const formatMoney = (amount: number) => {
     return new Intl.NumberFormat('en-AE', { style: 'currency', currency: 'AED', maximumFractionDigits: 0 }).format(amount);
   };
-
-  const TrendArrow = ({ up }: { up: boolean }) => (
-    <span style={{ color: up ? '#10b981' : '#ef4444', display: 'inline-flex', alignItems: 'center', fontSize: '0.875rem' }}>
-      {up ? '▲' : '▼'}
-    </span>
-  );
 
   return (
     <div style={{ padding: '1.5rem', maxWidth: '1536px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>

@@ -130,7 +130,7 @@ export default function BookConsultationPage() {
             </div>
             
             <div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: primaryBg, margin: '0 0 0.25rem' }}>You're booked!</h2>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: primaryBg, margin: '0 0 0.25rem' }}>You&apos;re booked!</h2>
               <p style={{ fontSize: '1rem', color: primaryBg, margin: 0, fontWeight: 500 }}>
                 {confirmedDateStr} at {confirmedTimeStr} (GST)
               </p>
