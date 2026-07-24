@@ -34,7 +34,10 @@
     "eslint-config-next": "16.2.11",
     "exceljs": "^4.4.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "lightningcss-linux-x64-musl": "1.32.0",
+    "lightningcss-linux-x64-gnu": "1.32.0",
+    "lightningcss-win32-x64-msvc": "1.32.0"
   },
   "resolutions": {
     "brace-expansion": "^1.1.16",
