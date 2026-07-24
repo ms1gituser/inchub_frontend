@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter, Cormorant_Garamond } from 'next/font/google';
 import './globals.css';
 import AppShell from '@/components/layout/AppShell';
+import NextTopLoader from 'nextjs-toploader';
 
 const inter = Inter({
   variable: '--font-sans',
@@ -32,6 +33,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${cormorant.variable}`}>
       <body>
+        <NextTopLoader color="#E8760A" showSpinner={false} />
         <StoreProvider>
           <AppShell>{children}</AppShell>
         </StoreProvider>
