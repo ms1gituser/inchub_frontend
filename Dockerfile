@@ -8,7 +8,7 @@ COPY package*.json tsconfig.json ./
 COPY scripts ./scripts
 
 # Install dependencies
-RUN rm -f package-lock.json && npm install --legacy-peer-deps
+RUN npm ci
 
 # Copy source code and configuration files
 COPY src ./src
