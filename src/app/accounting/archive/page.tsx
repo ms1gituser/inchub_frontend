@@ -17,12 +17,11 @@ export default function ArchivePage() {
         if (res?.success && res.data?.onboarding_stage) {
           setStage(res.data.onboarding_stage);
         } else {
-          setStage(7); // FORCED FOR UI REVIEW
+          setStage(9);
         }
       } catch (e) {
-        setStage(7); // FORCED FOR UI REVIEW
+        setStage(9);
       } finally {
-        setStage(7); // FORCED FOR UI REVIEW
         setLoading(false);
       }
     };

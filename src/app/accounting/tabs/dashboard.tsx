@@ -198,6 +198,10 @@ export default function DashboardTab() {
       overflowX: 'hidden'
     }}>
       <style dangerouslySetInnerHTML={{ __html: ` // nosec
+          @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+          }
           .dashboard-kpi-grid {
             grid-template-columns: repeat(7, 1fr);
           }
@@ -813,7 +817,13 @@ export default function DashboardTab() {
               </div>
             </div>
             <div>
-              <div style={{ fontSize: '2rem', fontWeight: 300, color: '#2A1628', lineHeight: 1.1, fontFamily: 'var(--font-serif), Georgia, serif' }}>{card.value}</div>
+              <div style={{ fontSize: '2rem', fontWeight: 300, color: '#2A1628', lineHeight: 1.1, fontFamily: 'var(--font-serif), Georgia, serif' }}>
+                {statsLoading ? (
+                  <div style={{ width: '48px', height: '32px', background: 'rgba(42,22,40,0.06)', borderRadius: '6px', animation: 'pulse 1.5s infinite ease-in-out' }} />
+                ) : (
+                  card.value
+                )}
+              </div>
               <div style={{ fontSize: '0.6875rem', color: card.change.includes('urgent') || card.change.includes('attention') ? '#EF4444' : 'rgba(42,22,40,0.45)', marginTop: '0.125rem', fontWeight: 500 }}>
                 {card.change}
               </div>

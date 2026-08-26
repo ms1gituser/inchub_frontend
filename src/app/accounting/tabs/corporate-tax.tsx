@@ -1115,7 +1115,11 @@ export default function CorporateTaxTab() {
             </div>
             <div>
               <div style={{ fontSize: '1.5rem', fontWeight: 300, color: '#2A1628', lineHeight: 1.1, fontFamily: 'var(--font-serif), Georgia, serif' }}>
-                {card.value}
+                { queueLoading ? (
+                  <div style={{ width: '48px', height: '32px', background: 'rgba(42,22,40,0.06)', borderRadius: '6px', animation: 'pulse 1.5s infinite ease-in-out' }} />
+                ) : (
+                  card.value
+                )}
               </div>
               <div style={{ fontSize: '0.6875rem', color: 'rgba(42,22,40,0.45)', marginTop: '0.125rem', fontWeight: 500 }}>
                 {card.sub}
@@ -1347,17 +1351,17 @@ export default function CorporateTaxTab() {
               </tr>
             </thead>
             <tbody>
-              {isLoading ? (
+              {isLoading || queueLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} style={{ borderBottom: '1px solid rgba(42,22,40,0.04)' }}>
-                    <td style={{ padding: '1rem' }}><div style={{ width: '16px', height: '16px', background: '#F3F4F6', borderRadius: '4px' }} /></td>
+                    <td style={{ padding: '1rem' }}><div style={{ width: '16px', height: '16px', background: 'linear-gradient(90deg, #F3F4F6 25%, #E9ECEF 50%, #F3F4F6 75%)', backgroundSize: '200% 100%', animation: 'pulse 1.5s infinite ease-in-out', borderRadius: '4px' }} /></td>
                     {columns.map((col, idx) => (
-                      <td key={idx} style={{ padding: '1rem' }}><div style={{ width: col.key === 'client' ? '120px' : '60px', height: '12px', background: '#F3F4F6', borderRadius: '4px' }} /></td>
+                      <td key={idx} style={{ padding: '1rem' }}><div style={{ width: col.key === 'client' ? '120px' : '60px', height: '12px', background: 'linear-gradient(90deg, #F3F4F6 25%, #E9ECEF 50%, #F3F4F6 75%)', backgroundSize: '200% 100%', animation: 'pulse 1.5s infinite ease-in-out', borderRadius: '4px' }} /></td>
                     ))}
                     <td />
                   </tr>
                 ))
-              ) : pagedData.length === 0 ? (
+              ) : !queueLoading && pagedData.length === 0 ? (
                 <tr>
                   <td colSpan={columns.length + 2} style={{ padding: '3rem', textAlign: 'center', color: 'rgba(42,22,40,0.4)' }}>
                     <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ marginBottom: '0.75rem', opacity: 0.3 }}>
@@ -2780,7 +2784,12 @@ export default function CorporateTaxTab() {
 
       {/* Styled JSX injected for dynamic animations */}
       <style jsx global>{`
-        .hide-scrollbar::-webkit-scrollbar {
+        
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+.hide-scrollbar::-webkit-scrollbar {
           display: none !important;
         }
         .hide-scrollbar {

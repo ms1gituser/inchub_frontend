@@ -642,6 +642,7 @@ export default function Sidebar({ collapsed, hidden, onToggle, activeBrand }: Si
                       }}>
                         {[
                           { label: 'Dashboard', tab: 'dashboard' },
+                          { label: 'Operations Workspace', tab: '' },
                           { label: 'Client List', tab: 'client-list' },
                           { label: 'AI Bookkeeping Queue', tab: 'ai-queue' },
                           { label: 'Reconciliation Center', tab: 'reconciliation' },

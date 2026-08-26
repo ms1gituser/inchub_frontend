@@ -28,6 +28,7 @@ import {
   useRetryFailedJobMutation,
   useRetryAllFailedJobsMutation
 } from '@/lib/reconciliationApi';
+import { useAddVendorMutation } from '@/lib/vendorapi';
 
 
 // ============================================================================
@@ -272,7 +273,8 @@ export type RowActionKey =
   | 'jumpToAiQueue'
   | 'jumpToVat'
   | 'jumpToQuickBooks'
-  | 'copyTransactionId';
+  | 'copyTransactionId'
+  | 'autoCreateVendor';
 
 export type DrawerTabKey =
   | 'overview'
@@ -323,6 +325,7 @@ export interface DrawerActionHandlers {
   openRetryFailedJobs: (tx: ReconciliationTransaction) => void;
   acceptSuggestion: (tx: ReconciliationTransaction, matchId: string) => void;
   rejectSuggestion: (tx: ReconciliationTransaction, matchId: string) => void;
+  autoCreateVendor: (tx: ReconciliationTransaction) => void;
 }
 
 export interface DrawerTabProps {
@@ -578,6 +581,7 @@ export function getSuggestedMatchesForTransaction(tx: ReconciliationTransaction)
       { label: 'Vendor / Payee Match', score: Math.max(35, tx.aiMatchScore - 15) },
       { label: 'Reference Match', score: Math.max(20, tx.aiMatchScore - 25) },
       { label: 'Description Similarity', score: Math.max(30, tx.aiMatchScore - 12) },
+      { label: 'Category Match', score: Math.max(10, tx.aiMatchScore - 5) },
     ],
     isDuplicateRisk: tx.differenceType === 'Duplicate',
   };
@@ -593,6 +597,7 @@ export function getSuggestedMatchesForTransaction(tx: ReconciliationTransaction)
       { label: 'Vendor / Payee Match', score: 30 },
       { label: 'Reference Match', score: 20 },
       { label: 'Description Similarity', score: 40 },
+      { label: 'Category Match', score: 50 },
     ],
     isDuplicateRisk: false,
   };
@@ -1507,6 +1512,9 @@ function AiMatchingTab({ tx, actions, drawerData }: DrawerTabProps & { drawerDat
       <div>
         <EyebrowLabel>Suggested Matches</EyebrowLabel>
         {suggestions.length === 0 && <p style={{ fontSize: '0.8125rem', color: 'rgba(42,22,40,0.5)' }}>No suggestions available.</p>}
+        <div style={{ marginBottom: '0.75rem' }}>
+           <GhostButton label="Auto-Create Vendor" tone="#137333" onClick={() => actions.autoCreateVendor(tx)} />
+        </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {suggestions.map((s) => (
             <div key={s.id} style={{ border: `1.5px solid ${s.confidence >= 70 ? '#137333' : '#DDD0C4'}`, borderRadius: '10px', padding: '0.85rem', background: '#fff' }}>
@@ -1544,7 +1552,7 @@ function AiMatchingTab({ tx, actions, drawerData }: DrawerTabProps & { drawerDat
 
       <DrawerSection title="Matching Logic &amp; Duplicate Detection">
         <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: 'rgba(42,22,40,0.6)', lineHeight: 1.6 }}>
-          Candidates are scored across five weighted signals — amount match, date proximity, vendor/payee match, reference match, and description similarity — then combined into a single confidence percentage.
+          Candidates are scored across six weighted signals — amount match, date proximity, vendor/payee match, reference match, description similarity, and category match — then combined into a single confidence percentage.
         </p>
         <p style={{ margin: 0, fontSize: '0.75rem', color: 'rgba(42,22,40,0.6)', lineHeight: 1.6 }}>
           Duplicate detection flags candidates that closely resemble another transaction already reconciled in the same statement period.
@@ -1629,6 +1637,7 @@ function ManualMatchTab({ tx, actions }: DrawerTabProps) {
           <GhostButton label="Open Manual Match" onClick={() => actions.openManualMatch(tx)} disabled={!staged} title={!staged ? 'Stage a candidate first' : undefined} />
           <GhostButton label="Merge Transaction" tone="#8B5CF6" onClick={() => actions.openMerge(tx)} />
           <GhostButton label="Split Transaction" tone="#E8760A" onClick={() => actions.openSplit(tx)} />
+          <GhostButton label="Auto-Create Vendor" tone="#137333" onClick={() => actions.autoCreateVendor(tx)} />
         </div>
       </div>
 
@@ -1812,7 +1821,12 @@ function ActivityTab({ tx, actions, drawerData }: DrawerTabProps & { drawerData?
       </div>
       <div className="activity-table-scroll" style={{ overflowX: 'auto', border: '1px solid rgba(42,22,40,0.08)', borderRadius: '10px' }}>
         <style>{`
-          .activity-table-scroll::-webkit-scrollbar {
+          
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+.activity-table-scroll::-webkit-scrollbar {
             display: none !important;
             height: 0 !important;
             width: 0 !important;
@@ -2147,36 +2161,60 @@ function ReconciliationDrawerContent({ transaction, activeTab, onTabChange, onCl
           </div>
 
           {/* Tab strip */}
-          <div className="drawer-tabs-scroll" style={{ display: 'flex', borderBottom: '1px solid #DDD0C4', overflowX: 'auto', flexShrink: 0 }} role="tablist">
-            <style>{`
-              .drawer-tabs-scroll::-webkit-scrollbar {
-                display: none !important;
-                height: 0 !important;
-                width: 0 !important;
-              }
-              .drawer-tabs-scroll {
-                -ms-overflow-style: none !important;
-                scrollbar-width: none !important;
-              }
-            `}</style>
-            {TABS.map((t) => {
-              const isActive = activeTab === t.key;
-              return (
-                <button
-                  key={t.key}
-                  role="tab"
-                  aria-selected={isActive}
-                  onClick={() => onTabChange(t.key)}
-                  style={{
-                    background: 'transparent', border: 'none', borderBottom: isActive ? '2px solid #E8760A' : '2px solid transparent',
-                    color: isActive ? '#E8760A' : 'rgba(42,22,40,0.5)', fontWeight: isActive ? 700 : 500, fontSize: '0.7rem',
-                    cursor: 'pointer', padding: '0.75rem 0.85rem', whiteSpace: 'nowrap', fontFamily: 'inherit', flexShrink: 0,
-                  }}
-                >
-                  {t.label}
-                </button>
-              );
-            })}
+          <div style={{ display: 'flex', alignItems: 'stretch', borderBottom: '1px solid #DDD0C4', position: 'relative', flexShrink: 0, background: '#fff' }}>
+            <button 
+              onClick={() => {
+                const el = document.getElementById('drawer-tab-container');
+                if (el) el.scrollBy({ left: -200, behavior: 'smooth' });
+              }} 
+              style={{ background: '#FAF8F5', border: 'none', cursor: 'pointer', padding: '0 0.5rem', zIndex: 2, borderRight: '1px solid #DDD0C4', display: 'flex', alignItems: 'center', color: '#2A1628' }}
+              aria-label="Scroll left"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </button>
+
+            <div id="drawer-tab-container" className="drawer-tabs-scroll" style={{ display: 'flex', overflowX: 'auto', flex: 1, scrollBehavior: 'smooth' }} role="tablist">
+              <style>{`
+                .drawer-tabs-scroll::-webkit-scrollbar {
+                  display: none !important;
+                  height: 0 !important;
+                  width: 0 !important;
+                }
+                .drawer-tabs-scroll {
+                  -ms-overflow-style: none !important;
+                  scrollbar-width: none !important;
+                }
+              `}</style>
+              {TABS.map((t) => {
+                const isActive = activeTab === t.key;
+                return (
+                  <button
+                    key={t.key}
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => onTabChange(t.key)}
+                    style={{
+                      background: 'transparent', border: 'none', borderBottom: isActive ? '2px solid #E8760A' : '2px solid transparent',
+                      color: isActive ? '#E8760A' : 'rgba(42,22,40,0.5)', fontWeight: isActive ? 700 : 500, fontSize: '0.7rem',
+                      cursor: 'pointer', padding: '0.75rem 0.85rem', whiteSpace: 'nowrap', fontFamily: 'inherit', flexShrink: 0,
+                    }}
+                  >
+                    {t.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button 
+              onClick={() => {
+                const el = document.getElementById('drawer-tab-container');
+                if (el) el.scrollBy({ left: 200, behavior: 'smooth' });
+              }} 
+              style={{ background: '#FAF8F5', border: 'none', cursor: 'pointer', padding: '0 0.5rem', zIndex: 2, borderLeft: '1px solid #DDD0C4', display: 'flex', alignItems: 'center', color: '#2A1628' }}
+              aria-label="Scroll right"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
           </div>
 
           {/* Body */}
@@ -7286,7 +7324,11 @@ function KpiGrid({ transactions, loading, stats }: KpiGridProps) {
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: '2rem', fontWeight: 300, color: '#2A1628', lineHeight: 1.1, fontFamily: 'var(--font-serif), Georgia, serif' }}>{card.value}</div>
+                <div style={{ fontSize: '2rem', fontWeight: 300, color: '#2A1628', lineHeight: 1.1, fontFamily: 'var(--font-serif), Georgia, serif' }}>{ loading ? (
+                  <div style={{ width: '48px', height: '32px', background: 'rgba(42,22,40,0.06)', borderRadius: '6px', animation: 'pulse 1.5s infinite ease-in-out' }} />
+                ) : (
+                  card.value
+                )}</div>
                 <div style={{ fontSize: '0.6875rem', color: 'rgba(42,22,40,0.45)', marginTop: '0.125rem', fontWeight: 500 }}>{card.sub}</div>
               </div>
             </div>
@@ -7707,6 +7749,7 @@ const DENSITY_PADDING: Record<Density, string> = { compact: '0.3rem 0.75rem', co
 const ROW_ACTIONS: { key: RowActionKey; label: string; icon: React.ReactNode; permission?: PermissionAction; hideForReadOnly?: boolean; danger?: boolean; group: number }[] = [
   { key: 'openDrawer', label: 'Open Reconciliation Drawer', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>, group: 1 },
   { key: 'viewTimeline', label: 'View Timeline', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>, group: 1 },
+  { key: 'autoCreateVendor', label: 'Auto-Create Vendor', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>, group: 1 },
   { key: 'previewTransactions', label: 'Preview Transactions', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, group: 1 },
   { key: 'aiMatchAnalysis', label: 'AI Match Analysis', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>, group: 1 },
   { key: 'manualMatch', label: 'Manual Match', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>, hideForReadOnly: true, group: 2 },
@@ -8115,10 +8158,10 @@ function ReconciliationTable({
                     className="recon-row"
                     tabIndex={0}
                     onFocus={() => onFocusRow(tx.id)}
-                    onDoubleClick={() => onRowAction('openDrawer', tx)}
-                    style={{ borderBottom: idx < transactions.length - 1 ? '1px solid rgba(42,22,40,0.04)' : 'none', background: isSelected ? 'rgba(232,118,10,0.02)' : 'transparent' }}
+                    onClick={() => onRowAction('openDrawer', tx)}
+                    style={{ borderBottom: idx < transactions.length - 1 ? '1px solid rgba(42,22,40,0.04)' : 'none', background: isSelected ? 'rgba(232,118,10,0.02)' : 'transparent', cursor: 'pointer' }}
                   >
-                    <td style={{ padding: `${padding}`, textAlign: 'center', position: 'sticky', left: 0, background: rowBg, zIndex: 5 }}>
+                    <td onClick={(e) => e.stopPropagation()} style={{ padding: `${padding}`, textAlign: 'center', position: 'sticky', left: 0, background: rowBg, zIndex: 5 }}>
                       <input
                         type="checkbox"
                         aria-label={`Select ${tx.id}`}
@@ -8359,7 +8402,7 @@ function ReconciliationStatCards({ transactions }: BottomAnalyticsProps) {
 
     const avgProcessing = Math.round(transactions.reduce((s, t) => s + t.processingMinutes, 0) / total);
     const topError = diffCategories[0];
-    const successCount = transactions.filter((t) => ['Ready To Post', 'Posted'].includes(t.status)).length;
+    const successCount = transactions.filter((t) => ['Auto Matched', 'Ready To Post', 'Posted'].includes(t.status)).length;
     const successPct = Math.round((successCount / total) * 100);
     const withinSla = transactions.filter((t) => t.processingMinutes <= t.slaHours * 60).length;
     const slaPct = Math.round((withinSla / total) * 100);
@@ -8718,6 +8761,7 @@ function ReconciliationCenterInner() {
   const [mergeTx] = usePostMergeMutation();
   const [undoRecon] = usePostUndoMutation();
   const [postBulk] = usePostBulkMutation();
+  const [addVendor] = useAddVendorMutation();
 
   const { data: savedViewsRes } = useGetSavedViewsQuery();
   const [createSavedView] = usePostSavedViewMutation();
@@ -8989,6 +9033,7 @@ function ReconciliationCenterInner() {
       case 'splitTransaction': setPopup({ type: 'split', tx }); return;
       case 'mergeTransaction': setPopup({ type: 'merge', tx, extraIds: [] }); return;
       case 'postToQuickBooks': setPopup({ type: 'postToQuickBooks', transactions: [tx] }); return;
+      case 'autoCreateVendor': drawerActions.autoCreateVendor(tx); return;
       case 'export': pushToast({ message: `Transaction ${tx.id} exported.`, tone: 'success' }); return;
       case 'notes': setPopup({ type: 'addNotes', ids: [tx.id] }); return;
       case 'auditLog': openDrawerFor(tx, 'activity'); return;
@@ -9112,7 +9157,17 @@ function ReconciliationCenterInner() {
     openAddNotes: (tx) => setPopup({ type: 'addNotes', ids: [tx.id] }),
     openAuditExport: (tx) => setPopup({ type: 'auditExport', tx }),
     openRetryFailedJobs: () => setPopup({ type: 'retryFailedJobs' }),
+    autoCreateVendor: (tx) => {
+      addVendor({ name: tx.description || 'New Vendor', status: 'Pending', category: 'General', country: 'UAE', vendorType: 'Local' })
+        .unwrap()
+        .then((res: any) => pushToast({ message: `Vendor "${res.data?.name || res.name || tx.description}" auto-created successfully.`, tone: 'success' }))
+        .catch(() => pushToast({ message: 'Failed to auto-create vendor.', tone: 'error' }));
+    },
     acceptSuggestion: (tx, matchId) => {
+      if (matchId.includes('-sm-')) {
+        pushToast({ message: 'This is a mock AI suggestion for testing the UI. Real matches will be saved to the database.', tone: 'info' });
+        return;
+      }
       acceptMatch({ candidate_id: matchId })
         .unwrap()
         .then(() => {
@@ -9122,6 +9177,10 @@ function ReconciliationCenterInner() {
         .catch((err: any) => pushToast({ message: err?.data?.message || 'Failed to accept suggested match.', tone: 'error' }));
     },
     rejectSuggestion: (tx, matchId) => {
+      if (matchId.includes('-sm-')) {
+        pushToast({ message: 'This is a mock AI suggestion for testing the UI.', tone: 'info' });
+        return;
+      }
       rejectMatch({ candidate_id: matchId })
         .unwrap()
         .then(() => {
@@ -9244,7 +9303,7 @@ function ReconciliationCenterInner() {
 
       <KpiGrid transactions={filteredTransactions} loading={initialLoading} stats={statsRes?.data} />
 
-      <ReconciliationStatCards transactions={filteredTransactions} />
+      <ReconciliationStatCards transactions={transactions} />
 
       <StatusChips transactions={transactions} active={statusChip} onChange={setStatusChip} />
 

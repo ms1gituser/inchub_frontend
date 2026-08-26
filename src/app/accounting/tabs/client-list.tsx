@@ -107,7 +107,7 @@ export default function ClientListTab() {
   const [advFilterOpen, setAdvFilterOpen] = useState<string | null>(null);
 
   // ── API Mutators & Queries ──
-  const [addClient] = useAddClientMutation();
+  const [addClient, { isLoading: isAddingClient }] = useAddClientMutation();
   const [deleteClient] = useDeleteClientMutation();
   const [bulkUpdateClients] = useBulkUpdateClientsMutation();
   const [importClients] = useImportClientsMutation();
@@ -123,7 +123,7 @@ export default function ClientListTab() {
     }
   });
 
-  const { data: kpisRes } = useGetClientKpisQuery();
+  const { data: kpisRes, isLoading: kpisLoading } = useGetClientKpisQuery();
   const { data: drawerDetailsRes } = useGetClientDrawerDetailsQuery(previewClient?.id || '', { skip: !previewClient });
   const drawerDetails = drawerDetailsRes?.data || { tasks: [], documents: [], activities: [] };
 
@@ -191,8 +191,12 @@ export default function ClientListTab() {
           -ms-overflow-style: none !important;
           scrollbar-width: none !important;
         }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
       `}</style>
-      
+
       {/* ── HEADER SECTION ── */}
       <div style={{
         display: 'flex',
@@ -222,23 +226,23 @@ export default function ClientListTab() {
             View and manage all your clients, compliance status, and accounting progress.
           </p>
         </div>
-        
+
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           <button
             onClick={() => setExportOpen(true)}
             style={{
-            background: '#ffffff',
-            border: '1px solid #DDD0C4',
-            padding: '0.625rem 1.25rem',
-            borderRadius: '8px',
-            fontSize: '0.8125rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-            color: '#2A1628',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.375rem'
-          }}>
+              background: '#ffffff',
+              border: '1px solid #DDD0C4',
+              padding: '0.625rem 1.25rem',
+              borderRadius: '8px',
+              fontSize: '0.8125rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              color: '#2A1628',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.375rem'
+            }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: '#E8760A' }}>
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="17 8 12 3 7 8" />
@@ -249,18 +253,18 @@ export default function ClientListTab() {
           <button
             onClick={() => setImportOpen(true)}
             style={{
-            background: '#ffffff',
-            border: '1px solid #DDD0C4',
-            padding: '0.625rem 1.25rem',
-            borderRadius: '8px',
-            fontSize: '0.8125rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-            color: '#2A1628',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.375rem'
-          }}>
+              background: '#ffffff',
+              border: '1px solid #DDD0C4',
+              padding: '0.625rem 1.25rem',
+              borderRadius: '8px',
+              fontSize: '0.8125rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              color: '#2A1628',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.375rem'
+            }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: '#E8760A' }}>
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="7 10 12 15 17 10" />
@@ -285,7 +289,7 @@ export default function ClientListTab() {
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                   </button>
                 </div>
-                
+
                 <div style={{ width: '100%', height: '1px', background: 'rgba(42,22,40,0.06)' }} />
 
                 {/* Source Toggle */}
@@ -298,7 +302,7 @@ export default function ClientListTab() {
                         {src === 'local' ? (
                           <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg> Local File</>
                         ) : (
-                          <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 2 22 22 22"/><polygon points="12 2 22 22 17 22 12 12"/><polygon points="12 2 2 22 7 22 12 12"/></svg> Google Drive</>
+                          <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 2 22 22 22" /><polygon points="12 2 22 22 17 22 12 12" /><polygon points="12 2 2 22 7 22 12 12" /></svg> Google Drive</>
                         )}
                       </button>
                     ))}
@@ -400,23 +404,23 @@ export default function ClientListTab() {
               </div>
             </div>
           )}
-          
+
           <button
             onClick={() => setAddClientOpen(true)}
             style={{
-            background: '#2A1628',
-            color: '#ffffff',
-            border: 'none',
-            padding: '0.625rem 1.25rem',
-            borderRadius: '8px',
-            fontSize: '0.8125rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.375rem',
-            boxShadow: '0 4px 12px rgba(42,22,40,0.15)'
-          }}>
+              background: '#2A1628',
+              color: '#ffffff',
+              border: 'none',
+              padding: '0.625rem 1.25rem',
+              borderRadius: '8px',
+              fontSize: '0.8125rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.375rem',
+              boxShadow: '0 4px 12px rgba(42,22,40,0.15)'
+            }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
@@ -636,7 +640,9 @@ export default function ClientListTab() {
                     style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.6rem 1.25rem', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', color: '#2A1628', fontFamily: 'inherit' }}
                   >Cancel</button>
                   <button
+                    disabled={isAddingClient}
                     onClick={async () => {
+                      if (isAddingClient) return;
                       try {
                         await addClient(addClientForm).unwrap();
                         triggerToast('Client added successfully!', 'success');
@@ -646,12 +652,23 @@ export default function ClientListTab() {
                         triggerToast(e?.data?.message || 'Failed to add client', 'error');
                       }
                     }}
-                    style={{ background: '#2A1628', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.6rem 1.5rem', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.375rem', fontFamily: 'inherit', boxShadow: '0 4px 12px rgba(42,22,40,0.2)' }}
+                    style={{ background: isAddingClient ? '#7A6B78' : '#2A1628', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.6rem 1.5rem', fontSize: '0.8125rem', fontWeight: 600, cursor: isAddingClient ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.375rem', fontFamily: 'inherit', boxShadow: '0 4px 12px rgba(42,22,40,0.2)' }}
                   >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
-                    Add Client
+                    {isAddingClient ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="spin">
+                        <circle cx="12" cy="12" r="10" strokeOpacity="0.2" />
+                        <path d="M12 2a10 10 0 0 1 10 10" />
+                        <style>{`
+                          .spin { animation: spin 1s linear infinite; }
+                          @keyframes spin { 100% { transform: rotate(360deg); } }
+                        `}</style>
+                      </svg>
+                    ) : (
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                    )}
+                    {isAddingClient ? 'Adding...' : 'Add Client'}
                   </button>
                 </div>
               </div>
@@ -899,7 +916,13 @@ export default function ClientListTab() {
               </div>
             </div>
             <div>
-              <div style={{ fontSize: '2rem', fontWeight: 300, color: '#2A1628', lineHeight: 1.1, fontFamily: 'var(--font-serif), Georgia, serif' }}>{card.value}</div>
+              <div style={{ fontSize: '2rem', fontWeight: 300, color: '#2A1628', lineHeight: 1.1, fontFamily: 'var(--font-serif), Georgia, serif' }}>
+                {(clientsLoading || kpisLoading) ? (
+                  <div style={{ width: '48px', height: '32px', background: 'rgba(42,22,40,0.06)', borderRadius: '6px', animation: 'pulse 1.5s infinite ease-in-out' }} />
+                ) : (
+                  card.value
+                )}
+              </div>
               <div style={{ fontSize: '0.6875rem', color: 'rgba(42,22,40,0.45)', marginTop: '0.125rem', fontWeight: 500 }}>
                 {card.sub}
               </div>
@@ -911,14 +934,22 @@ export default function ClientListTab() {
       {/* ── KPI ROW 2: QUICKBOOKS & PIPELINE ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
         {[
-          { label: 'QuickBooks Connected', value: String(kpis.totalClients - kpis.qboSyncErrors), sub: 'Connected clients', color: '#E8760A', bg: 'rgba(232, 118, 10, 0.06)',
-            icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> },
-          { label: 'QuickBooks Errors', value: String(kpis.qboSyncErrors), sub: 'Needs attention', color: '#E8760A', bg: 'rgba(232, 118, 10, 0.06)',
-            icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> },
-          { label: 'Books Pending', value: String(kpis.overdueBooks), sub: 'Action required', color: '#E8760A', bg: 'rgba(232, 118, 10, 0.06)',
-            icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> },
-          { label: 'New This Month', value: String(clients.filter((c: any) => c.status === 'Onboarding').length), sub: 'Onboarding stage', color: '#E8760A', bg: 'rgba(232, 118, 10, 0.06)',
-            icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg> },
+          {
+            label: 'QuickBooks Connected', value: String(kpis.totalClients - kpis.qboSyncErrors), sub: 'Connected clients', color: '#E8760A', bg: 'rgba(232, 118, 10, 0.06)',
+            icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>
+          },
+          {
+            label: 'QuickBooks Errors', value: String(kpis.qboSyncErrors), sub: 'Needs attention', color: '#E8760A', bg: 'rgba(232, 118, 10, 0.06)',
+            icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+          },
+          {
+            label: 'Books Pending', value: String(kpis.overdueBooks), sub: 'Action required', color: '#E8760A', bg: 'rgba(232, 118, 10, 0.06)',
+            icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
+          },
+          {
+            label: 'New This Month', value: String(clients.filter((c: any) => c.status === 'Onboarding').length), sub: 'Onboarding stage', color: '#E8760A', bg: 'rgba(232, 118, 10, 0.06)',
+            icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" /></svg>
+          },
         ].map((card, i) => (
           <div key={i} style={{ background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: '0 4px 10px rgba(42,22,40,0.02)', minHeight: '90px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
@@ -926,7 +957,13 @@ export default function ClientListTab() {
               <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: card.bg, color: card.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{card.icon}</div>
             </div>
             <div>
-              <div style={{ fontSize: '2rem', fontWeight: 300, color: '#2A1628', lineHeight: 1.1, fontFamily: 'var(--font-serif), Georgia, serif' }}>{card.value}</div>
+              <div style={{ fontSize: '2rem', fontWeight: 300, color: '#2A1628', lineHeight: 1.1, fontFamily: 'var(--font-serif), Georgia, serif' }}>
+                {(clientsLoading || kpisLoading) ? (
+                  <div style={{ width: '48px', height: '32px', background: 'rgba(42,22,40,0.06)', borderRadius: '6px', animation: 'pulse 1.5s infinite ease-in-out' }} />
+                ) : (
+                  card.value
+                )}
+              </div>
               <div style={{ fontSize: '0.6875rem', color: 'rgba(42,22,40,0.45)', marginTop: '0.125rem', fontWeight: 500 }}>{card.sub}</div>
             </div>
           </div>
@@ -951,7 +988,9 @@ export default function ClientListTab() {
             style={{ padding: '0.375rem 0.875rem', borderRadius: '20px', border: savedView === view.id ? '1.5px solid #E8760A' : '1px solid #DDD0C4', background: savedView === view.id ? 'rgba(232,118,10,0.06)' : '#ffffff', color: savedView === view.id ? '#E8760A' : 'rgba(42,22,40,0.6)', fontWeight: savedView === view.id ? 700 : 500, fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.35rem', transition: 'all 150ms ease', fontFamily: 'Inter, sans-serif' }}
           >
             {view.label}
-            <span style={{ background: savedView === view.id ? '#E8760A' : 'rgba(42,22,40,0.08)', color: savedView === view.id ? '#fff' : 'rgba(42,22,40,0.5)', fontSize: '0.6rem', fontWeight: 700, padding: '1px 5px', borderRadius: '10px', lineHeight: 1.5 }}>{view.count}</span>
+            <span style={{ background: savedView === view.id ? '#E8760A' : 'rgba(42,22,40,0.08)', color: savedView === view.id ? '#fff' : 'rgba(42,22,40,0.5)', fontSize: '0.6rem', fontWeight: 700, padding: '1px 5px', borderRadius: '10px', lineHeight: 1.5 }}>
+              {(clientsLoading || kpisLoading) ? '...' : view.count}
+            </span>
           </button>
         ))}
       </div>
@@ -963,7 +1002,7 @@ export default function ClientListTab() {
             {selectedClients.length} clients selected
           </span>
           <div style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.12)', flexShrink: 0 }} />
-          
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
             {[
               { label: 'Assign Manager', ic: '👤', onClick: () => setBulkAction({ type: 'manager', title: 'Assign Account Manager' }) },
@@ -972,18 +1011,20 @@ export default function ClientListTab() {
               { label: 'Send Reminder', ic: '📧', onClick: () => { triggerToast(`Sent compliance reminders to ${selectedClients.length} clients successfully!`, 'success'); setSelectedClients([]); } },
               { label: 'Export', ic: '📤', onClick: () => { setExportScope('selected'); setExportOpen(true); } },
               { label: 'Add Tag', ic: '🏷️', onClick: () => setBulkAction({ type: 'tag', title: 'Add Tag' }) },
-              { label: 'AI Review', ic: '🤖', onClick: async () => {
-                setAiReviewing(true);
-                try {
-                  await bulkUpdateClients({ ids: selectedClients, action: 'tag', value: 'AI Reviewed' }).unwrap();
-                  triggerToast(`AI Review completed for ${selectedClients.length} clients!`, 'success');
-                } catch (err) {
-                  triggerToast('AI Review failed', 'error');
-                } finally {
-                  setAiReviewing(false);
-                  setSelectedClients([]);
+              {
+                label: 'AI Review', ic: '🤖', onClick: async () => {
+                  setAiReviewing(true);
+                  try {
+                    await bulkUpdateClients({ ids: selectedClients, action: 'tag', value: 'AI Reviewed' }).unwrap();
+                    triggerToast(`AI Review completed for ${selectedClients.length} clients!`, 'success');
+                  } catch (err) {
+                    triggerToast('AI Review failed', 'error');
+                  } finally {
+                    setAiReviewing(false);
+                    setSelectedClients([]);
+                  }
                 }
-              } },
+              },
               { label: 'Archive', ic: '🗄️', onClick: () => setBulkAction({ type: 'archive', title: 'Archive Clients' }) },
             ].map((a, i) => (
               <button key={i} onClick={a.onClick} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', padding: '0.3rem 0.6rem', color: '#ffffff', fontSize: '0.6875rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontFamily: 'Inter, sans-serif', transition: 'background 120ms', whiteSpace: 'nowrap', flexShrink: 0 }}
@@ -1044,7 +1085,7 @@ export default function ClientListTab() {
             const isOpen = activeDropdown === f.key;
             const selectedVal = filters[f.key as keyof typeof filters];
             const options = filterOptions[f.key as keyof typeof filterOptions];
-            
+
             return (
               <div key={f.key} style={{ position: 'relative' }}>
                 <div
@@ -1071,7 +1112,7 @@ export default function ClientListTab() {
                     <polyline points="6 9 12 15 18 9" />
                   </svg>
                 </div>
-                
+
                 {isOpen && (
                   <div style={{
                     position: 'absolute',
@@ -1121,7 +1162,7 @@ export default function ClientListTab() {
             );
           })}
 
-          <button 
+          <button
             onClick={() => {
               setSearch('');
               setFilters({
@@ -1132,14 +1173,14 @@ export default function ClientListTab() {
               });
               setAdvancedFilters({ bookkeeper: 'All', industry: 'All', entityType: 'All', country: 'All', financialYear: 'All', qbStatus: 'All', riskLevel: 'All', tags: 'All' });
             }}
-            style={{ 
+            style={{
               padding: '0.55rem 1.25rem',
-              fontSize: '0.8125rem', 
+              fontSize: '0.8125rem',
               border: '1px solid #DDD0C4',
               borderRadius: '8px',
               background: '#FAF8F5',
-              color: 'rgba(42,22,40,0.6)', 
-              cursor: 'pointer', 
+              color: 'rgba(42,22,40,0.6)',
+              cursor: 'pointer',
               fontWeight: 600,
               userSelect: 'none',
               transition: 'all 150ms ease',
@@ -1167,9 +1208,9 @@ export default function ClientListTab() {
             onClick={() => setShowAdvancedFilters(v => !v)}
             style={{ padding: '0.55rem 1rem', fontSize: '0.8125rem', border: `1px solid ${showAdvancedFilters ? '#E8760A' : '#DDD0C4'}`, borderRadius: '8px', background: showAdvancedFilters ? 'rgba(232,118,10,0.06)' : '#FAF8F5', color: showAdvancedFilters ? '#E8760A' : 'rgba(42,22,40,0.6)', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.375rem', whiteSpace: 'nowrap', transition: 'all 150ms', fontFamily: 'inherit' }}
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="4" y1="6" x2="20" y2="6" /><line x1="8" y1="12" x2="16" y2="12" /><line x1="11" y1="18" x2="13" y2="18" /></svg>
             Advanced
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ transform: showAdvancedFilters ? 'rotate(180deg)' : 'none', transition: 'transform 150ms' }}><polyline points="6 9 12 15 18 9"/></svg>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ transform: showAdvancedFilters ? 'rotate(180deg)' : 'none', transition: 'transform 150ms' }}><polyline points="6 9 12 15 18 9" /></svg>
           </button>
         </div>
 
@@ -1194,7 +1235,7 @@ export default function ClientListTab() {
                   <div style={{ fontSize: '0.625rem', fontWeight: 700, color: 'rgba(42,22,40,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.3rem' }}>{f.label}</div>
                   <div onClick={() => setAdvFilterOpen(isOpen ? null : f.key)} style={{ padding: '0.45rem 0.75rem', fontSize: '0.75rem', border: `1px solid ${val !== 'All' ? '#E8760A' : '#DDD0C4'}`, borderRadius: '8px', background: '#ffffff', color: val !== 'All' ? '#E8760A' : '#2A1628', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: val !== 'All' ? 700 : 400, userSelect: 'none' }}>
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '120px' }}>{val}</span>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 150ms' }}><polyline points="6 9 12 15 18 9"/></svg>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 150ms' }}><polyline points="6 9 12 15 18 9" /></svg>
                   </div>
                   {isOpen && (
                     <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: '8px', boxShadow: '0 8px 24px rgba(42,22,40,0.12)', zIndex: 50, overflow: 'hidden', minWidth: '160px' }}>
@@ -1233,24 +1274,26 @@ export default function ClientListTab() {
         <table style={{ width: '100%', minWidth: '1350px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8125rem' }}>
           <thead>
             <tr style={{ background: '#FAF8F5', borderBottom: '1px solid rgba(42,22,40,0.06)', color: 'rgba(42,22,40,0.5)', fontWeight: 600, whiteSpace: 'nowrap' }}>
-              <th style={{ 
-                padding: '1rem 0.75rem', 
-                width: '48px', 
-                textAlign: 'center', 
-                position: 'sticky', 
-                left: 0, 
-                background: '#FAF8F5', 
-                zIndex: 10 
+              <th style={{
+                padding: '1rem 0.75rem',
+                width: '48px',
+                minWidth: '48px',
+                maxWidth: '48px',
+                textAlign: 'center',
+                position: 'sticky',
+                left: 0,
+                background: '#FAF8F5',
+                zIndex: 10
               }}>
                 <input type="checkbox" onChange={handleSelectAll} checked={selectedClients.length === clients.length} />
               </th>
-              <th style={{ 
-                padding: '1rem', 
-                position: 'sticky', 
-                left: '48px', 
-                background: '#FAF8F5', 
-                zIndex: 10, 
-                borderRight: '1px solid #DDD0C4' 
+              <th style={{
+                padding: '1rem',
+                position: 'sticky',
+                left: '48px',
+                background: '#FAF8F5',
+                zIndex: 10,
+                borderRight: '1px solid #DDD0C4'
               }}>CLIENT / COMPANY</th>
               <th style={{ padding: '1rem' }}>TRN / VAT NO.</th>
               <th style={{ padding: '1rem' }}>ACCOUNT MANAGER</th>
@@ -1280,8 +1323,11 @@ export default function ClientListTab() {
                 borderBottom: idx < filteredClients.length - 1 ? '1px solid rgba(42,22,40,0.04)' : 'none',
                 background: selectedClients.includes(client.id) ? 'rgba(232,118,10,0.02)' : 'transparent'
               }}>
-                <td style={{ 
-                  padding: '1rem 0.75rem', 
+                <td style={{
+                  padding: '1rem 0.75rem',
+                  width: '48px',
+                  minWidth: '48px',
+                  maxWidth: '48px',
                   textAlign: 'center',
                   position: 'sticky',
                   left: 0,
@@ -1290,10 +1336,10 @@ export default function ClientListTab() {
                 }}>
                   <input type="checkbox" checked={selectedClients.includes(client.id)} onChange={() => handleSelectOne(client.id)} />
                 </td>
-                
+
                 {/* Client Company info */}
-                <td style={{ 
-                  padding: '1rem', 
+                <td style={{
+                  padding: '1rem',
                   whiteSpace: 'nowrap',
                   position: 'sticky',
                   left: '48px',
@@ -1439,7 +1485,7 @@ export default function ClientListTab() {
                       style={{ background: 'rgba(232,118,10,0.06)', border: '1px solid rgba(232,118,10,0.15)', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', color: '#E8760A', display: 'flex', alignItems: 'center', fontSize: '0.65rem', fontWeight: 600, gap: '4px' }}
                       title="Quick Preview"
                     >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
                       View
                     </button>
                     <div style={{ position: 'relative' }}>
@@ -1448,42 +1494,44 @@ export default function ClientListTab() {
                         style={{ background: 'transparent', border: '1px solid rgba(42,22,40,0.1)', borderRadius: '6px', padding: '4px 6px', cursor: 'pointer', color: 'rgba(42,22,40,0.55)', display: 'flex', alignItems: 'center' }}
                         title="More actions"
                       >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>
                       </button>
                       {rowActionOpen === client.id && (
                         <div style={{ position: 'absolute', top: 'calc(100% + 4px)', right: 0, background: '#fff', border: '1px solid #DDD0C4', borderRadius: '12px', boxShadow: '0 12px 36px rgba(42,22,40,0.14)', zIndex: 200, minWidth: '200px', overflow: 'hidden', padding: '4px' }}>
                           {[
-                            { label: 'Open Profile', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>, action: () => { setPreviewClient(client); setPreviewOpen(true); setPreviewTab('overview'); } },
-                            { label: 'View Timeline', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, action: () => { setPreviewClient(client); setPreviewOpen(true); setPreviewTab('timeline'); } },
-                            { label: 'Open Documents', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>, action: () => { setPreviewClient(client); setPreviewOpen(true); setPreviewTab('documents'); } },
-                            { label: 'Upload Documents', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>, action: () => alert('Upload docs: ' + client.name) },
-                            { label: 'AI Bookkeeping', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M12 2v2M8 5h8M7 11V7a5 5 0 0 1 10 0v4"/></svg>, action: () => alert('AI Bookkeeping: ' + client.name) },
-                            { label: 'Reconciliation', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="2" x2="12" y2="22"/><line x1="5" y1="12" x2="19" y2="12"/><circle cx="5" cy="12" r="3"/><circle cx="19" cy="12" r="3"/></svg>, action: () => alert('Reconciliation: ' + client.name) },
-                            { label: 'VAT Center', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>, action: () => alert('VAT Center: ' + client.name) },
-                            { label: 'Corporate Tax', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>, action: () => alert('CT: ' + client.name) },
-                            { label: 'Reports', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>, action: () => alert('Reports: ' + client.name) },
-                            { label: 'QuickBooks Sync', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>, action: () => alert('QBO: ' + client.name) },
-                            { label: 'Notes', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>, action: () => { setPreviewClient(client); setPreviewOpen(true); setPreviewTab('activity'); } },
-                            { label: 'Activity Log', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>, action: () => { setPreviewClient(client); setPreviewOpen(true); setPreviewTab('activity'); } },
-                            { label: 'Archive', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>, action: () => alert('Archive: ' + client.name) },
-                            { label: 'Delete Client', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>, action: async () => {
-                               if (confirm(`Are you sure you want to delete ${client.name}?`)) {
-                                 try {
-                                   await deleteClient(client.id).unwrap();
-                                   triggerToast('Client deleted successfully!', 'success');
-                                 } catch (e: any) {
-                                   triggerToast(e?.data?.message || 'Failed to delete client', 'error');
-                                 }
-                               }
-                             }, danger: true },
+                            { label: 'Open Profile', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>, action: () => { setPreviewClient(client); setPreviewOpen(true); setPreviewTab('overview'); } },
+                            { label: 'View Timeline', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>, action: () => { setPreviewClient(client); setPreviewOpen(true); setPreviewTab('timeline'); } },
+                            { label: 'Open Documents', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>, action: () => { setPreviewClient(client); setPreviewOpen(true); setPreviewTab('documents'); } },
+                            { label: 'Upload Documents', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>, action: () => alert('Upload docs: ' + client.name) },
+                            { label: 'AI Bookkeeping', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M12 2v2M8 5h8M7 11V7a5 5 0 0 1 10 0v4" /></svg>, action: () => alert('AI Bookkeeping: ' + client.name) },
+                            { label: 'Reconciliation', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="2" x2="12" y2="22" /><line x1="5" y1="12" x2="19" y2="12" /><circle cx="5" cy="12" r="3" /><circle cx="19" cy="12" r="3" /></svg>, action: () => alert('Reconciliation: ' + client.name) },
+                            { label: 'VAT Center', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>, action: () => alert('VAT Center: ' + client.name) },
+                            { label: 'Corporate Tax', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><rect x="8" y="2" width="8" height="4" rx="1" ry="1" /></svg>, action: () => alert('CT: ' + client.name) },
+                            { label: 'Reports', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg>, action: () => alert('Reports: ' + client.name) },
+                            { label: 'QuickBooks Sync', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M23 4v6h-6M1 20v-6h6" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></svg>, action: () => alert('QBO: ' + client.name) },
+                            { label: 'Notes', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>, action: () => { setPreviewClient(client); setPreviewOpen(true); setPreviewTab('activity'); } },
+                            { label: 'Activity Log', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>, action: () => { setPreviewClient(client); setPreviewOpen(true); setPreviewTab('activity'); } },
+                            { label: 'Archive', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="21 8 21 21 3 21 3 8" /><rect x="1" y="3" width="22" height="5" /><line x1="10" y1="12" x2="14" y2="12" /></svg>, action: () => alert('Archive: ' + client.name) },
+                            {
+                              label: 'Delete Client', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>, action: async () => {
+                                if (confirm(`Are you sure you want to delete ${client.name}?`)) {
+                                  try {
+                                    await deleteClient(client.id).unwrap();
+                                    triggerToast('Client deleted successfully!', 'success');
+                                  } catch (e: any) {
+                                    triggerToast(e?.data?.message || 'Failed to delete client', 'error');
+                                  }
+                                }
+                              }, danger: true
+                            },
                           ].map((item, ai) => (
                             <div key={ai}
                               onClick={() => { item.action(); setRowActionOpen(null); }}
-                              style={{ padding: '0.45rem 0.75rem', fontSize: '0.775rem', cursor: 'pointer', color: (item as {danger?: boolean}).danger ? '#EF4444' : '#2A1628', display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '8px', fontFamily: 'Inter, sans-serif', fontWeight: 500 }}
-                              onMouseEnter={e => (e.currentTarget.style.background = (item as {danger?: boolean}).danger ? 'rgba(239,68,68,0.06)' : 'rgba(232,118,10,0.06)')}
+                              style={{ padding: '0.45rem 0.75rem', fontSize: '0.775rem', cursor: 'pointer', color: (item as { danger?: boolean }).danger ? '#EF4444' : '#2A1628', display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '8px', fontFamily: 'Inter, sans-serif', fontWeight: 500 }}
+                              onMouseEnter={e => (e.currentTarget.style.background = (item as { danger?: boolean }).danger ? 'rgba(239,68,68,0.06)' : 'rgba(232,118,10,0.06)')}
                               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                             >
-                              <span style={{ fontSize: '0.7rem', width: '16px', textAlign: 'center', color: (item as {danger?: boolean}).danger ? '#EF4444' : '#E8760A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{item.ic}</span>
+                              <span style={{ fontSize: '0.7rem', width: '16px', textAlign: 'center', color: (item as { danger?: boolean }).danger ? '#EF4444' : '#E8760A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{item.ic}</span>
                               {item.label}
                             </div>
                           ))}
@@ -1509,7 +1557,7 @@ export default function ClientListTab() {
                 <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                     <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(232,118,10,0.08)', color: '#E8760A', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
                     </div>
                     <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#2A1628' }}>{client.bookkeeper}</span>
                   </div>
@@ -1602,7 +1650,7 @@ export default function ClientListTab() {
                 </div>
               </div>
               <button onClick={() => setPreviewOpen(false)} style={{ background: 'rgba(42,22,40,0.06)', border: 'none', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2A1628', flexShrink: 0 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
               </button>
             </div>
 
@@ -1647,8 +1695,8 @@ export default function ClientListTab() {
                 <div style={{ background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '10px', padding: '1rem' }}>
                   <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(42,22,40,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.75rem' }}>Team Assignment</div>
                   {[
-                    { role: 'Account Manager', name: previewClient.manager, ic: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
-                    { role: 'Bookkeeper', name: previewClient.bookkeeper, ic: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> },
+                    { role: 'Account Manager', name: previewClient.manager, ic: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg> },
+                    { role: 'Bookkeeper', name: previewClient.bookkeeper, ic: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg> },
                   ].map((a, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginBottom: i === 0 ? '0.625rem' : 0 }}>
                       <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(232, 118, 10, 0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -1698,7 +1746,7 @@ export default function ClientListTab() {
                   ) : drawerDetails.documents.map((doc: any, i: number) => (
                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0', borderBottom: i < drawerDetails.documents.length - 1 ? '1px solid rgba(42,22,40,0.04)' : 'none' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', overflow: 'hidden' }}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5" style={{ flexShrink: 0 }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5" style={{ flexShrink: 0 }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
                         <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#2A1628', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{doc.name}</span>
                       </div>
                       <span style={{ fontSize: '0.625rem', color: 'rgba(42,22,40,0.4)', whiteSpace: 'nowrap' }}>{String(doc.created_at || '').split('T')[0]}</span>
@@ -1763,7 +1811,7 @@ export default function ClientListTab() {
                     <div key={i} style={{ display: 'flex', gap: '0.875rem', paddingBottom: '1rem' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
                         <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: item.status === 'done' ? '#2EA44F' : item.status === 'alert' ? '#EF4444' : item.status === 'pending' ? '#E8760A' : '#DDD0C4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          {item.status === 'done' && <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
+                          {item.status === 'done' && <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>}
                         </div>
                         {i < 6 && <div style={{ width: '1px', flex: 1, background: '#DDD0C4', margin: '4px 0', minHeight: '20px' }} />}
                       </div>
@@ -1796,7 +1844,7 @@ export default function ClientListTab() {
                   ))}
                 </div>
                 <button style={{ padding: '0.6rem', background: '#2A1628', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, fontFamily: 'Inter, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }} onClick={() => alert('Upload documents for ' + previewClient.name)}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
                   Upload Documents
                 </button>
               </>)}
@@ -1811,11 +1859,11 @@ export default function ClientListTab() {
                   <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', marginTop: '4px' }}>Based on {previewClient.documents} processed documents</div>
                 </div>
                 {[
-                  { label: 'AI Alerts', val: previewClient.activeTasks > 8 ? '3 critical alerts' : '1 alert', color: '#EF4444', ic: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> },
-                  { label: 'Recommendations', val: '2 optimizations available', color: '#E8760A', ic: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A7.5 7.5 0 0 0 11 1C7 1 3.5 4.5 3.5 8.5c0 1.3.5 2.6 1.5 3.5.8.8 1.3 1.5 1.5 2.5"/><path d="M9 18h6M10 22h4"/></svg> },
-                  { label: 'Missing Documents', val: '3 required', color: '#E8760A', ic: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> },
-                  { label: 'OCR Confidence', val: '94.2%', color: '#2EA44F', ic: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2EA44F" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> },
-                  { label: 'Matching Confidence', val: '91.7%', color: '#2EA44F', ic: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2EA44F" strokeWidth="2.5"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg> },
+                  { label: 'AI Alerts', val: previewClient.activeTasks > 8 ? '3 critical alerts' : '1 alert', color: '#EF4444', ic: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg> },
+                  { label: 'Recommendations', val: '2 optimizations available', color: '#E8760A', ic: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A7.5 7.5 0 0 0 11 1C7 1 3.5 4.5 3.5 8.5c0 1.3.5 2.6 1.5 3.5.8.8 1.3 1.5 1.5 2.5" /><path d="M9 18h6M10 22h4" /></svg> },
+                  { label: 'Missing Documents', val: '3 required', color: '#E8760A', ic: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg> },
+                  { label: 'OCR Confidence', val: '94.2%', color: '#2EA44F', ic: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2EA44F" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg> },
+                  { label: 'Matching Confidence', val: '91.7%', color: '#2EA44F', ic: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2EA44F" strokeWidth="2.5"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" /></svg> },
                 ].map((a, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0', borderBottom: '1px solid rgba(42,22,40,0.04)' }}>
                     <span style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.6)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -1840,15 +1888,15 @@ export default function ClientListTab() {
                   <div key={i} style={{ display: 'flex', gap: '0.75rem', paddingBottom: '0.875rem', borderBottom: i < 4 ? '1px solid rgba(42,22,40,0.04)' : 'none' }}>
                     <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(232,118,10,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       {a.type === 'ai' ? (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M12 2v2M8 5h8M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M12 2v2M8 5h8M7 11V7a5 5 0 0 1 10 0v4" /></svg>
                       ) : a.type === 'manager' ? (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
                       ) : a.type === 'bookkeeper' ? (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
                       ) : a.type === 'client' ? (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><line x1="9" y1="22" x2="9" y2="16"/><line x1="15" y1="22" x2="15" y2="16"/><line x1="9" y1="16" x2="15" y2="16"/><path d="M9 8h2M9 12h2M13 8h2M13 12h2"/></svg>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5"><rect x="4" y="2" width="16" height="20" rx="2" ry="2" /><line x1="9" y1="22" x2="9" y2="16" /><line x1="15" y1="22" x2="15" y2="16" /><line x1="9" y1="16" x2="15" y2="16" /><path d="M9 8h2M9 12h2M13 8h2M13 12h2" /></svg>
                       ) : (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
                       )}
                     </div>
                     <div>
@@ -1864,15 +1912,15 @@ export default function ClientListTab() {
             {/* Drawer Footer Quick Actions */}
             <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #DDD0C4', background: '#FAF8F5', display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
               <button onClick={() => alert('AI Bookkeeping: ' + previewClient.name)} style={{ flex: 1, padding: '0.55rem', background: '#2A1628', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, fontFamily: 'Inter, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M12 2v2M8 5h8M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M12 2v2M8 5h8M7 11V7a5 5 0 0 1 10 0v4" /></svg>
                 AI Review
               </button>
               <button onClick={() => alert('VAT Center: ' + previewClient.name)} style={{ flex: 1, padding: '0.55rem', background: '#ffffff', color: '#2A1628', border: '1px solid #DDD0C4', borderRadius: '8px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, fontFamily: 'Inter, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5"><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>
                 VAT
               </button>
               <button onClick={() => alert('Reports: ' + previewClient.name)} style={{ flex: 1, padding: '0.55rem', background: '#ffffff', color: '#2A1628', border: '1px solid #DDD0C4', borderRadius: '8px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, fontFamily: 'Inter, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5"><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg>
                 Reports
               </button>
             </div>
@@ -1893,7 +1941,7 @@ export default function ClientListTab() {
             {/* Body */}
             <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <p style={{ margin: 0, fontSize: '0.8rem', color: 'rgba(42,22,40,0.6)' }}>Perform action for <strong style={{ color: '#2A1628' }}>{selectedClients.length}</strong> selected clients.</p>
-              
+
               {bulkAction.type === 'manager' && (
                 <select value={bulkValue} onChange={e => setBulkValue(e.target.value)} style={{ width: '100%', padding: '0.55rem', borderRadius: '8px', border: '1px solid #DDD0C4', outline: 'none', color: '#2A1628', fontSize: '0.8125rem' }}>
                   <option value="">Select Account Manager...</option>
@@ -1983,9 +2031,9 @@ export default function ClientListTab() {
           fontWeight: 600,
           fontFamily: 'Inter, sans-serif'
         }}>
-          {toast.type === 'success' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
-          {toast.type === 'error' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>}
-          {toast.type === 'info' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>}
+          {toast.type === 'success' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>}
+          {toast.type === 'error' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>}
+          {toast.type === 'info' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>}
           {toast.message}
         </div>
       )}

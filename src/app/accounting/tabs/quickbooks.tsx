@@ -1204,7 +1204,11 @@ export default function QuickBooksTab() {
             </div>
             <div>
               <div style={{ fontSize: '1.5rem', fontWeight: 300, color: '#2A1628', lineHeight: 1.1, fontFamily: 'var(--font-serif), Georgia, serif' }}>
-                {card.value}
+                { (queueLoading || isLoading) ? (
+                  <div style={{ width: '48px', height: '32px', background: 'rgba(42,22,40,0.06)', borderRadius: '6px', animation: 'pulse 1.5s infinite ease-in-out' }} />
+                ) : (
+                  card.value
+                )}
               </div>
               <div style={{ fontSize: '0.6875rem', color: 'rgba(42,22,40,0.45)', marginTop: '0.125rem', fontWeight: 500 }}>
                 {card.sub}
@@ -2524,7 +2528,12 @@ export default function QuickBooksTab() {
 
       {/* Styled JSX injected for dynamic animations */}
       <style jsx global>{`
-        .hide-scrollbar::-webkit-scrollbar {
+        
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+.hide-scrollbar::-webkit-scrollbar {
           display: none !important;
         }
         .hide-scrollbar {

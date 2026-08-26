@@ -1006,7 +1006,11 @@ export default function VendorsTab() {
               </div>
             </div>
             <div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 300, color: '#2A1628', lineHeight: 1.1, fontFamily: 'var(--font-serif), Georgia, serif' }}>{card.value}</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 300, color: '#2A1628', lineHeight: 1.1, fontFamily: 'var(--font-serif), Georgia, serif' }}>{ isLoading ? (
+                  <div style={{ width: '48px', height: '32px', background: 'rgba(42,22,40,0.06)', borderRadius: '6px', animation: 'pulse 1.5s infinite ease-in-out' }} />
+                ) : (
+                  card.value
+                )}</div>
               <div style={{ fontSize: '0.6875rem', color: 'rgba(42,22,40,0.45)', marginTop: '0.125rem', fontWeight: 500 }}>{card.sub}</div>
             </div>
           </div>
@@ -1113,7 +1117,12 @@ export default function VendorsTab() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         <div className="client-table-scroll" style={{ background: '#ffffff', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '16px', overflowX: 'auto', overflowY: 'visible', boxShadow: '0 4px 12px rgba(42,22,40,0.01)', position: 'relative' }}>
           <style>{`
-            .client-table-scroll::-webkit-scrollbar { height: 6px; }
+            
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+.client-table-scroll::-webkit-scrollbar { height: 6px; }
             .client-table-scroll::-webkit-scrollbar-track { background: rgba(42,22,40,0.03); border-radius: 4px; }
             .client-table-scroll::-webkit-scrollbar-thumb { background: rgba(42,22,40,0.15); border-radius: 4px; }
             .client-table-scroll::-webkit-scrollbar-thumb:hover { background: rgba(42,22,40,0.25); }

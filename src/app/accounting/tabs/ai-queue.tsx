@@ -394,7 +394,12 @@ export default function AiQueueTab() {
       background: 'transparent',
     }}>
       <style>{`
-        .no-scrollbar::-webkit-scrollbar {
+        
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+.no-scrollbar::-webkit-scrollbar {
           display: none !important;
         }
         .no-scrollbar {
@@ -553,7 +558,11 @@ export default function AiQueueTab() {
               </div>
             </div>
             <div>
-              <div style={{ fontSize: '1.75rem', fontWeight: 300, color: '#2A1628', lineHeight: 1.1, fontFamily: 'var(--font-serif), Georgia, serif' }}>{card.value}</div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 300, color: '#2A1628', lineHeight: 1.1, fontFamily: 'var(--font-serif), Georgia, serif' }}>{ queueLoading ? (
+                  <div style={{ width: '48px', height: '32px', background: 'rgba(42,22,40,0.06)', borderRadius: '6px', animation: 'pulse 1.5s infinite ease-in-out' }} />
+                ) : (
+                  card.value
+                )}</div>
               <div style={{ fontSize: '0.6875rem', color: 'rgba(42,22,40,0.45)', marginTop: '0.125rem', fontWeight: 500 }}>{card.sub}</div>
             </div>
           </div>

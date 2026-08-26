@@ -89,10 +89,17 @@ export default function PeriodLocksTab() {
   const handleCreateMonth = async () => {
     // Propose opening the next sequential month
     let nextMonth = 1;
-    let nextYear = new Date().getFullYear();
+    let nextYear = new Date().getFullYear() - 1;
 
     if (months.length > 0) {
       const latest = months[0]; // Ordered DESC
+      
+      // Sequence Validation Rule
+      if (latest.status !== 'CLOSED' && latest.status !== 'LOCKED') {
+        showToast('You must close the current month before opening a new one.', 'warning');
+        return;
+      }
+
       if (latest.month === 12) {
         nextMonth = 1;
         nextYear = latest.year + 1;
@@ -435,9 +442,9 @@ export default function PeriodLocksTab() {
                 <button
                   type="submit"
                   disabled={actionLoading}
-                  style={{ padding: '0.4rem 0.8rem', background: '#2A1628', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '0.75rem', cursor: 'pointer' }}
+                  style={{ padding: '0.4rem 0.8rem', background: '#2A1628', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '0.75rem', cursor: actionLoading ? 'not-allowed' : 'pointer', opacity: actionLoading ? 0.7 : 1 }}
                 >
-                  Confirm Close
+                  {actionLoading ? 'Closing...' : 'Confirm Close'}
                 </button>
               </div>
             </form>
