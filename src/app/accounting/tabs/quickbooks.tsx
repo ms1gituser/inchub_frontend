@@ -859,7 +859,7 @@ export default function QuickBooksTab() {
       });
       const data = await res.json();
       if (data.success && data.authorizationUrl) {
-        window.location.href = data.authorizationUrl;
+        window.location.assign(data.authorizationUrl);
       } else {
         pushToast('Failed to initiate QuickBooks connection', 'danger');
       }

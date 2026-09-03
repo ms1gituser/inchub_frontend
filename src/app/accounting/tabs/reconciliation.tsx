@@ -8974,7 +8974,7 @@ function ReconciliationCenterInner() {
       if (filters.tags.length > 0 && !filters.tags.some((tag) => t.tags.includes(tag))) return false;
       return true;
     });
-  }, [transactions, filters, statusChip]);
+  }, [transactions, filters, statusChip, mainTab]);
 
   const sortedTransactions = useMemo(() => {
     const arr = [...filteredTransactions];
