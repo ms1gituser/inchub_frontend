@@ -16,6 +16,8 @@ COPY public ./public
 COPY eslint.config.mjs postcss.config.mjs next.config.ts ./
 
 # Build the Next.js application
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN npm run build
 
 # ─── Stage 2: Production ─────────────────────────────────────────────────────

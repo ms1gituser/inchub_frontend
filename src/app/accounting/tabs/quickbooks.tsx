@@ -854,7 +854,8 @@ export default function QuickBooksTab() {
     try {
       pushToast('Connecting to QuickBooks...', 'info');
       const token = localStorage.getItem('crm_access_token');
-      const res = await fetch('http://localhost:5000/api/bookkeeping/integrations/quickbooks/auth', {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${baseUrl}/api/bookkeeping/integrations/quickbooks/auth`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
