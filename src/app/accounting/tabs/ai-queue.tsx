@@ -2756,7 +2756,8 @@ export default function AiQueueTab() {
                   <button onClick={() => {
                     const token = localStorage.getItem('crm_access_token');
                     const format = exportFormat === 'csv' ? 'csv' : 'xlsx';
-                    window.open(`http://localhost:5000/api/v1/ai-queue/export?token=${token}&format=${format}`, '_blank');
+                    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+                    window.open(`${baseUrl}/api/v1/ai-queue/export?token=${token}&format=${format}`, '_blank');
                     setExportOpen(false);
                     setExportState('form');
                     triggerToast('Download started.', 'success');
@@ -3125,7 +3126,8 @@ export default function AiQueueTab() {
                     onClick={() => {
                       const token = localStorage.getItem('crm_access_token');
                       const format = exportFormat === 'csv' ? 'csv' : 'xlsx';
-                      window.open(`http://localhost:5000/api/v1/ai-queue/export?token=${token}&format=${format}`, '_blank');
+                      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+                      window.open(`${baseUrl}/api/v1/ai-queue/export?token=${token}&format=${format}`, '_blank');
                       setExportOpen(false);
                       triggerToast('Download started.', 'success');
                     }}
