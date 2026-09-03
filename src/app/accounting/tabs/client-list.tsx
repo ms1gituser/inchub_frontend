@@ -784,8 +784,8 @@ export default function ClientListTab() {
                         queryParams.append('format', exportFormat);
                         if (token) queryParams.append('token', token);
                         // Redirect to the download URL
-                        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-                        window.open(`${baseUrl}/api/v1/clients/export?${queryParams.toString()}`);
+                        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+                        window.open(`${baseUrl}/v1/clients/export?${queryParams.toString()}`);
                         setExportOpen(false);
                       }}
                       style={{ background: '#E8760A', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.6rem 1.5rem', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.375rem', fontFamily: 'inherit', boxShadow: '0 4px 12px rgba(232,118,10,0.25)' }}

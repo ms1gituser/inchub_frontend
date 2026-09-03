@@ -3578,8 +3578,8 @@ function ExportCenterModal({ onClose, counts, onExport }: ExportCenterModalProps
       if (qboYear) queryParams.append('year', qboYear);
       if (qboMonth) queryParams.append('month', qboMonth);
       
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      const response = await fetch(`${baseUrl}/api/bookkeeping/reconciliation/export/qbo?${queryParams.toString()}`, {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${baseUrl}/bookkeeping/reconciliation/export/qbo?${queryParams.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

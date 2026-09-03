@@ -111,7 +111,7 @@ export default function AiChatbot() {
   const fetchHistory = useCallback(async () => {
     try {
       const token = resolveToken();
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1` : 'http://localhost:5000/api/v1';
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL ? `${process.env.NEXT_PUBLIC_API_URL}/v1` : 'http://localhost:5000/api/v1';
       const res = await fetch(`${baseUrl}/chat/history?limit=30`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -272,7 +272,7 @@ export default function AiChatbot() {
           const base64 = (reader.result as string).split(',')[1];
           try {
             const token = resolveToken();
-            const baseUrl = process.env.NEXT_PUBLIC_API_URL ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1` : 'http://localhost:5000/api/v1';
+            const baseUrl = process.env.NEXT_PUBLIC_API_URL ? `${process.env.NEXT_PUBLIC_API_URL}/v1` : 'http://localhost:5000/api/v1';
             const res = await fetch(`${baseUrl}/chat/transcribe`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -300,7 +300,7 @@ export default function AiChatbot() {
   const handleFeedback = async (msgId: string, isHelpful: boolean, correction?: string) => {
     try {
       const token = resolveToken();
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1` : 'http://localhost:5000/api/v1';
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL ? `${process.env.NEXT_PUBLIC_API_URL}/v1` : 'http://localhost:5000/api/v1';
       await fetch(`${baseUrl}/chat/feedback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
