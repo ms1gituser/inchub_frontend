@@ -624,6 +624,19 @@ export default function ClientListTab() {
                       />
                     </div>
                   </div>
+
+                  {/* Drive Provisioning Indicator */}
+                  <div style={{ marginTop: '0.5rem', background: '#F8F9FA', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.75rem', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                    <div style={{ marginTop: '0.125rem' }}>
+                      <input type="checkbox" checked disabled style={{ cursor: 'not-allowed', accentColor: '#E8760A' }} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#2A1628' }}>Provision Google Drive Workspace</div>
+                      <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.6)', marginTop: '0.125rem', lineHeight: 1.4 }}>
+                        A dedicated Drive folder will be automatically created and linked to this client upon creation.
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Modal Footer */}

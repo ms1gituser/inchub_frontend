@@ -534,6 +534,7 @@ export default function CorporateTaxTab() {
   const [filterPriority, setFilterPriority] = useState('All');
   const [filterRisk, setFilterRisk] = useState('All');
   const [activeStatusTab, setActiveStatusTab] = useState<string>('All');
+  const [mainTab, setMainTab] = useState<'filings' | 'archive'>('filings');
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -705,7 +706,6 @@ export default function CorporateTaxTab() {
     sortDir,
   ]);
 
-  // Simulate loading skeleton on filter and search state changes
   useEffect(() => {
     let active = true;
     const rafId = requestAnimationFrame(() => {
@@ -718,6 +718,7 @@ export default function CorporateTaxTab() {
       active = false;
       cancelAnimationFrame(rafId);
       clearTimeout(timer);
+      setIsLoading(false);
     };
   }, [
     activeStatusTab,
@@ -1072,6 +1073,34 @@ export default function CorporateTaxTab() {
         </div>
       </div>
 
+      {/* ── Main Segments ── */}
+      <div style={{ display: 'flex', gap: '1.5rem', borderBottom: '1px solid rgba(42,22,40,0.1)', marginBottom: '1rem' }}>
+        <button
+          onClick={() => setMainTab('filings')}
+          style={{
+            background: 'none', border: 'none',
+            borderBottom: mainTab === 'filings' ? '2px solid #E8760A' : '2px solid transparent',
+            color: mainTab === 'filings' ? '#E8760A' : 'rgba(42,22,40,0.6)',
+            fontWeight: 700, padding: '0.75rem 0', cursor: 'pointer', fontSize: '0.875rem'
+          }}
+        >
+          CT Filings
+        </button>
+        <button
+          onClick={() => setMainTab('archive')}
+          style={{
+            background: 'none', border: 'none',
+            borderBottom: mainTab === 'archive' ? '2px solid #E8760A' : '2px solid transparent',
+            color: mainTab === 'archive' ? '#E8760A' : 'rgba(42,22,40,0.6)',
+            fontWeight: 700, padding: '0.75rem 0', cursor: 'pointer', fontSize: '0.875rem'
+          }}
+        >
+          Document Archive
+        </button>
+      </div>
+
+      {mainTab === 'filings' ? (
+        <>
       {/* ── 2. KPI CARDS CONTAINER (10 CARDS) ── */}
       <div className="no-scrollbar" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.75rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
         {[
@@ -2103,6 +2132,41 @@ export default function CorporateTaxTab() {
           </div>
         </div>
       )}
+
+        </>
+      ) : (
+        <div style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #DDD0C4', padding: '1.5rem', minHeight: '400px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <h2 style={{ margin: 0, fontSize: '1.125rem', color: '#2A1628', fontWeight: 600 }}>FY2025 Document Archive</h2>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <select style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid #DDD0C4', outline: 'none', fontSize: '0.8125rem' }}>
+                <option>FY 2025</option>
+                <option>FY 2024</option>
+              </select>
+              <input type="text" placeholder="Search documents..." style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid #DDD0C4', outline: 'none', fontSize: '0.8125rem' }} />
+            </div>
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+            {MOCK_RETURNS.slice(0, 4).map((tx, idx) => (
+              <div key={idx} style={{ padding: '1rem', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '8px', background: '#FAF8F5' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                  <div style={{ width: '40px', height: '40px', background: '#FCE8E6', color: '#C5221F', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.7rem' }}>PDF</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#2A1628', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tx.client.replace(/ /g, '_')}_CT_Return_2025.pdf</div>
+                    <div style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.5)', marginTop: '0.2rem' }}>{tx.client} • 2.4 MB</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', borderTop: '1px dashed rgba(42,22,40,0.1)', paddingTop: '0.75rem' }}>
+                  <span style={{ fontSize: '0.7rem', color: '#137333', background: '#E6F4EA', padding: '0.15rem 0.5rem', borderRadius: '10px', fontWeight: 600 }}>Filed</span>
+                  <button style={{ background: 'none', border: 'none', color: '#E8760A', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>Download</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
 
       {/* ── 9. MODALS ── */}
       {/* Import Modal */}

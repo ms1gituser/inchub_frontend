@@ -8047,17 +8047,36 @@ function ReconciliationTable({
         );
       case 'amount':
         return <span style={{ fontWeight: 600, color: '#2A1628', fontFamily: 'Inter, sans-serif' }}>{tx.currency} {tx.amount.toLocaleString()}</span>;
-      case 'aiMatchScore':
-        return tx.aiMatchScore === null ? (
-          <span style={{ color: 'rgba(42,22,40,0.4)' }}>—</span>
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <div style={{ width: '44px', height: '6px', borderRadius: '3px', background: '#F0E8DF', overflow: 'hidden' }}>
-              <div style={{ width: `${tx.aiMatchScore}%`, height: '100%', background: tx.aiMatchScore >= 80 ? '#137333' : tx.aiMatchScore >= 50 ? '#E65100' : '#D32F2F' }} />
+      case 'aiMatchScore': {
+        if (tx.aiMatchScore === null) {
+          return <span style={{ color: 'rgba(42,22,40,0.4)' }}>—</span>;
+        }
+        let lvl = 1, col = '#ef4444', lbl = 'Unlikely';
+        if (tx.aiMatchScore >= 95) { lvl = 6; col = '#166534'; lbl = 'Exact Match'; }
+        else if (tx.aiMatchScore >= 85) { lvl = 5; col = '#15803d'; lbl = 'High Conf.'; }
+        else if (tx.aiMatchScore >= 75) { lvl = 4; col = '#22c55e'; lbl = 'Probable'; }
+        else if (tx.aiMatchScore >= 50) { lvl = 3; col = '#eab308'; lbl = 'Possible'; }
+        else if (tx.aiMatchScore >= 30) { lvl = 2; col = '#f97316'; lbl = 'Weak'; }
+        
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '2px', alignItems: 'flex-end', height: '14px' }}>
+              {[1, 2, 3, 4, 5, 6].map(i => (
+                <div key={i} style={{
+                  width: '3px',
+                  height: `${4 + i * 1.5}px`,
+                  background: i <= lvl ? col : '#E5E7EB',
+                  borderRadius: '1px'
+                }} />
+              ))}
             </div>
-            <span style={{ fontWeight: 600, fontSize: '0.75rem', color: '#2A1628', fontFamily: 'Inter, sans-serif' }}>{tx.aiMatchScore}%</span>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontWeight: 700, fontSize: '0.7rem', color: col, lineHeight: 1.2 }}>{lbl}</span>
+              <span style={{ fontSize: '0.6rem', color: 'rgba(42,22,40,0.5)', lineHeight: 1.2 }}>Score: {tx.aiMatchScore}%</span>
+            </div>
           </div>
         );
+      }
       case 'matchedEntry':
         return <span style={{ fontWeight: 500, color: tx.matchedEntry ? '#2A1628' : 'rgba(42,22,40,0.4)', fontFamily: 'Inter, sans-serif' }}>{tx.matchedEntry || 'Unmatched'}</span>;
       case 'difference':
@@ -8402,7 +8421,9 @@ function ReconciliationStatCards({ transactions }: BottomAnalyticsProps) {
 
     const avgProcessing = Math.round(transactions.reduce((s, t) => s + t.processingMinutes, 0) / total);
     const topError = diffCategories[0];
-    const successCount = transactions.filter((t) => ['Auto Matched', 'Ready To Post', 'Posted'].includes(t.status)).length;
+    const pendingCount = transactions.filter((t) => t.status === 'Pending').length;
+    const exceptionCount = transactions.filter((t) => t.status === 'Exception').length;
+    const successCount = transactions.length - pendingCount - exceptionCount;
     const successPct = Math.round((successCount / total) * 100);
     const withinSla = transactions.filter((t) => t.processingMinutes <= t.slaHours * 60).length;
     const slaPct = Math.round((withinSla / total) * 100);
@@ -8738,6 +8759,7 @@ type PopupState =
   | { type: 'manageColumns' }
   | { type: 'auditExport'; tx?: ReconciliationTransaction }
   | { type: 'retryFailedJobs' }
+  | { type: 'autoCreateVendor'; tx: ReconciliationTransaction }
   | null;
 
 function bumpMatchScore(t: ReconciliationTransaction): ReconciliationTransaction {
@@ -8746,10 +8768,66 @@ function bumpMatchScore(t: ReconciliationTransaction): ReconciliationTransaction
   return { ...t, aiMatchScore: nextScore, status: shouldPromote ? 'Auto Matched' : t.status };
 }
 
+function AutoCreateVendorModal({ tx, onClose, onConfirm }: { tx: ReconciliationTransaction, onClose: () => void, onConfirm: (tx: ReconciliationTransaction, vendorData: any) => void }) {
+  const [vendorName, setVendorName] = useState(tx.description || 'New Vendor');
+  const [category, setCategory] = useState('General');
+  
+  return (
+    <ModalShell
+      onClose={onClose}
+      eyebrow="Reconciliation"
+      titlePlain="Auto-Create"
+      titleAccent="Vendor"
+      footer={
+        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', width: '100%' }}>
+          <GhostButton label="Cancel" onClick={onClose} />
+          <button 
+            onClick={() => onConfirm(tx, { name: vendorName, category })}
+            style={{ padding: '0.4rem 0.75rem', background: '#137333', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
+          >
+            Create & Map Vendor
+          </button>
+        </div>
+      }
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.5rem 0' }}>
+        <p style={{ fontSize: '0.85rem', color: 'rgba(42,22,40,0.7)', margin: 0, lineHeight: 1.5 }}>
+          Create a new vendor profile based on this transaction. Future transactions matching this payee will automatically map to this vendor.
+        </p>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#2A1628' }}>Vendor Name</label>
+          <input
+            value={vendorName}
+            onChange={(e) => setVendorName(e.target.value)}
+            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '0.875rem' }}
+          />
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#2A1628' }}>Default Category</label>
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '0.875rem', background: '#fff' }}
+          >
+            <option value="General">General Expenses</option>
+            <option value="IT Services">IT & Software</option>
+            <option value="Marketing">Marketing</option>
+            <option value="Travel">Travel & Meals</option>
+          </select>
+        </div>
+      </div>
+    </ModalShell>
+  );
+}
+
+
 function ReconciliationCenterInner() {
   const { role, pushToast, requestConfirmation, closeConfirmation, confirmation, isOffline } = useReconciliation();
 
   const [persisted] = useState(loadPersistedState);
+  const [mainTab, setMainTab] = useState<'queue' | 'suspense'>('queue');
 
   const { data: queueRes, isLoading: queueLoading, refetch: refetchQueue } = useGetQueueQuery({ limit: 1000 });
   const { data: statsRes } = useGetStatsQuery();
@@ -8862,6 +8940,9 @@ function ReconciliationCenterInner() {
   // ---------- Derived data ----------
   const filteredTransactions = useMemo(() => {
     return transactions.filter((t) => {
+      if (mainTab === 'suspense' && t.status !== 'Exception') {
+        return false;
+      }
       if (statusChip !== 'All') {
         const chipDef = STATUS_CHIPS.find((c) => c.key === statusChip);
         if (chipDef?.status === 'Archived') {
@@ -9157,12 +9238,7 @@ function ReconciliationCenterInner() {
     openAddNotes: (tx) => setPopup({ type: 'addNotes', ids: [tx.id] }),
     openAuditExport: (tx) => setPopup({ type: 'auditExport', tx }),
     openRetryFailedJobs: () => setPopup({ type: 'retryFailedJobs' }),
-    autoCreateVendor: (tx) => {
-      addVendor({ name: tx.description || 'New Vendor', status: 'Pending', category: 'General', country: 'UAE', vendorType: 'Local' })
-        .unwrap()
-        .then((res: any) => pushToast({ message: `Vendor "${res.data?.name || res.name || tx.description}" auto-created successfully.`, tone: 'success' }))
-        .catch(() => pushToast({ message: 'Failed to auto-create vendor.', tone: 'error' }));
-    },
+    autoCreateVendor: (tx) => setPopup({ type: 'autoCreateVendor', tx }),
     acceptSuggestion: (tx, matchId) => {
       if (matchId.includes('-sm-')) {
         pushToast({ message: 'This is a mock AI suggestion for testing the UI. Real matches will be saved to the database.', tone: 'info' });
@@ -9300,6 +9376,21 @@ function ReconciliationCenterInner() {
         onRefresh={handleRefresh}
         refreshing={refreshing}
       />
+
+      <div style={{ display: 'flex', gap: '0.25rem', background: 'rgba(42,22,40,0.04)', padding: '0.25rem', borderRadius: '10px', width: 'fit-content' }}>
+        <button
+          onClick={() => setMainTab('queue')}
+          style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: 'none', background: mainTab === 'queue' ? '#fff' : 'transparent', color: mainTab === 'queue' ? '#2A1628' : 'rgba(42,22,40,0.6)', fontWeight: mainTab === 'queue' ? 600 : 500, fontSize: '0.85rem', cursor: 'pointer', boxShadow: mainTab === 'queue' ? '0 1px 3px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}
+        >
+          Reconciliation Queue
+        </button>
+        <button
+          onClick={() => setMainTab('suspense')}
+          style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: 'none', background: mainTab === 'suspense' ? '#fff' : 'transparent', color: mainTab === 'suspense' ? '#D32F2F' : 'rgba(42,22,40,0.6)', fontWeight: mainTab === 'suspense' ? 600 : 500, fontSize: '0.85rem', cursor: 'pointer', boxShadow: mainTab === 'suspense' ? '0 1px 3px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}
+        >
+          Suspense Workspace
+        </button>
+      </div>
 
       <KpiGrid transactions={filteredTransactions} loading={initialLoading} stats={statsRes?.data} />
 
@@ -9475,6 +9566,21 @@ function ReconciliationCenterInner() {
       )}
       {popup?.type === 'retryFailedJobs' && (
         <RetryFailedJobsModal onClose={closePopup} />
+      )}
+      {popup?.type === 'autoCreateVendor' && (
+        <AutoCreateVendorModal 
+          tx={popup.tx} 
+          onClose={closePopup} 
+          onConfirm={(tx, data) => {
+            addVendor({ name: data.name, status: 'Pending', category: data.category, country: 'UAE', vendorType: 'Local' })
+              .unwrap()
+              .then((res: any) => {
+                pushToast({ message: `Vendor "${res.data?.name || res.name || data.name}" auto-created successfully.`, tone: 'success' });
+                closePopup();
+              })
+              .catch(() => pushToast({ message: 'Failed to auto-create vendor.', tone: 'error' }));
+          }} 
+        />
       )}
 
       <ConfirmationModal config={confirmation} onClose={closeConfirmation} />

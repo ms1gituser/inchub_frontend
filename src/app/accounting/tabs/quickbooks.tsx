@@ -850,6 +850,25 @@ export default function QuickBooksTab() {
     }, 4000);
   };
 
+  const handleRealConnect = async () => {
+    try {
+      pushToast('Connecting to QuickBooks...', 'info');
+      const token = localStorage.getItem('crm_access_token');
+      const res = await fetch('http://localhost:5000/api/bookkeeping/integrations/quickbooks/auth', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success && data.authorizationUrl) {
+        window.location.href = data.authorizationUrl;
+      } else {
+        pushToast('Failed to initiate QuickBooks connection', 'danger');
+      }
+    } catch (err) {
+      console.error(err);
+      pushToast('Network error while connecting', 'danger');
+    }
+  };
+
   // Drag columns
   const dragKeyRef = useRef<string | null>(null);
   const [columns, setColumns] = useState<
@@ -1074,7 +1093,7 @@ export default function QuickBooksTab() {
               borderRadius: '12px',
               background: '#ffffff',
               boxShadow: '0 12px 32px rgba(42,22,40,0.12)',
-              borderLeft: `4px solid ${t.tone === 'success' ? '#137333' : t.tone === 'danger' ? '#C5221F' : t.tone === 'warning' ? '#E8760A' : '#1A73E8'}`,
+              borderLeft: `4px solid ${t.tone === 'success' ? '#137333' : t.tone === 'danger' ? '#C5221F' : t.tone === 'warning' ? '#E8760A' : '#2A1628'}`,
               fontSize: '0.8125rem',
               fontWeight: 600,
               color: '#2A1628',
@@ -1085,8 +1104,16 @@ export default function QuickBooksTab() {
               animation: 'slideIn 0.3s ease forwards',
             }}
           >
-            <span style={{ fontSize: '1rem' }}>
-              {t.tone === 'success' ? '✅' : t.tone === 'danger' ? '❌' : t.tone === 'warning' ? '⚠️' : 'ℹ️'}
+            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {t.tone === 'success' ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#137333" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+              ) : t.tone === 'danger' ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C5221F" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+              ) : t.tone === 'warning' ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2A1628" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+              )}
             </span>
             {t.message}
           </div>
@@ -1113,7 +1140,7 @@ export default function QuickBooksTab() {
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           <button
             type="button"
-            onClick={() => setPopup({ type: 'connect' })}
+            onClick={handleRealConnect}
             style={{ background: '#ffffff', border: '1px solid #DDD0C4', padding: '0.625rem 1.25rem', borderRadius: '8px', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', color: '#2A1628', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '0.375rem', whiteSpace: 'nowrap' }}
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: '#E8760A' }}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
@@ -1452,7 +1479,7 @@ export default function QuickBooksTab() {
                     <p style={{ margin: '0 0 1.25rem 0', fontSize: '0.75rem', color: 'rgba(42,22,40,0.5)' }}>Connect your first QuickBooks Online account to synchronize accounting data.</p>
                     <button
                       type="button"
-                      onClick={() => setPopup({ type: 'connect' })}
+                      onClick={handleRealConnect}
                       style={{ padding: '0.5rem 1rem', background: '#2A1628', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
                     >
                       Connect QuickBooks
