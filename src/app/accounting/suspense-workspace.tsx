@@ -714,7 +714,7 @@ export default function SuspenseWorkspace() {
                       <div style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.5)' }}>Ref: {item.transaction_reference || 'N/A'} | Date: {new Date(item.transaction_date).toLocaleDateString()}</div>
                     </td>
                     <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 700, color: '#E8760A' }}>
-                      AED {item.transaction_amount.toFixed(2)}
+                      AED {Number(item.transaction_amount || 0).toFixed(2)}
                     </td>
                     <td style={{ padding: '0.75rem', fontWeight: 600 }}>
                       {item.reason_code}
@@ -723,7 +723,7 @@ export default function SuspenseWorkspace() {
                       {item.assigned_user_id || '- Unassigned -'}
                     </td>
                     <td style={{ padding: '0.75rem', color: item.is_overdue ? '#ef4444' : '#4b5563', fontWeight: item.is_overdue ? 700 : 500 }}>
-                      {item.age_hours.toFixed(1)}h {item.is_overdue ? '(SLA Overdue)' : ''}
+                      {Number(item.age_hours || 0).toFixed(1)}h {item.is_overdue ? '(SLA Overdue)' : ''}
                     </td>
                   </tr>
                 );
@@ -775,7 +775,7 @@ export default function SuspenseWorkspace() {
                 <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.85rem', color: '#2A1628', fontWeight: 800 }}>{selectedItem.transaction_description}</h4>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.7rem', color: '#2A1628', fontWeight: 600 }}>
                   <div>Date: {new Date(selectedItem.transaction_date).toLocaleDateString()}</div>
-                  <div style={{ color: '#E8760A' }}>Amount: AED {selectedItem.transaction_amount.toFixed(2)}</div>
+                  <div style={{ color: '#E8760A' }}>Amount: AED {Number(selectedItem.transaction_amount || 0).toFixed(2)}</div>
                   <div>Reference: {selectedItem.transaction_reference || 'N/A'}</div>
                   <div>Status: <span style={statusBadge(selectedItem.status)}>{selectedItem.status}</span></div>
                 </div>
