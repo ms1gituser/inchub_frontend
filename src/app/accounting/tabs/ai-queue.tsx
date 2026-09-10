@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
+import { UserPlus, Check, X, RefreshCw, Send, Download, Archive, Trash2, Bot, FileText } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import Pagination from '@/components/ui/Pagination';
+import { useGetClientsQuery } from '@/lib/clientapi';
 import {
   useGetQueueQuery,
   useGetQueueKpisQuery,
@@ -254,8 +256,10 @@ export default function AiQueueTab() {
 
   // Enterprise Upload Modal States
   const [uploadState, setUploadState] = useState<'form' | 'loading' | 'success' | 'error'>('form');
-  const [selectedUploadClients, setSelectedUploadClients] = useState<string[]>(['ABC Trading LLC']);
+  const [selectedUploadClients, setSelectedUploadClients] = useState<string[]>([]);
   const [clientSearch, setClientSearch] = useState('');
+    const { data: clientsRes } = useGetClientsQuery({ limit: 100 });
+    const clientsData = clientsRes?.data?.clients || [];
   const [uploadedFilesList, setUploadedFilesList] = useState<{ name: string; size: string; pages: number; progress: number }[]>([]);
   const [selectedClassification, setSelectedClassification] = useState<string>('Invoice');
   const [processingOptions, setProcessingOptions] = useState<string[]>([
@@ -277,7 +281,7 @@ export default function AiQueueTab() {
   const [batchPeriod, setBatchPeriod] = useState('Q3');
   const [batchDepartment, setBatchDepartment] = useState('Corporate Finance');
   const [batchPriority, setBatchPriority] = useState<'Low' | 'Medium' | 'High' | 'Urgent'>('Medium');
-  const [selectedBatchClients, setSelectedBatchClients] = useState<string[]>(['ABC Trading LLC']);
+  const [selectedBatchClients, setSelectedBatchClients] = useState<string[]>([]);
   const [selectedDocTypes, setSelectedDocTypes] = useState<string[]>(['Purchase Invoices', 'Receipts', 'Bank Statements']);
   const [batchPipelineOptions, setBatchPipelineOptions] = useState<string[]>([
     'OCR', 'AI Extraction', 'Ledger Mapping', 'Duplicate Detection', 'Tax Validation'
@@ -504,11 +508,11 @@ export default function AiQueueTab() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.4rem 0.75rem' }}>
           <code style={{ fontSize: '0.75rem', fontWeight: 700, color: '#E8760A', fontFamily: 'monospace' }}>
-            ocr-tenant-alpha@inchub-incoming.com
+            invoices@accounting-crm.com
           </code>
           <button
             onClick={() => {
-              navigator.clipboard.writeText('ocr-tenant-alpha@inchub-incoming.com');
+              navigator.clipboard.writeText('invoices@accounting-crm.com');
               triggerToast('Email address copied to clipboard!', 'success');
             }}
             style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'rgba(42,22,40,0.4)', padding: 0 }}
@@ -641,7 +645,7 @@ export default function AiQueueTab() {
       </div>
 
       {/* ── BULK ACTIONS TOOLBAR ── */}
-      {selectedRows.length > 1 && (
+      {selectedRows.length > 0 && (
         <div className="no-scrollbar" style={{ background: '#2A1628', borderRadius: '12px', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', overflowX: 'auto', width: '100%', whiteSpace: 'nowrap' }}>
           <span style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.75rem', fontWeight: 700, marginRight: '0.25rem', flexShrink: 0 }}>
             {selectedRows.length} jobs selected
@@ -649,19 +653,19 @@ export default function AiQueueTab() {
           <div style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.12)', flexShrink: 0 }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
             {[
-              { label: 'Assign Reviewer', ic: '👤', onClick: () => setBulkModal({ type: 'reviewer', title: 'Assign Reviewer' }) },
-              { label: 'Approve Selected', ic: '✅', onClick: async () => { try { await bulkUpdateQueue({ ids: selectedRows, action: 'stage', value: 'Approved' }).unwrap(); setSelectedRows([]); triggerToast('Approved selected jobs!', 'success'); } catch (e) {} } },
-              { label: 'Reject Selected', ic: '❌', onClick: async () => { try { await bulkUpdateQueue({ ids: selectedRows, action: 'stage', value: 'Rejected' }).unwrap(); setSelectedRows([]); triggerToast('Rejected selected jobs.', 'error'); } catch (e) {} } },
-              { label: 'Retry OCR', ic: '🔄', onClick: async () => { try { await bulkUpdateQueue({ ids: selectedRows, action: 'stage', value: 'OCR Processing' }).unwrap(); setSelectedRows([]); triggerToast('Retrying processing for selected files.', 'info'); } catch (e) {} } },
-              { label: 'Move to Recon', ic: '📤', onClick: async () => { try { await bulkUpdateQueue({ ids: selectedRows, action: 'stage', value: 'Ready For Reconciliation' }).unwrap(); setSelectedRows([]); triggerToast('Pushed selected items to Reconciliation.', 'success'); } catch (e) {} } },
-              { label: 'Export Batch', ic: '📥', onClick: () => { triggerToast('Export batch prepared.', 'success'); } },
-              { label: 'Archive', ic: '🗄️', onClick: async () => { try { await bulkUpdateQueue({ ids: selectedRows, action: 'delete' }).unwrap(); setSelectedRows([]); triggerToast('Archived selected rows.', 'info'); } catch (e) {} } },
-              { label: 'Delete', ic: '🗑️', onClick: async () => { try { await bulkUpdateQueue({ ids: selectedRows, action: 'delete' }).unwrap(); setSelectedRows([]); triggerToast('Deleted selected rows.', 'error'); } catch (e) {} } },
-              { label: 'AI Review Run', ic: '🤖', onClick: () => { triggerToast('Triggered bulk AI validation review.', 'info'); } },
-              { label: 'Add Notes', ic: '📝', onClick: () => setBulkModal({ type: 'notes', title: 'Add Bulk Notes' }) }
+              { label: 'Assign Reviewer', ic: <UserPlus size={12} />, onClick: () => setBulkModal({ type: 'reviewer', title: 'Assign Reviewer' }) },
+              { label: 'Approve Selected', ic: <Check size={12} />, onClick: async () => { try { await bulkUpdateQueue({ ids: selectedRows, action: 'stage', value: 'Approved' }).unwrap(); setSelectedRows([]); triggerToast('Approved selected jobs!', 'success'); } catch (e) {} } },
+              { label: 'Reject Selected', ic: <X size={12} />, onClick: async () => { try { await bulkUpdateQueue({ ids: selectedRows, action: 'stage', value: 'Rejected' }).unwrap(); setSelectedRows([]); triggerToast('Rejected selected jobs.', 'error'); } catch (e) {} } },
+              { label: 'Retry OCR', ic: <RefreshCw size={12} />, onClick: async () => { try { await bulkUpdateQueue({ ids: selectedRows, action: 'stage', value: 'OCR Processing' }).unwrap(); setSelectedRows([]); triggerToast('Retrying processing for selected files.', 'info'); } catch (e) {} } },
+              { label: 'Move to Recon', ic: <Send size={12} />, onClick: async () => { try { await bulkUpdateQueue({ ids: selectedRows, action: 'stage', value: 'Ready For Reconciliation' }).unwrap(); setSelectedRows([]); triggerToast('Pushed selected items to Reconciliation.', 'success'); } catch (e) {} } },
+              { label: 'Export Batch', ic: <Download size={12} />, onClick: () => { triggerToast('Export batch prepared.', 'success'); } },
+              { label: 'Archive', ic: <Archive size={12} />, onClick: async () => { try { await bulkUpdateQueue({ ids: selectedRows, action: 'delete' }).unwrap(); setSelectedRows([]); triggerToast('Archived selected rows.', 'info'); } catch (e) {} } },
+              { label: 'Delete', ic: <Trash2 size={12} />, onClick: async () => { try { await bulkUpdateQueue({ ids: selectedRows, action: 'delete' }).unwrap(); setSelectedRows([]); triggerToast('Deleted selected rows.', 'error'); } catch (e) {} } },
+              { label: 'AI Review Run', ic: <Bot size={12} />, onClick: () => { triggerToast('Triggered bulk AI validation review.', 'info'); } },
+              { label: 'Add Notes', ic: <FileText size={12} />, onClick: () => setBulkModal({ type: 'notes', title: 'Add Bulk Notes' }) }
             ].map((btn, i) => (
               <button key={i} onClick={btn.onClick} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', padding: '0.3rem 0.6rem', color: '#ffffff', fontSize: '0.6875rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontFamily: 'Inter, sans-serif', transition: 'background 120ms', whiteSpace: 'nowrap', flexShrink: 0 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.12)')} onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}>
-                <span style={{ fontSize: '0.6rem' }}>{btn.ic}</span>{btn.label}
+                {btn.ic} {btn.label}
               </button>
             ))}
           </div>
@@ -808,7 +812,7 @@ export default function AiQueueTab() {
                         </div>
                       </td>
                       <td style={{ padding: '1rem', fontWeight: 500, whiteSpace: 'nowrap' }}>{item.documentType}</td>
-                      <td style={{ padding: '1rem', color: '#2A1628', fontWeight: 500, whiteSpace: 'nowrap' }}>{item.uploadDate}</td>
+                      <td style={{ padding: '1rem', color: '#2A1628', fontWeight: 500, whiteSpace: 'nowrap' }}>{new Date(item.uploadDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                       <td style={{ padding: '1rem' }}>
                         <span style={{
                           fontSize: '0.7rem',
@@ -1629,6 +1633,30 @@ export default function AiQueueTab() {
                             onChange={(e) => setClientSearch(e.target.value)}
                             style={{ width: '100%', padding: '0.5rem 0.75rem 0.5rem 2rem', borderRadius: '8px', border: '1px solid #DDD0C4', fontSize: '0.75rem', outline: 'none' }}
                           />
+                          {clientSearch.trim().length > 0 && (
+                            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px', marginTop: '4px', zIndex: 50, maxHeight: '200px', overflowY: 'auto', boxShadow: '0 4px 12px rgba(42,22,40,0.1)' }}>
+                              {clientsData.filter((c: any) => c.name.toLowerCase().includes(clientSearch.toLowerCase())).length === 0 ? (
+                                <div style={{ padding: '0.75rem', fontSize: '0.75rem', color: 'rgba(42,22,40,0.5)', textAlign: 'center' }}>No clients found</div>
+                              ) : (
+                                clientsData.filter((c: any) => c.name.toLowerCase().includes(clientSearch.toLowerCase())).map((c: any) => (
+                                  <div
+                                    key={c.id}
+                                    onClick={() => {
+                                      if (!selectedUploadClients.includes(c.name)) {
+                                        setSelectedUploadClients([...selectedUploadClients, c.name]);
+                                      }
+                                      setClientSearch('');
+                                    }}
+                                    style={{ padding: '0.5rem 0.75rem', fontSize: '0.75rem', color: '#2A1628', cursor: 'pointer', borderBottom: '1px solid rgba(42,22,40,0.04)' }}
+                                    onMouseOver={(e) => e.currentTarget.style.background = '#FAF8F5'}
+                                    onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                                  >
+                                    {c.name}
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          )}
                           <svg style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'rgba(42,22,40,0.4)' }} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                         </div>
                       </div>
@@ -1636,7 +1664,7 @@ export default function AiQueueTab() {
                       {/* Recent Clients Checklist */}
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
                         <span style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.5)', alignSelf: 'center', marginRight: '0.25rem' }}>Recent:</span>
-                        {['ABC Trading LLC', 'XYZ Holdings Limited', 'Delta Properties FZCO', 'Alpha Tech FZCO', 'Beta Industries LLC'].map(c => {
+                        { (clientsData.length > 0 ? clientsData.slice(0, 5).map((c: any) => c.name) : []).map((c: string) => {
                           const isSel = selectedUploadClients.includes(c);
                           return (
                             <button
@@ -1671,7 +1699,7 @@ export default function AiQueueTab() {
                         <div style={{ background: '#FAF8F5', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(42,22,40,0.04)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                           <span style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.4)', fontWeight: 700 }}>SELECTED CLIENT METADATA:</span>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
-                            {selectedUploadClients.map(c => (
+                            {selectedUploadClients.map((c: string) => (
                               <div key={c} style={{ fontSize: '0.7rem', color: '#2A1628', background: '#fff', border: '1px solid rgba(42,22,40,0.06)', padding: '0.35rem 0.5rem', borderRadius: '6px' }}>
                                 <strong>{c}</strong>
                                 <div style={{ fontSize: '0.6rem', color: 'rgba(42,22,40,0.45)', marginTop: '1px' }}>
@@ -1692,13 +1720,35 @@ export default function AiQueueTab() {
                       </h3>
 
                       {/* Drag & Drop Area */}
+                      <input 
+                        type="file" 
+                        multiple 
+                        id="real-file-upload" 
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files || []);
+                          if (files.length === 0) return;
+                          
+                          const newFiles = files.map(file => {
+                            let sizeStr = '';
+                            if (file.size < 1024 * 1024) {
+                              sizeStr = (file.size / 1024).toFixed(0) + ' KB';
+                            } else {
+                              sizeStr = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
+                            }
+                            return {
+                              name: file.name,
+                              size: sizeStr,
+                              pages: 1, // Defaulting to 1 as we can't easily parse PDF pages in client-side without a library
+                              progress: 100
+                            };
+                          });
+                          setUploadedFilesList([...uploadedFilesList, ...newFiles]);
+                        }} 
+                      />
                       <div
                         onClick={() => {
-                          const mockFiles = [
-                            { name: 'invoice_may_2209.pdf', size: '1.8 MB', pages: 4, progress: 100 },
-                            { name: 'tax_rec_110.png', size: '840 KB', pages: 1, progress: 100 }
-                          ];
-                          setUploadedFilesList([...uploadedFilesList, ...mockFiles]);
+                          document.getElementById('real-file-upload')?.click();
                         }}
                         style={{
                           border: '1.5px dashed #DDD0C4',
@@ -2086,6 +2136,7 @@ export default function AiQueueTab() {
                           stage: 'Uploaded',
                           priority: assignPriority,
                           vendor: selectedUploadClients[0],
+                          tenantId: clientsData?.find((c: any) => c.name === selectedUploadClients[0])?.id,
                           total: '1250.00',
                           currency: 'AED',
                           reviewer: assignReviewer
@@ -2114,6 +2165,7 @@ export default function AiQueueTab() {
                           stage: 'OCR Processing',
                           priority: assignPriority,
                           vendor: selectedUploadClients[0],
+                          tenantId: clientsData?.find((c: any) => c.name === selectedUploadClients[0])?.id,
                           total: '1250.00',
                           currency: 'AED',
                           reviewer: assignReviewer
@@ -2328,7 +2380,7 @@ export default function AiQueueTab() {
 
                       {/* Multi Select Checklist */}
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                        {['ABC Trading LLC', 'XYZ Holdings Limited', 'Delta Properties FZCO', 'Alpha Tech FZCO', 'Beta Industries LLC', 'Gamma Solutions FZCO'].map(c => {
+                        {['ABC Trading LLC', 'XYZ Holdings Limited', 'Delta Properties FZCO', 'Alpha Tech FZCO', 'Beta Industries LLC', 'Gamma Solutions FZCO'].map((c: string) => {
                           const isSel = selectedBatchClients.includes(c);
                           return (
                             <button
@@ -2361,7 +2413,7 @@ export default function AiQueueTab() {
                       <div style={{ background: '#FAF8F5', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(42,22,40,0.04)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                         <span style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.4)', fontWeight: 700 }}>SELECTED CLIENTS ({selectedBatchClients.length}):</span>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                          {selectedBatchClients.map(c => (
+                          {selectedBatchClients.map((c: string) => (
                             <div key={c} style={{ fontSize: '0.7rem', color: '#2A1628', background: '#fff', border: '1px solid rgba(42,22,40,0.06)', padding: '0.35rem 0.5rem', borderRadius: '6px' }}>
                               {c} <span style={{ fontSize: '0.6rem', color: 'rgba(42,22,40,0.4)' }}>(Manager: Mahesh · Bookkeeper: John)</span>
                             </div>

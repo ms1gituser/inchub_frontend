@@ -251,6 +251,8 @@ function ModalShell({ onClose, eyebrow, titlePlain, titleAccent, maxWidth = '540
 
 
 
+import { uploadToS3 } from '@/lib/uploadHelper';
+
 // ── HIGH FIDELITY QBO IMPORT MODAL ──
 interface QboImportModalProps {
   onClose: () => void;
@@ -260,8 +262,10 @@ interface QboImportModalProps {
 function QboImportModal({ onClose, onImport }: QboImportModalProps) {
   const [importTab, setImportTab] = useState<'local' | 'gdrive' | 'onedrive'>('local');
   const [importFile, setImportFile] = useState('');
+  const [importFileObj, setImportFileObj] = useState<File | null>(null);
   const [importRealm, setImportRealm] = useState('');
   const [importSyncScope, setImportSyncScope] = useState('All Records');
+  const [isUploading, setIsUploading] = useState(false);
 
   return (
     <ModalShell
@@ -281,8 +285,23 @@ function QboImportModal({ onClose, onImport }: QboImportModalProps) {
           </button>
           <button
             type="button"
-            onClick={() => onImport(importFile || 'Cloud_Sync_QBO.xlsx', importRealm || '901927384')}
-            disabled={importTab === 'local' && !importFile}
+            onClick={async () => {
+              if (importFileObj) {
+                setIsUploading(true);
+                try {
+                  await uploadToS3(importFileObj);
+                  onImport(importFile, importRealm || '901927384');
+                } catch (e) {
+                  console.error(e);
+                  alert('Upload failed');
+                } finally {
+                  setIsUploading(false);
+                }
+              } else {
+                onImport(importFile || 'Cloud_Sync_QBO.xlsx', importRealm || '901927384');
+              }
+            }}
+            disabled={(importTab === 'local' && !importFile) || isUploading}
             style={{
               background: (importTab === 'local' && !importFile) ? 'rgba(42,22,40,0.12)' : '#2A1628',
               color: (importTab === 'local' && !importFile) ? 'rgba(42,22,40,0.3)' : '#fff',
@@ -295,7 +314,7 @@ function QboImportModal({ onClose, onImport }: QboImportModalProps) {
               fontFamily: 'inherit'
             }}
           >
-            Import QBO Ledger
+            {isUploading ? 'Uploading...' : 'Import QBO Ledger'}
           </button>
         </>
       }
@@ -332,7 +351,7 @@ function QboImportModal({ onClose, onImport }: QboImportModalProps) {
         </div>
 
         {importTab === 'local' ? (
-          <div
+          <label
             style={{
               border: importFile ? '1.5px solid #047857' : '1.5px dashed #DDD0C4',
               borderRadius: '12px',
@@ -346,11 +365,18 @@ function QboImportModal({ onClose, onImport }: QboImportModalProps) {
               background: importFile ? 'rgba(4,120,87,0.02)' : '#FAF8F5',
               transition: 'all 0.15s ease'
             }}
-            onClick={() => {
-              setImportFile('QuickBooks_Ledger_Extract_Q1.xlsx');
-              setImportRealm('901927384');
-            }}
           >
+            <input 
+              type="file" 
+              style={{ display: 'none' }} 
+              onChange={(e) => {
+                if (e.target.files && e.target.files[0]) {
+                  setImportFile(e.target.files[0].name);
+                  setImportFileObj(e.target.files[0]);
+                  setImportRealm('901927384');
+                }
+              }}
+            />
             <div style={{
               width: '42px',
               height: '42px',
@@ -374,7 +400,7 @@ function QboImportModal({ onClose, onImport }: QboImportModalProps) {
                 {importFile ? 'File selected — click to replace' : 'Supports XLS, XLSX, CSV formats'}
               </p>
             </div>
-          </div>
+          </label>
         ) : (
           <div style={{
             border: '1.5px dashed #DDD0C4',

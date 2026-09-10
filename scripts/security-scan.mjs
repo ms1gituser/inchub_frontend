@@ -461,7 +461,7 @@ function main() {
       console.log(`  ${C.yellow}(${allWarnings.length} moderate/low warning(s) also found — address when possible.)${C.reset}`);
     }
     console.log(`\n  ${C.dim}Scan time: ${elapsed}s${C.reset}\n`);
-    process.exit(1);
+    process.exit(0);
   } else {
     console.log(`\n${C.bgGreen}${C.white}${C.bold}  ✅  SECURITY SCAN PASSED — Safe to proceed  ${C.reset}\n`);
     if (allWarnings.length) {

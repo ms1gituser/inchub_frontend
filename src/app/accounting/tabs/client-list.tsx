@@ -80,10 +80,24 @@ export default function ClientListTab() {
   const [modalStatusOpen, setModalStatusOpen] = useState(false);
   const [modalKycOpen, setModalKycOpen] = useState(false);
   const [modalBooksOpen, setModalBooksOpen] = useState(false);
-  const [addClientForm, setAddClientForm] = useState({
-    name: '', email: '', trn: '', manager: '',
-    status: 'Active', kycStatus: 'Verified',
-    booksStatus: 'In Progress', vatDue: '', ctDue: ''
+  const [currentStep, setCurrentStep] = useState(1);
+  const [addClientForm, setAddClientForm] = useState({ 
+    name: '', 
+    email: '', 
+    tradeLicense: '',
+    authorizedSignatory: '',
+    emiratesId: '',
+    isVatRegistered: 'Yes', 
+    trn: '', 
+    vatFilingPeriod: 'Quarterly', 
+    vatCycle: 'Jan-Apr-Jul-Oct', 
+    estimatedTurnover: '',
+    financialYearEnd: '',
+    tradeLicenseExpiry: '',
+    ctStatus: 'Not registered',
+    ctTrn: '',
+    manager: 'Sara Al Mansoori', 
+    caAssigned: 'Amit Shah (FTA Agent #4021)'
   });
   const [filters, setFilters] = useState({
     status: 'All',
@@ -174,6 +188,46 @@ export default function ClientListTab() {
 
   const filteredClients = clients;
 
+  
+  const getNextVatDeadline = () => {
+    if (addClientForm.isVatRegistered === 'No') return 'Not applicable';
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth(); // 0-11
+    
+    if (addClientForm.vatFilingPeriod === 'Monthly') {
+      return `28 ${new Date(year, month + 1, 1).toLocaleString('default', { month: 'short' })} ${month === 11 ? year + 1 : year}`;
+    }
+    
+    if (addClientForm.vatCycle === 'Jan-Apr-Jul-Oct') {
+      if (month <= 1) return `28 Feb ${year}`;
+      if (month <= 4) return `28 May ${year}`;
+      if (month <= 7) return `28 Aug ${year}`;
+      if (month <= 10) return `28 Nov ${year}`;
+      return `28 Feb ${year + 1}`;
+    }
+    if (addClientForm.vatCycle === 'Feb-May-Aug-Nov') {
+      if (month <= 2) return `28 Mar ${year}`;
+      if (month <= 5) return `28 Jun ${year}`;
+      if (month <= 8) return `28 Sep ${year}`;
+      if (month <= 11) return `28 Dec ${year}`;
+      return `28 Mar ${year + 1}`;
+    }
+    if (addClientForm.vatCycle === 'Mar-Jun-Sep-Dec') {
+      if (month <= 3) return `28 Apr ${year}`;
+      if (month <= 6) return `28 Jul ${year}`;
+      if (month <= 9) return `28 Oct ${year}`;
+      return `28 Jan ${year + 1}`;
+    }
+    return 'Pending Calculation';
+  };
+
+  const getCtDeadline = () => {
+    if (!addClientForm.financialYearEnd) return 'Pending FY End Date';
+    const fye = new Date(addClientForm.financialYearEnd);
+    fye.setMonth(fye.getMonth() + 9);
+    return fye.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/\//g, ' ');
+  };
   return (
     <div style={{
       color: '#2A1628',
@@ -480,208 +534,224 @@ export default function ClientListTab() {
                   </button>
                 </div>
 
+
                 {/* Modal Body */}
-                <div style={{ padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                  {/* Row 1: Name + Email */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>Company Name *</label>
-                      <input
-                        type="text" placeholder="e.g. ABC Trading LLC"
-                        value={addClientForm.name}
-                        onChange={e => setAddClientForm(f => ({ ...f, name: e.target.value }))}
-                        style={{ width: '100%', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.6rem 0.75rem', fontSize: '0.8125rem', color: '#2A1628', outline: 'none', boxSizing: 'border-box', background: '#fff', fontFamily: 'inherit' }}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>Email Address *</label>
-                      <input
-                        type="email" placeholder="e.g. info@company.ae"
-                        value={addClientForm.email}
-                        onChange={e => setAddClientForm(f => ({ ...f, email: e.target.value }))}
-                        style={{ width: '100%', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.6rem 0.75rem', fontSize: '0.8125rem', color: '#2A1628', outline: 'none', boxSizing: 'border-box', background: '#fff', fontFamily: 'inherit' }}
-                      />
-                    </div>
+                <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  
+                  {/* Step Progress Bar */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', position: 'relative' }}>
+                    <div style={{ position: 'absolute', top: '30%', left: '0', right: '0', height: '2px', background: '#DDD0C4', zIndex: 0 }}></div>
+                    {[1, 2, 3, 4].map(step => (
+                      <div key={step} style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', width: '25%' }}>
+                        <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: currentStep >= step ? '#2A1628' : '#fff', border: `2px solid ${currentStep >= step ? '#2A1628' : '#DDD0C4'}`, color: currentStep >= step ? '#fff' : '#2A1628', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 700, transition: 'all 0.3s' }}>
+                          {currentStep > step ? '✓' : step}
+                        </div>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 600, color: currentStep >= step ? '#2A1628' : 'rgba(42,22,40,0.5)', textTransform: 'uppercase', textAlign: 'center' }}>
+                          {step === 1 ? 'Basic Info' : step === 2 ? 'VAT & Tax' : step === 3 ? 'Deadlines' : 'Assign Team'}
+                        </span>
+                      </div>
+                    ))}
                   </div>
 
-                  {/* Row 2: TRN + Manager */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>TRN / VAT No.</label>
-                      <input
-                        type="text" placeholder="e.g. 100556789600001"
-                        value={addClientForm.trn}
-                        onChange={e => setAddClientForm(f => ({ ...f, trn: e.target.value }))}
-                        style={{ width: '100%', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.6rem 0.75rem', fontSize: '0.8125rem', color: '#2A1628', outline: 'none', boxSizing: 'border-box', background: '#fff', fontFamily: 'inherit' }}
-                      />
+                  {currentStep === 1 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'fadeIn 0.3s ease-out' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>Company Name *</label>
+                          <input type="text" placeholder="e.g. ABC Trading LLC" value={addClientForm.name} onChange={e => setAddClientForm({ ...addClientForm, name: e.target.value })} style={{ width: '100%', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', fontFamily: 'inherit', outline: 'none' }} />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>Email Address *</label>
+                          <input type="email" placeholder="e.g. info@company.ae" value={addClientForm.email} onChange={e => setAddClientForm({ ...addClientForm, email: e.target.value })} style={{ width: '100%', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', fontFamily: 'inherit', outline: 'none' }} />
+                        </div>
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>Trade License Number *</label>
+                        <input type="text" placeholder="e.g. 1234567" value={addClientForm.tradeLicense} onChange={e => setAddClientForm({ ...addClientForm, tradeLicense: e.target.value })} style={{ width: '100%', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', fontFamily: 'inherit', outline: 'none' }} />
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>Authorized Signatory</label>
+                          <input type="text" placeholder="e.g. Mahesh Maddu" value={addClientForm.authorizedSignatory} onChange={e => setAddClientForm({ ...addClientForm, authorizedSignatory: e.target.value })} style={{ width: '100%', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', fontFamily: 'inherit', outline: 'none' }} />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>Emirates ID Number</label>
+                          <input type="text" placeholder="784-XXXX-XXXXXXX-X" value={addClientForm.emiratesId} onChange={e => setAddClientForm({ ...addClientForm, emiratesId: e.target.value })} style={{ width: '100%', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', fontFamily: 'inherit', outline: 'none' }} />
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>Account Manager</label>
-                      <input
-                        type="text" placeholder="e.g. Mahesh Maddu"
-                        value={addClientForm.manager}
-                        onChange={e => setAddClientForm(f => ({ ...f, manager: e.target.value }))}
-                        style={{ width: '100%', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.6rem 0.75rem', fontSize: '0.8125rem', color: '#2A1628', outline: 'none', boxSizing: 'border-box', background: '#fff', fontFamily: 'inherit' }}
-                      />
-                    </div>
-                  </div>
+                  )}
 
-                  {/* Row 3: Status + KYC */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>Status</label>
-                      <div style={{ position: 'relative' }}>
-                        <button
-                          onClick={() => { setModalStatusOpen(o => !o); setModalKycOpen(false); setModalBooksOpen(false); }}
-                          style={{ width: '100%', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.6rem 0.75rem', fontSize: '0.8125rem', color: '#2A1628', background: '#fff', fontFamily: 'inherit', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left' }}
-                        >
-                          {addClientForm.status}
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
-                        </button>
-                        {modalStatusOpen && (
-                          <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: '#fff', border: '1px solid #DDD0C4', borderRadius: '10px', boxShadow: '0 8px 24px rgba(42,22,40,0.12)', zIndex: 200, overflow: 'hidden' }}>
-                            {['Active', 'Onboarding', 'Inactive'].map(opt => (
-                              <div key={opt} onClick={() => { setAddClientForm(f => ({ ...f, status: opt })); setModalStatusOpen(false); }}
-                                style={{ padding: '0.55rem 0.85rem', fontSize: '0.8125rem', cursor: 'pointer', color: addClientForm.status === opt ? '#E8760A' : '#2A1628', background: addClientForm.status === opt ? 'rgba(232,118,10,0.06)' : 'transparent', fontWeight: addClientForm.status === opt ? 600 : 400 }}
-                                onMouseEnter={e => { if (addClientForm.status !== opt) (e.currentTarget as HTMLDivElement).style.background = 'rgba(232,118,10,0.04)'; }}
-                                onMouseLeave={e => { if (addClientForm.status !== opt) (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
-                              >{opt}</div>
-                            ))}
+                  {currentStep === 2 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'fadeIn 0.3s ease-out' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>Is VAT Registered?</label>
+                          <select value={addClientForm.isVatRegistered} onChange={e => setAddClientForm({ ...addClientForm, isVatRegistered: e.target.value })} style={{ width: '100%', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', fontFamily: 'inherit', outline: 'none', background: '#fff' }}>
+                            <option value="Yes">Yes, Registered</option>
+                            <option value="No">No (Not Registered / Pending)</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>Financial Year End *</label>
+                          <input type="date" value={addClientForm.financialYearEnd} onChange={e => setAddClientForm({ ...addClientForm, financialYearEnd: e.target.value })} style={{ width: '100%', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', fontFamily: 'inherit', outline: 'none', background: '#fff' }} />
+                        </div>
+                      </div>
+                      
+                      {addClientForm.isVatRegistered === 'Yes' ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'fadeIn 0.3s ease-out' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div>
+                              <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>TRN / VAT NO. (15 Digits)</label>
+                              <input type="text" maxLength={15} placeholder="e.g. 100556789600001" value={addClientForm.trn} onChange={e => setAddClientForm({ ...addClientForm, trn: e.target.value })} style={{ width: '100%', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', fontFamily: 'inherit', outline: 'none' }} />
+                            </div>
+                            <div>
+                              <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>VAT Filing Period</label>
+                              <select value={addClientForm.vatFilingPeriod} onChange={e => setAddClientForm({ ...addClientForm, vatFilingPeriod: e.target.value })} style={{ width: '100%', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', fontFamily: 'inherit', outline: 'none', background: '#fff' }}>
+                                <option value="Monthly">Monthly</option>
+                                <option value="Quarterly">Quarterly</option>
+                              </select>
+                            </div>
+                          </div>
+                          
+                          {addClientForm.vatFilingPeriod === 'Quarterly' && (
+                            <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+                              <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: '#E8760A', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>FTA Stagger Group *</label>
+                              <select value={addClientForm.vatCycle} onChange={e => setAddClientForm({ ...addClientForm, vatCycle: e.target.value })} style={{ width: '100%', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #E8760A', fontSize: '0.8125rem', fontFamily: 'inherit', outline: 'none', background: 'rgba(232,118,10,0.02)', color: '#2A1628' }}>
+                                <option value="Jan-Apr-Jul-Oct">Jan - Apr - Jul - Oct</option>
+                                <option value="Feb-May-Aug-Nov">Feb - May - Aug - Nov</option>
+                                <option value="Mar-Jun-Sep-Dec">Mar - Jun - Sep - Dec</option>
+                              </select>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+                          <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>Estimated Annual Turnover (AED)</label>
+                          <input type="number" placeholder="e.g. 200000" value={addClientForm.estimatedTurnover} onChange={e => setAddClientForm({ ...addClientForm, estimatedTurnover: e.target.value })} style={{ width: '100%', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', fontFamily: 'inherit', outline: 'none' }} />
+                          <p style={{ margin: '0.4rem 0 0', fontSize: '0.65rem', color: 'rgba(42,22,40,0.5)' }}>Mandatory VAT threshold: AED 375,000 | Voluntary threshold: AED 187,500</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {currentStep === 3 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'fadeIn 0.3s ease-out' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>Trade License Expiry Date</label>
+                          <input type="date" value={addClientForm.tradeLicenseExpiry} onChange={e => setAddClientForm({ ...addClientForm, tradeLicenseExpiry: e.target.value })} style={{ width: '100%', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', fontFamily: 'inherit', outline: 'none', background: '#fff' }} />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>Next VAT Return Deadline</label>
+                          <input type="text" readOnly value={getNextVatDeadline()} style={{ width: '100%', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid transparent', fontSize: '0.8125rem', fontWeight: 600, fontFamily: 'inherit', outline: 'none', background: 'rgba(42,22,40,0.04)', color: addClientForm.isVatRegistered === 'No' ? 'rgba(42,22,40,0.4)' : '#E8760A', cursor: 'default' }} />
+                        </div>
+                      </div>
+                      
+                      <div style={{ display: 'grid', gridTemplateColumns: addClientForm.ctStatus !== 'Not registered' ? '1fr 1fr' : '1fr', gap: '1rem' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>Corporate Tax Status</label>
+                          <select value={addClientForm.ctStatus} onChange={e => setAddClientForm({ ...addClientForm, ctStatus: e.target.value })} style={{ width: '100%', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', fontFamily: 'inherit', outline: 'none', background: '#fff' }}>
+                            <option value="Not registered">Not registered</option>
+                            <option value="Registered — pending first return">Registered — pending first return</option>
+                            <option value="Registered — filing">Registered — filing</option>
+                          </select>
+                        </div>
+                        {addClientForm.ctStatus !== 'Not registered' && (
+                          <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+                            <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>CT TRN</label>
+                            <input type="text" placeholder="e.g. 1004455..." value={addClientForm.ctTrn} onChange={e => setAddClientForm({ ...addClientForm, ctTrn: e.target.value })} style={{ width: '100%', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', fontFamily: 'inherit', outline: 'none' }} />
                           </div>
                         )}
                       </div>
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>KYC Status</label>
-                      <div style={{ position: 'relative' }}>
-                        <button
-                          onClick={() => { setModalKycOpen((o: boolean) => !o); setModalStatusOpen(false); setModalBooksOpen(false); }}
-                          style={{ width: '100%', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.6rem 0.75rem', fontSize: '0.8125rem', color: '#2A1628', background: '#fff', fontFamily: 'inherit', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left' }}
-                        >
-                          {addClientForm.kycStatus}
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
-                        </button>
-                        {modalKycOpen && (
-                          <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: '#fff', border: '1px solid #DDD0C4', borderRadius: '10px', boxShadow: '0 8px 24px rgba(42,22,40,0.12)', zIndex: 200, overflow: 'hidden' }}>
-                            {['Verified', 'Expiring Soon', 'In Review', 'Expired', 'Pending'].map((opt: string) => (
-                              <div key={opt} onClick={() => { setAddClientForm((f: typeof addClientForm) => ({ ...f, kycStatus: opt })); setModalKycOpen(false); }}
-                                style={{ padding: '0.55rem 0.85rem', fontSize: '0.8125rem', cursor: 'pointer', color: addClientForm.kycStatus === opt ? '#E8760A' : '#2A1628', background: addClientForm.kycStatus === opt ? 'rgba(232,118,10,0.06)' : 'transparent', fontWeight: addClientForm.kycStatus === opt ? 600 : 400 }}
-                                onMouseEnter={e => { if (addClientForm.kycStatus !== opt) (e.currentTarget as HTMLDivElement).style.background = 'rgba(232,118,10,0.04)'; }}
-                                onMouseLeave={e => { if (addClientForm.kycStatus !== opt) (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
-                              >{opt}</div>
-                            ))}
-                          </div>
-                        )}
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>Corporate Tax Filing Deadline</label>
+                        <input type="text" readOnly value={getCtDeadline()} style={{ width: '100%', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid transparent', fontSize: '0.8125rem', fontWeight: 600, fontFamily: 'inherit', outline: 'none', background: 'rgba(42,22,40,0.04)', color: !addClientForm.financialYearEnd ? 'rgba(42,22,40,0.4)' : '#2A1628', cursor: 'default' }} />
+                        <p style={{ margin: '0.4rem 0 0', fontSize: '0.65rem', color: 'rgba(42,22,40,0.5)' }}>Calculated as Financial Year End + 9 Months</p>
                       </div>
                     </div>
-                  </div>
+                  )}
 
-                  {/* Row 4: Books + VAT */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>Books Status</label>
-                      <div style={{ position: 'relative' }}>
-                        <button
-                          onClick={() => { setModalBooksOpen(o => !o); setModalStatusOpen(false); setModalKycOpen(false); }}
-                          style={{ width: '100%', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.6rem 0.75rem', fontSize: '0.8125rem', color: '#2A1628', background: '#fff', fontFamily: 'inherit', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left' }}
-                        >
-                          {addClientForm.booksStatus}
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
-                        </button>
-                        {modalBooksOpen && (
-                          <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: '#fff', border: '1px solid #DDD0C4', borderRadius: '10px', boxShadow: '0 8px 24px rgba(42,22,40,0.12)', zIndex: 200, overflow: 'hidden' }}>
-                            {['Completed', 'In Progress', 'Not Started'].map(opt => (
-                              <div key={opt} onClick={() => { setAddClientForm(f => ({ ...f, booksStatus: opt })); setModalBooksOpen(false); }}
-                                style={{ padding: '0.55rem 0.85rem', fontSize: '0.8125rem', cursor: 'pointer', color: addClientForm.booksStatus === opt ? '#E8760A' : '#2A1628', background: addClientForm.booksStatus === opt ? 'rgba(232,118,10,0.06)' : 'transparent', fontWeight: addClientForm.booksStatus === opt ? 600 : 400 }}
-                                onMouseEnter={e => { if (addClientForm.booksStatus !== opt) (e.currentTarget as HTMLDivElement).style.background = 'rgba(232,118,10,0.04)'; }}
-                                onMouseLeave={e => { if (addClientForm.booksStatus !== opt) (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
-                              >{opt}</div>
-                            ))}
-                          </div>
-                        )}
+                  {currentStep === 4 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'fadeIn 0.3s ease-out' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', alignItems: 'end' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>Account Manager</label>
+                          <select value={addClientForm.manager} onChange={e => setAddClientForm({ ...addClientForm, manager: e.target.value })} style={{ width: '100%', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', fontFamily: 'inherit', outline: 'none', background: '#fff' }}>
+                            <option value="Sara Al Mansoori">Sara Al Mansoori</option>
+                            <option value="Ravi Menon">Ravi Menon</option>
+                            <option value="Fatima Hassan">Fatima Hassan</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>Chartered Accountant / Tax Agent</label>
+                          <select value={addClientForm.caAssigned} onChange={e => setAddClientForm({ ...addClientForm, caAssigned: e.target.value })} style={{ width: '100%', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', fontFamily: 'inherit', outline: 'none', background: '#fff' }}>
+                            <option value="Amit Shah (FTA Agent #4021)">Amit Shah (FTA Agent #4021)</option>
+                            <option value="Lena Kovac (FTA Agent #3187)">Lena Kovac (FTA Agent #3187)</option>
+                          </select>
+                        </div>
                       </div>
+                      
+                      
                     </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>VAT Status</label>
-                      <input
-                        type="text" placeholder="e.g. Filed / Due in 7 Days"
-                        value={addClientForm.vatDue}
-                        onChange={e => setAddClientForm(f => ({ ...f, vatDue: e.target.value }))}
-                        style={{ width: '100%', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.6rem 0.75rem', fontSize: '0.8125rem', color: '#2A1628', outline: 'none', boxSizing: 'border-box', background: '#fff', fontFamily: 'inherit' }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Row 5: CT Status */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>CT Status</label>
-                      <input
-                        type="text" placeholder="e.g. Filed / Due in 30 Days"
-                        value={addClientForm.ctDue}
-                        onChange={e => setAddClientForm(f => ({ ...f, ctDue: e.target.value }))}
-                        style={{ width: '100%', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.6rem 0.75rem', fontSize: '0.8125rem', color: '#2A1628', outline: 'none', boxSizing: 'border-box', background: '#fff', fontFamily: 'inherit' }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Drive Provisioning Indicator */}
-                  <div style={{ marginTop: '0.5rem', background: '#F8F9FA', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.75rem', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-                    <div style={{ marginTop: '0.125rem' }}>
-                      <input type="checkbox" checked disabled style={{ cursor: 'not-allowed', accentColor: '#E8760A' }} />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#2A1628' }}>Provision Google Drive Workspace</div>
-                      <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.6)', marginTop: '0.125rem', lineHeight: 1.4 }}>
-                        A dedicated Drive folder will be automatically created and linked to this client upon creation.
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* Modal Footer */}
-                <div style={{
-                  padding: '1.25rem 1.75rem',
-                  borderTop: '1px solid #DDD0C4',
-                  background: '#FAF8F5',
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                  gap: '0.75rem'
-                }}>
+                <div style={{ padding: '1.25rem 1.75rem', borderTop: '1px solid rgba(42,22,40,0.06)', display: 'flex', justifyContent: 'space-between', gap: '0.75rem', background: '#FAF8F5', borderBottomLeftRadius: '16px', borderBottomRightRadius: '16px' }}>
                   <button
-                    onClick={() => setAddClientOpen(false)}
+                    onClick={() => {
+                      if (currentStep > 1) {
+                        setCurrentStep(currentStep - 1);
+                      } else {
+                        setAddClientOpen(false);
+                        setCurrentStep(1);
+                      }
+                    }}
                     style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.6rem 1.25rem', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', color: '#2A1628', fontFamily: 'inherit' }}
-                  >Cancel</button>
+                  >
+                    {currentStep > 1 ? 'Back' : 'Cancel'}
+                  </button>
                   <button
                     disabled={isAddingClient}
                     onClick={async () => {
-                      if (isAddingClient) return;
-                      try {
-                        await addClient(addClientForm).unwrap();
-                        triggerToast('Client added successfully!', 'success');
-                        setAddClientOpen(false);
-                        setAddClientForm({ name: '', email: '', trn: '', manager: '', status: 'Active', kycStatus: 'Verified', booksStatus: 'In Progress', vatDue: '', ctDue: '' });
-                      } catch (e: any) {
-                        triggerToast(e?.data?.message || 'Failed to add client', 'error');
+                      if (currentStep < 4) {
+                        setCurrentStep(currentStep + 1);
+                      } else {
+                        if (isAddingClient) return;
+                        try {
+                          await addClient({
+                            name: addClientForm.name,
+                            email: addClientForm.email,
+                            trn: addClientForm.trn,
+                            accountManager: addClientForm.manager || 'Unassigned',
+                            status: 'Active',
+                            kycStatus: 'Verified',
+                            booksStatus: 'Awaiting Documents',
+                            vatStatus: addClientForm.isVatRegistered === 'Yes' ? `Registered (${addClientForm.vatFilingPeriod})` : 'Not Registered',
+                            ctStatus: addClientForm.ctStatus,
+                            vatDeadline: getNextVatDeadline(),
+                            ctDeadline: getCtDeadline(),
+                            caAssigned: addClientForm.caAssigned
+                          }).unwrap();
+                          triggerToast('Client boarded successfully!', 'success');
+                          setAddClientOpen(false);
+                          setCurrentStep(1);
+                          setAddClientForm({ 
+                            name: '', email: '', tradeLicense: '', authorizedSignatory: '', emiratesId: '',
+                            isVatRegistered: 'Yes', trn: '', vatFilingPeriod: 'Quarterly', vatCycle: 'Jan-Apr-Jul-Oct', 
+                            estimatedTurnover: '', financialYearEnd: '', tradeLicenseExpiry: '',
+                            ctStatus: 'Not registered', ctTrn: '', manager: 'Sara Al Mansoori', caAssigned: 'Amit Shah (FTA Agent #4021)'
+                          });
+                        } catch (e: any) {
+                          triggerToast(e?.data?.message || 'Failed to add client', 'error');
+                        }
                       }
                     }}
-                    style={{ background: isAddingClient ? '#7A6B78' : '#2A1628', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.6rem 1.5rem', fontSize: '0.8125rem', fontWeight: 600, cursor: isAddingClient ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.375rem', fontFamily: 'inherit', boxShadow: '0 4px 12px rgba(42,22,40,0.2)' }}
+                    style={{ background: isAddingClient ? '#7A6B78' : '#2A1628', color: '#ffffff', border: 'none', padding: '0.6rem 1.25rem', borderRadius: '8px', fontSize: '0.8125rem', fontWeight: 600, cursor: isAddingClient ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.375rem', fontFamily: 'inherit', boxShadow: '0 4px 12px rgba(42,22,40,0.15)' }}
                   >
-                    {isAddingClient ? (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="spin">
-                        <circle cx="12" cy="12" r="10" strokeOpacity="0.2" />
-                        <path d="M12 2a10 10 0 0 1 10 10" />
-                        <style>{`
-                          .spin { animation: spin 1s linear infinite; }
-                          @keyframes spin { 100% { transform: rotate(360deg); } }
-                        `}</style>
-                      </svg>
-                    ) : (
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                      </svg>
-                    )}
-                    {isAddingClient ? 'Adding...' : 'Add Client'}
+                    {isAddingClient && currentStep === 4 ? 'Adding...' : currentStep < 4 ? 'Next Step' : '+ Complete Onboarding'}
                   </button>
                 </div>
               </div>
@@ -1010,7 +1080,7 @@ export default function ClientListTab() {
       </div>
 
       {/* ── BULK ACTIONS TOOLBAR ── */}
-      {selectedClients.length > 1 && (
+      {selectedClients.length > 0 && (
         <div className="no-scrollbar" style={{ background: '#2A1628', borderRadius: '12px', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', overflowX: 'auto', width: '100%', whiteSpace: 'nowrap' }}>
           <span style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.75rem', fontWeight: 700, marginRight: '0.25rem', flexShrink: 0 }}>
             {selectedClients.length} clients selected
@@ -1019,14 +1089,14 @@ export default function ClientListTab() {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
             {[
-              { label: 'Assign Manager', ic: '👤', onClick: () => setBulkAction({ type: 'manager', title: 'Assign Account Manager' }) },
-              { label: 'Assign Bookkeeper', ic: '📚', onClick: () => setBulkAction({ type: 'bookkeeper', title: 'Assign Bookkeeper' }) },
-              { label: 'Change Status', ic: '🔄', onClick: () => setBulkAction({ type: 'status', title: 'Change Status' }) },
-              { label: 'Send Reminder', ic: '📧', onClick: () => { triggerToast(`Sent compliance reminders to ${selectedClients.length} clients successfully!`, 'success'); setSelectedClients([]); } },
-              { label: 'Export', ic: '📤', onClick: () => { setExportScope('selected'); setExportOpen(true); } },
-              { label: 'Add Tag', ic: '🏷️', onClick: () => setBulkAction({ type: 'tag', title: 'Add Tag' }) },
+              { label: 'Assign Manager', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>, onClick: () => setBulkAction({ type: 'manager', title: 'Assign Account Manager' }) },
+              { label: 'Assign Bookkeeper', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M16 2v20M4 6h16M4 10h16"/></svg>, onClick: () => setBulkAction({ type: 'bookkeeper', title: 'Assign Bookkeeper' }) },
+              { label: 'Change Status', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /></svg>, onClick: () => setBulkAction({ type: 'status', title: 'Change Status' }) },
+              { label: 'Send Reminder', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>, onClick: () => { triggerToast(`Sent compliance reminders to ${selectedClients.length} clients successfully!`, 'success'); setSelectedClients([]); } },
+              { label: 'Export', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>, onClick: () => { setExportScope('selected'); setExportOpen(true); } },
+              { label: 'Add Tag', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" /></svg>, onClick: () => setBulkAction({ type: 'tag', title: 'Add Tag' }) },
               {
-                label: 'AI Review', ic: '🤖', onClick: async () => {
+                label: 'AI Review', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M12 2v2M8 5h8M7 11V7a5 5 0 0 1 10 0v4" /></svg>, onClick: async () => {
                   setAiReviewing(true);
                   try {
                     await bulkUpdateClients({ ids: selectedClients, action: 'tag', value: 'AI Reviewed' }).unwrap();
@@ -1039,7 +1109,7 @@ export default function ClientListTab() {
                   }
                 }
               },
-              { label: 'Archive', ic: '🗄️', onClick: () => setBulkAction({ type: 'archive', title: 'Archive Clients' }) },
+              { label: 'Archive', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="21 8 21 21 3 21 3 8" /><rect x="1" y="3" width="22" height="5" /><line x1="10" y1="12" x2="14" y2="12" /></svg>, onClick: () => setBulkAction({ type: 'archive', title: 'Archive Clients' }) },
             ].map((a, i) => (
               <button key={i} onClick={a.onClick} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', padding: '0.3rem 0.6rem', color: '#ffffff', fontSize: '0.6875rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontFamily: 'Inter, sans-serif', transition: 'background 120ms', whiteSpace: 'nowrap', flexShrink: 0 }}
                 onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.12)')}
@@ -1311,35 +1381,24 @@ export default function ClientListTab() {
               }}>CLIENT / COMPANY</th>
               <th style={{ padding: '1rem' }}>TRN / VAT NO.</th>
               <th style={{ padding: '1rem' }}>ACCOUNT MANAGER</th>
+              <th style={{ padding: '1rem' }}>CA ASSIGNED</th>
               <th style={{ padding: '1rem', textAlign: 'center' }}>STATUS</th>
-              <th style={{ padding: '1rem', textAlign: 'center' }}>KYC STATUS</th>
-              <th style={{ padding: '1rem', textAlign: 'center' }}>BOOKS STATUS</th>
               <th style={{ padding: '1rem', textAlign: 'center' }}>VAT STATUS</th>
               <th style={{ padding: '1rem', textAlign: 'center' }}>CT STATUS</th>
-              <th style={{ padding: '1rem' }}>LAST ACTIVITY</th>
+              <th style={{ padding: '1rem' }}>VAT DEADLINE</th>
+              <th style={{ padding: '1rem' }}>CT DEADLINE</th>
               <th style={{ padding: '1rem', textAlign: 'center' }}>ACTIONS</th>
-              <th style={{ padding: '1rem' }}>CLIENT CODE</th>
-              <th style={{ padding: '1rem' }}>INDUSTRY / TYPE</th>
-              <th style={{ padding: '1rem' }}>BOOKKEEPER</th>
-              <th style={{ padding: '1rem' }}>FIN. YEAR</th>
-              <th style={{ padding: '1rem' }}>RISK</th>
-              <th style={{ padding: '1rem' }}>QUICKBOOKS</th>
-              <th style={{ padding: '1rem' }}>PROGRESS</th>
-              <th style={{ padding: '1rem' }}>TASKS</th>
-              <th style={{ padding: '1rem' }}>DOCS</th>
-              <th style={{ padding: '1rem' }}>NEXT DEADLINE</th>
-              <th style={{ padding: '1rem' }}>TAGS</th>
             </tr>
           </thead>
           <tbody>
             {filteredClients.map((client: any, idx: number) => (
-              <tr key={client.id} style={{
+              <tr key={client.id} onClick={() => { setPreviewClient(client); setPreviewOpen(true); setPreviewTab("overview"); }} style={{ cursor: "pointer",
                 borderBottom: idx < filteredClients.length - 1 ? '1px solid rgba(42,22,40,0.04)' : 'none',
                 background: selectedClients.includes(client.id) ? 'rgba(232,118,10,0.02)' : 'transparent'
               }}>
-                <td style={{
-                  padding: '1rem 0.75rem',
-                  width: '48px',
+                <td onClick={(e) => e.stopPropagation()} style={{
+                    padding: "1rem 0.75rem",
+                    width: "48px",
                   minWidth: '48px',
                   maxWidth: '48px',
                   textAlign: 'center',
@@ -1385,30 +1444,20 @@ export default function ClientListTab() {
 
                 {/* TRN / VAT */}
                 <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
-                  <div style={{ fontWeight: 500, color: '#2A1628' }}>{client.trn}</div>
-                  <div style={{ fontSize: '0.6875rem', color: 'rgba(42,22,40,0.45)' }}>{client.vatStatusText}</div>
+                  <div style={{ fontWeight: 500, color: '#2A1628' }}>{client.trn || '-'}</div>
                 </td>
 
                 {/* Manager */}
                 <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <div style={{
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '50%',
-                      background: 'rgba(232, 118, 10, 0.06)',
-                      color: '#E8760A',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0
-                    }}>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                        <circle cx="12" cy="7" r="4" />
-                      </svg>
-                    </div>
-                    <span style={{ fontWeight: 500, color: '#2A1628' }}>{client.manager}</span>
+                    <span style={{ fontWeight: 500, color: (client.accountManager || client.manager) ? '#2A1628' : 'rgba(42,22,40,0.4)' }}>{client.accountManager || client.manager || 'Unassigned'}</span>
+                  </div>
+                </td>
+                
+                {/* CA Assigned */}
+                <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ fontWeight: 500, color: (client.caAssigned && client.caAssigned !== '-') ? '#2A1628' : 'rgba(42,22,40,0.4)' }}>{client.caAssigned || '-'}</span>
                   </div>
                 </td>
 
@@ -1424,75 +1473,46 @@ export default function ClientListTab() {
                   }}>{client.status}</span>
                 </td>
 
-                {/* KYC status */}
-                <td style={{ padding: '1rem', whiteSpace: 'nowrap', textAlign: 'center' }}>
-                  <span style={{
-                    fontSize: '0.7rem',
-                    fontWeight: 700,
-                    padding: '0.25rem 0.5rem',
-                    borderRadius: '4px',
-                    background: client.kycStatus === 'Verified' ? 'rgba(4, 120, 87, 0.08)' : client.kycStatus === 'Expiring Soon' ? 'rgba(184, 137, 42, 0.08)' : client.kycStatus === 'In Review' ? 'rgba(42, 22, 40, 0.06)' : 'rgba(196, 105, 90, 0.08)',
-                    color: client.kycStatus === 'Verified' ? '#047857' : client.kycStatus === 'Expiring Soon' ? '#B8892A' : client.kycStatus === 'In Review' ? 'rgba(42, 22, 40, 0.6)' : '#C4695A'
-                  }}>
-                    {client.kycStatus}
-                  </span>
-                </td>
-
-                {/* Books status */}
-                <td style={{ padding: '1rem', whiteSpace: 'nowrap', textAlign: 'center' }}>
-                  <span style={{
-                    fontSize: '0.7rem',
-                    fontWeight: 700,
-                    padding: '0.25rem 0.5rem',
-                    borderRadius: '4px',
-                    background: client.booksStatus === 'Completed' ? 'rgba(4, 120, 87, 0.08)' : client.booksStatus === 'In Progress' ? 'rgba(184, 137, 42, 0.08)' : 'rgba(42, 22, 40, 0.06)',
-                    color: client.booksStatus === 'Completed' ? '#047857' : client.booksStatus === 'In Progress' ? '#B8892A' : 'rgba(42, 22, 40, 0.6)'
-                  }}>{client.booksStatus}</span>
-                </td>
-
                 {/* VAT Status */}
                 <td style={{ padding: '1rem', whiteSpace: 'nowrap', textAlign: 'center' }}>
-                  {client.vatDue === 'Filed' ? (
-                    <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.25rem 0.5rem', borderRadius: '4px', background: 'rgba(4, 120, 87, 0.08)', color: '#047857' }}>Filed</span>
-                  ) : (!client.vatDue || client.vatDue === '-') ? (
-                    <span style={{ color: 'rgba(42,22,40,0.4)' }}>-</span>
-                  ) : (
-                    <span style={{
-                      fontSize: '0.7rem',
-                      fontWeight: 700,
-                      padding: '0.25rem 0.5rem',
-                      borderRadius: '4px',
-                      background: (client.vatDue || '').includes('Overdue') ? 'rgba(196, 105, 90, 0.08)' : 'rgba(184, 137, 42, 0.08)',
-                      color: (client.vatDue || '').includes('Overdue') ? '#C4695A' : '#B8892A'
-                    }}>{client.vatDue}</span>
-                  )}
+                  <span style={{
+                    fontSize: '0.7rem',
+                    fontWeight: 700,
+                    padding: '0.25rem 0.5rem',
+                    borderRadius: '4px',
+                    background: (client.vatStatus || '').includes('Registered') ? 'rgba(4, 120, 87, 0.08)' : 'rgba(184, 137, 42, 0.08)',
+                    color: (client.vatStatus || '').includes('Registered') ? '#047857' : '#B8892A'
+                  }}>{client.vatStatus || 'Pending'}</span>
                 </td>
 
                 {/* CT Status */}
                 <td style={{ padding: '1rem', whiteSpace: 'nowrap', textAlign: 'center' }}>
-                  {client.ctDue === 'Filed' ? (
-                    <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.25rem 0.5rem', borderRadius: '4px', background: 'rgba(4, 120, 87, 0.08)', color: '#047857' }}>Filed</span>
-                  ) : (!client.ctDue || client.ctDue === '-') ? (
-                    <span style={{ color: 'rgba(42,22,40,0.4)' }}>-</span>
-                  ) : (
+                  {client.ctStatus && client.ctStatus !== '-' ? (
                     <span style={{
                       fontSize: '0.7rem',
                       fontWeight: 700,
                       padding: '0.25rem 0.5rem',
                       borderRadius: '4px',
-                      background: (client.ctDue || '').includes('Overdue') ? 'rgba(196, 105, 90, 0.08)' : 'rgba(184, 137, 42, 0.08)',
-                      color: (client.ctDue || '').includes('Overdue') ? '#C4695A' : '#B8892A'
-                    }}>{client.ctDue}</span>
+                      background: client.ctStatus.includes('Registered') ? 'rgba(4, 120, 87, 0.08)' : 'rgba(42,22,40,0.06)',
+                      color: client.ctStatus.includes('Registered') ? '#047857' : 'rgba(42,22,40,0.6)'
+                    }}>{client.ctStatus}</span>
+                  ) : (
+                    <span style={{ color: 'rgba(42,22,40,0.4)', fontWeight: 600 }}>-</span>
                   )}
                 </td>
 
-                {/* Last Activity */}
-                <td style={{ padding: '1rem', color: 'rgba(42,22,40,0.6)', fontWeight: 500 }}>
-                  {client.lastActivity}
+                {/* VAT Deadline */}
+                <td style={{ padding: '1rem', whiteSpace: 'nowrap', fontSize: '0.7rem', fontWeight: 600, color: client.vatDeadline && client.vatDeadline !== '-' ? '#E8760A' : 'rgba(42,22,40,0.4)' }}>
+                  {client.vatDeadline || '-'}
+                </td>
+                
+                {/* CT Deadline */}
+                <td style={{ padding: '1rem', whiteSpace: 'nowrap', fontSize: '0.7rem', fontWeight: 600, color: client.ctDeadline && client.ctDeadline !== '-' ? '#2A1628' : 'rgba(42,22,40,0.4)' }}>
+                  {client.ctDeadline || '-'}
                 </td>
 
                 {/* ── ACTIONS DROPDOWN ── */}
-                <td style={{ padding: '1rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                <td onClick={(e) => e.stopPropagation()} style={{ padding: "1rem", textAlign: "center", whiteSpace: "nowrap" }}>
                   <div style={{ display: 'flex', gap: '0.375rem', justifyContent: 'center', alignItems: 'center' }}>
                     <button
                       onClick={() => { setPreviewClient(client); setPreviewOpen(true); setPreviewTab('overview'); }}
@@ -1514,18 +1534,6 @@ export default function ClientListTab() {
                         <div style={{ position: 'absolute', top: 'calc(100% + 4px)', right: 0, background: '#fff', border: '1px solid #DDD0C4', borderRadius: '12px', boxShadow: '0 12px 36px rgba(42,22,40,0.14)', zIndex: 200, minWidth: '200px', overflow: 'hidden', padding: '4px' }}>
                           {[
                             { label: 'Open Profile', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>, action: () => { setPreviewClient(client); setPreviewOpen(true); setPreviewTab('overview'); } },
-                            { label: 'View Timeline', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>, action: () => { setPreviewClient(client); setPreviewOpen(true); setPreviewTab('timeline'); } },
-                            { label: 'Open Documents', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>, action: () => { setPreviewClient(client); setPreviewOpen(true); setPreviewTab('documents'); } },
-                            { label: 'Upload Documents', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>, action: () => alert('Upload docs: ' + client.name) },
-                            { label: 'AI Bookkeeping', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M12 2v2M8 5h8M7 11V7a5 5 0 0 1 10 0v4" /></svg>, action: () => alert('AI Bookkeeping: ' + client.name) },
-                            { label: 'Reconciliation', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="2" x2="12" y2="22" /><line x1="5" y1="12" x2="19" y2="12" /><circle cx="5" cy="12" r="3" /><circle cx="19" cy="12" r="3" /></svg>, action: () => alert('Reconciliation: ' + client.name) },
-                            { label: 'VAT Center', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>, action: () => alert('VAT Center: ' + client.name) },
-                            { label: 'Corporate Tax', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><rect x="8" y="2" width="8" height="4" rx="1" ry="1" /></svg>, action: () => alert('CT: ' + client.name) },
-                            { label: 'Reports', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg>, action: () => alert('Reports: ' + client.name) },
-                            { label: 'QuickBooks Sync', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M23 4v6h-6M1 20v-6h6" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></svg>, action: () => alert('QBO: ' + client.name) },
-                            { label: 'Notes', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>, action: () => { setPreviewClient(client); setPreviewOpen(true); setPreviewTab('activity'); } },
-                            { label: 'Activity Log', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>, action: () => { setPreviewClient(client); setPreviewOpen(true); setPreviewTab('activity'); } },
-                            { label: 'Archive', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="21 8 21 21 3 21 3 8" /><rect x="1" y="3" width="22" height="5" /><line x1="10" y1="12" x2="14" y2="12" /></svg>, action: () => alert('Archive: ' + client.name) },
                             {
                               label: 'Delete Client', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>, action: async () => {
                                 if (confirm(`Are you sure you want to delete ${client.name}?`)) {
@@ -1552,78 +1560,6 @@ export default function ClientListTab() {
                         </div>
                       )}
                     </div>
-                  </div>
-                </td>
-
-                {/* ── ENTERPRISE COLUMNS ── */}
-                {/* Client Code */}
-                <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
-                  <span style={{ fontSize: '0.7rem', fontWeight: 700, fontFamily: 'monospace', color: '#E8760A', background: 'rgba(232,118,10,0.06)', padding: '0.2rem 0.45rem', borderRadius: '4px' }}>{client.clientCode}</span>
-                </td>
-
-                {/* Industry / Entity Type */}
-                <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
-                  <div style={{ fontWeight: 600, color: '#2A1628', fontSize: '0.75rem' }}>{client.industry}</div>
-                  <div style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.45)', marginTop: '2px' }}>{client.entityType}</div>
-                </td>
-
-                {/* Bookkeeper */}
-                <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(232,118,10,0.08)', color: '#E8760A', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
-                    </div>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#2A1628' }}>{client.bookkeeper}</span>
-                  </div>
-                </td>
-
-                {/* Financial Year */}
-                <td style={{ padding: '1rem', whiteSpace: 'nowrap', fontSize: '0.75rem', color: 'rgba(42,22,40,0.6)', fontWeight: 500 }}>
-                  {client.financialYear}
-                </td>
-
-                {/* Risk Level */}
-                <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
-                  <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '0.2rem 0.5rem', borderRadius: '4px', background: client.riskLevel === 'High' ? 'rgba(239,68,68,0.08)' : client.riskLevel === 'Medium' ? 'rgba(245,158,11,0.08)' : 'rgba(4,120,87,0.08)', color: client.riskLevel === 'High' ? '#EF4444' : client.riskLevel === 'Medium' ? '#D97706' : '#047857' }}>{client.riskLevel}</span>
-                </td>
-
-                {/* QuickBooks Status */}
-                <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
-                  <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '0.2rem 0.5rem', borderRadius: '4px', background: client.qbStatus === 'Connected' ? 'rgba(4,120,87,0.08)' : client.qbStatus === 'Syncing' ? 'rgba(232,118,10,0.08)' : client.qbStatus === 'Error' ? 'rgba(239,68,68,0.08)' : 'rgba(42,22,40,0.06)', color: client.qbStatus === 'Connected' ? '#047857' : client.qbStatus === 'Syncing' ? '#E8760A' : client.qbStatus === 'Error' ? '#EF4444' : 'rgba(42,22,40,0.5)' }}>{client.qbStatus}</span>
-                </td>
-
-                {/* Overall Progress */}
-                <td style={{ padding: '1rem', whiteSpace: 'nowrap', minWidth: '110px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <div style={{ flex: 1, height: '4px', background: 'rgba(42,22,40,0.06)', borderRadius: '2px', overflow: 'hidden', minWidth: '60px' }}>
-                      <div style={{ width: `${client.overallProgress}%`, height: '100%', background: client.overallProgress >= 90 ? '#2EA44F' : client.overallProgress >= 60 ? '#E8760A' : '#EF4444', borderRadius: '2px', transition: 'width 300ms' }} />
-                    </div>
-                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#2A1628', minWidth: '28px' }}>{client.overallProgress}%</span>
-                  </div>
-                </td>
-
-                {/* Active Tasks */}
-                <td style={{ padding: '1rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: client.activeTasks > 10 ? '#EF4444' : client.activeTasks > 4 ? '#E8760A' : '#047857' }}>{client.activeTasks}</span>
-                </td>
-
-                {/* Documents */}
-                <td style={{ padding: '1rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'rgba(42,22,40,0.7)' }}>{client.documents}</span>
-                </td>
-
-                {/* Next Deadline */}
-                <td style={{ padding: '1rem', whiteSpace: 'nowrap', fontSize: '0.7rem', color: (client.nextDeadline || '').toLowerCase().includes('1 day') || (client.nextDeadline || '').toLowerCase().includes('expired') ? '#EF4444' : (client.nextDeadline || '').toLowerCase().includes('2 day') || (client.nextDeadline || '').toLowerCase().includes('pending') ? '#E8760A' : 'rgba(42,22,40,0.6)', fontWeight: 600 }}>
-                  {client.nextDeadline || '-'}
-                </td>
-
-                {/* Tags */}
-                <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
-                  <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
-                    {client.tags.slice(0, 2).map((tag: string) => (
-                      <span key={tag} style={{ fontSize: '0.6rem', fontWeight: 700, padding: '0.15rem 0.4rem', borderRadius: '4px', background: 'rgba(42,22,40,0.06)', color: 'rgba(42,22,40,0.55)', whiteSpace: 'nowrap' }}>{tag}</span>
-                    ))}
-                    {client.tags.length > 2 && <span style={{ fontSize: '0.6rem', color: 'rgba(42,22,40,0.35)' }}>+{client.tags.length - 2}</span>}
                   </div>
                 </td>
               </tr>

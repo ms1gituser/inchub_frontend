@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { get } from '@/lib/apiClient';
 import { usePermission } from '@/context/PermissionContext';
 import LoadingScreen from '@/components/ui/LoadingScreen';
+import { uploadToS3 } from '@/lib/uploadHelper';
 
 export default function KycDocumentsPage() {
   const { currentBrand } = usePermission();
@@ -58,13 +59,14 @@ export default function KycDocumentsPage() {
     );
   }
 
-  const kycDocs = [
+  const [kycDocs, setKycDocs] = useState([
     { id: 1, name: 'Trade License Copy', status: 'Expired', expiry: 'July 15, 2026', formats: 'PDF (Max 5MB)' },
     { id: 2, name: 'Shareholder Passport', status: 'On File', expiry: 'Oct 22, 2030', formats: 'PDF, JPG' },
     { id: 3, name: 'Emirates ID', status: 'Expiring Soon', expiry: 'Aug 10, 2026', formats: 'PDF, JPG (Max 5MB)' },
     { id: 4, name: 'MOA / AOA', status: 'On File', expiry: 'N/A', formats: 'PDF (Max 10MB)' },
     { id: 5, name: 'Tenancy Contract (Ejari)', status: 'Missing', expiry: '-', formats: 'PDF (Max 5MB)' },
-  ];
+  ]);
+  const [uploadingId, setUploadingId] = useState<number | null>(null);
 
   // Derive overall status: RED if any Missing/Expired, AMBER if Expiring Soon, GREEN if all On File
   const hasCritical = kycDocs.some(d => d.status === 'Missing' || d.status === 'Expired');
@@ -173,15 +175,29 @@ export default function KycDocumentsPage() {
                 </div>
                 
                 {needsUpload && (
-                  <button style={{
+                  <label style={{
                     display: 'flex', alignItems: 'center', gap: '0.5rem',
                     padding: '0.625rem 1rem', background: primaryBg, color: '#ffffff',
                     border: 'none', borderRadius: '6px', fontSize: '0.8125rem', fontWeight: 600,
-                    cursor: 'pointer', transition: 'opacity 200ms ease', flexShrink: 0
+                    cursor: uploadingId === doc.id ? 'not-allowed' : 'pointer', transition: 'opacity 200ms ease', flexShrink: 0,
+                    opacity: uploadingId === doc.id ? 0.7 : 1
                   }}>
+                    <input type="file" style={{ display: 'none' }} disabled={uploadingId === doc.id} onChange={async (e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setUploadingId(doc.id);
+                        try {
+                          await uploadToS3(e.target.files[0]);
+                          setKycDocs(prev => prev.map(d => d.id === doc.id ? { ...d, status: 'Under Review' } : d));
+                        } catch (err) {
+                          alert('Upload failed');
+                        } finally {
+                          setUploadingId(null);
+                        }
+                      }
+                    }} />
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                    {doc.status === 'Missing' ? 'Upload File' : 'Re-Upload Renewed'}
-                  </button>
+                    {uploadingId === doc.id ? 'Uploading...' : (doc.status === 'Missing' ? 'Upload File' : 'Re-Upload Renewed')}
+                  </label>
                 )}
               </div>
             </div>

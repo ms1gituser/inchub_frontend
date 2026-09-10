@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { get } from '@/lib/apiClient';
 import { usePermission } from '@/context/PermissionContext';
 import LoadingScreen from '@/components/ui/LoadingScreen';
+import { uploadToS3 } from '@/lib/uploadHelper';
 
 export default function UploadDocumentsPage() {
   const { currentBrand } = usePermission();
@@ -58,12 +59,13 @@ export default function UploadDocumentsPage() {
     );
   }
 
-  const checklist = [
+  const [checklist, setChecklist] = useState([
     { id: 1, service: 'Company Registration', name: 'Passport Copy', desc: 'Clear color scan of passport data page. Ensure all 4 corners are visible.', formats: 'PDF, JPG (Max 5MB)', status: 'Approved', reason: null },
     { id: 2, service: 'Company Registration', name: 'NOC Letter', desc: 'No Objection Certificate from current sponsor, stamped and signed.', formats: 'PDF (Max 2MB)', status: 'Pending', reason: null },
     { id: 3, service: 'Visa Processing', name: 'Passport Size Photo', desc: 'White background, high resolution, no glasses.', formats: 'JPG, PNG (Max 2MB)', status: 'Uploaded', reason: null },
     { id: 4, service: 'Visa Processing', name: 'Emirates ID (Front & Back)', desc: 'Scanned copy of your previous Emirates ID.', formats: 'PDF, JPG (Max 5MB)', status: 'Rejected', reason: 'Back side is blurry. Please re-scan and upload clearly.' },
-  ];
+  ]);
+  const [uploadingId, setUploadingId] = useState<number | null>(null);
 
   const groupedChecklist = checklist.reduce((acc, item) => {
     if (!acc[item.service]) acc[item.service] = [];
@@ -146,15 +148,29 @@ export default function UploadDocumentsPage() {
                     </div>
                     
                     {item.status !== 'Approved' && (
-                      <button style={{
+                      <label style={{
                         display: 'flex', alignItems: 'center', gap: '0.5rem',
                         padding: '0.625rem 1rem', background: primaryBg, color: '#ffffff',
                         border: 'none', borderRadius: '6px', fontSize: '0.8125rem', fontWeight: 600,
-                        cursor: 'pointer', transition: 'opacity 200ms ease'
+                        cursor: uploadingId === item.id ? 'not-allowed' : 'pointer', transition: 'opacity 200ms ease',
+                        opacity: uploadingId === item.id ? 0.7 : 1
                       }}>
+                        <input type="file" style={{ display: 'none' }} disabled={uploadingId === item.id} onChange={async (e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            setUploadingId(item.id);
+                            try {
+                              await uploadToS3(e.target.files[0]);
+                              setChecklist(prev => prev.map(c => c.id === item.id ? { ...c, status: 'Uploaded', reason: null } : c));
+                            } catch (err) {
+                              alert('Upload failed');
+                            } finally {
+                              setUploadingId(null);
+                            }
+                          }
+                        }} />
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                        {item.status === 'Rejected' ? 'Re-Upload' : 'Upload File'}
-                      </button>
+                        {uploadingId === item.id ? 'Uploading...' : (item.status === 'Rejected' ? 'Re-Upload' : 'Upload File')}
+                      </label>
                     )}
                   </div>
                   
