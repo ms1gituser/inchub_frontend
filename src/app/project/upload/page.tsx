@@ -10,6 +10,13 @@ export default function UploadDocumentsPage() {
   const { currentBrand } = usePermission();
   const [stage, setStage] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [checklist, setChecklist] = useState([
+    { id: 1, service: 'Company Registration', name: 'Passport Copy', desc: 'Clear color scan of passport data page. Ensure all 4 corners are visible.', formats: 'PDF, JPG (Max 5MB)', status: 'Approved', reason: null },
+    { id: 2, service: 'Company Registration', name: 'NOC Letter', desc: 'No Objection Certificate from current sponsor, stamped and signed.', formats: 'PDF (Max 2MB)', status: 'Pending', reason: null },
+    { id: 3, service: 'Visa Processing', name: 'Passport Size Photo', desc: 'White background, high resolution, no glasses.', formats: 'JPG, PNG (Max 2MB)', status: 'Uploaded', reason: null },
+    { id: 4, service: 'Visa Processing', name: 'Emirates ID (Front & Back)', desc: 'Scanned copy of your previous Emirates ID.', formats: 'PDF, JPG (Max 5MB)', status: 'Rejected', reason: 'Back side is blurry. Please re-scan and upload clearly.' },
+  ]);
+  const [uploadingId, setUploadingId] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -59,13 +66,7 @@ export default function UploadDocumentsPage() {
     );
   }
 
-  const [checklist, setChecklist] = useState([
-    { id: 1, service: 'Company Registration', name: 'Passport Copy', desc: 'Clear color scan of passport data page. Ensure all 4 corners are visible.', formats: 'PDF, JPG (Max 5MB)', status: 'Approved', reason: null },
-    { id: 2, service: 'Company Registration', name: 'NOC Letter', desc: 'No Objection Certificate from current sponsor, stamped and signed.', formats: 'PDF (Max 2MB)', status: 'Pending', reason: null },
-    { id: 3, service: 'Visa Processing', name: 'Passport Size Photo', desc: 'White background, high resolution, no glasses.', formats: 'JPG, PNG (Max 2MB)', status: 'Uploaded', reason: null },
-    { id: 4, service: 'Visa Processing', name: 'Emirates ID (Front & Back)', desc: 'Scanned copy of your previous Emirates ID.', formats: 'PDF, JPG (Max 5MB)', status: 'Rejected', reason: 'Back side is blurry. Please re-scan and upload clearly.' },
-  ]);
-  const [uploadingId, setUploadingId] = useState<number | null>(null);
+  // Hooks moved to top
 
   const groupedChecklist = checklist.reduce((acc, item) => {
     if (!acc[item.service]) acc[item.service] = [];

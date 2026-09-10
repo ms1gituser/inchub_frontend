@@ -10,6 +10,14 @@ export default function KycDocumentsPage() {
   const { currentBrand } = usePermission();
   const [stage, setStage] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [kycDocs, setKycDocs] = useState([
+    { id: 1, name: 'Trade License Copy', status: 'Expired', expiry: 'July 15, 2026', formats: 'PDF (Max 5MB)' },
+    { id: 2, name: 'Shareholder Passport', status: 'On File', expiry: 'Oct 22, 2030', formats: 'PDF, JPG' },
+    { id: 3, name: 'Emirates ID', status: 'Expiring Soon', expiry: 'Aug 10, 2026', formats: 'PDF, JPG (Max 5MB)' },
+    { id: 4, name: 'MOA / AOA', status: 'On File', expiry: 'N/A', formats: 'PDF (Max 10MB)' },
+    { id: 5, name: 'Tenancy Contract (Ejari)', status: 'Missing', expiry: '-', formats: 'PDF (Max 5MB)' },
+  ]);
+  const [uploadingId, setUploadingId] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -59,14 +67,7 @@ export default function KycDocumentsPage() {
     );
   }
 
-  const [kycDocs, setKycDocs] = useState([
-    { id: 1, name: 'Trade License Copy', status: 'Expired', expiry: 'July 15, 2026', formats: 'PDF (Max 5MB)' },
-    { id: 2, name: 'Shareholder Passport', status: 'On File', expiry: 'Oct 22, 2030', formats: 'PDF, JPG' },
-    { id: 3, name: 'Emirates ID', status: 'Expiring Soon', expiry: 'Aug 10, 2026', formats: 'PDF, JPG (Max 5MB)' },
-    { id: 4, name: 'MOA / AOA', status: 'On File', expiry: 'N/A', formats: 'PDF (Max 10MB)' },
-    { id: 5, name: 'Tenancy Contract (Ejari)', status: 'Missing', expiry: '-', formats: 'PDF (Max 5MB)' },
-  ]);
-  const [uploadingId, setUploadingId] = useState<number | null>(null);
+  // Hooks moved to top
 
   // Derive overall status: RED if any Missing/Expired, AMBER if Expiring Soon, GREEN if all On File
   const hasCritical = kycDocs.some(d => d.status === 'Missing' || d.status === 'Expired');
