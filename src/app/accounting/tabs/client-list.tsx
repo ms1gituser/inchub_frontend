@@ -39,6 +39,9 @@ interface ClientItem {
   entityType: string;
   bookkeeper: string;
   financialYear: string;
+  isVatRegistered: string;
+  vatFilingPeriod: string;
+  vatCycle: string;
   qbStatus: 'Connected' | 'Syncing' | 'Error' | 'Disconnected';
   riskLevel: 'Low' | 'Medium' | 'High';
   overallProgress: number;
@@ -86,7 +89,7 @@ export default function ClientListTab() {
     email: '', 
     tradeLicense: '',
     authorizedSignatory: '',
-    emiratesId: '',
+    phoneNumber: '',
     isVatRegistered: 'Yes', 
     trn: '', 
     vatFilingPeriod: 'Quarterly', 
@@ -119,11 +122,12 @@ export default function ClientListTab() {
   const [savedView, setSavedView] = useState('All Clients');
   const [rowActionOpen, setRowActionOpen] = useState<string | null>(null);
   const [advFilterOpen, setAdvFilterOpen] = useState<string | null>(null);
+  const [deleteClientConfirm, setDeleteClientConfirm] = useState<any>(null);
 
   // ── API Mutators & Queries ──
   const [addClient, { isLoading: isAddingClient }] = useAddClientMutation();
-  const [deleteClient] = useDeleteClientMutation();
-  const [bulkUpdateClients] = useBulkUpdateClientsMutation();
+  const [deleteClient, { isLoading: isDeletingClient }] = useDeleteClientMutation();
+  const [bulkUpdateClients, { isLoading: isBulkUpdating }] = useBulkUpdateClientsMutation();
   const [importClients] = useImportClientsMutation();
 
   const { data: clientsRes, isLoading: clientsLoading } = useGetClientsQuery({
@@ -346,26 +350,10 @@ export default function ClientListTab() {
 
                 <div style={{ width: '100%', height: '1px', background: 'rgba(42,22,40,0.06)' }} />
 
-                {/* Source Toggle */}
-                <div style={{ padding: '1.5rem 2rem 0' }}>
-                  <div style={{ display: 'flex', gap: '4px', background: 'rgba(42,22,40,0.04)', borderRadius: '12px', padding: '4px' }}>
-                    {(['local', 'drive'] as const).map(src => (
-                      <button key={src} onClick={() => { setImportSource(src); setImportFile(null); }}
-                        style={{ flex: 1, padding: '0.625rem', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 700, fontFamily: 'inherit', background: importSource === src ? '#ffffff' : 'transparent', color: importSource === src ? '#2A1628' : 'rgba(42,22,40,0.5)', boxShadow: importSource === src ? '0 2px 8px rgba(42,22,40,0.05)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', transition: 'all 0.15s ease' }}
-                      >
-                        {src === 'local' ? (
-                          <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg> Local File</>
-                        ) : (
-                          <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 2 22 22 22" /><polygon points="12 2 22 22 17 22 12 12" /><polygon points="12 2 2 22 7 22 12 12" /></svg> Google Drive</>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+
 
                 {/* Body */}
                 <div style={{ padding: '1.5rem 2rem 1.75rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                  {importSource === 'local' ? (
                     <div
                       onDragOver={e => { e.preventDefault(); setImportDragOver(true); }}
                       onDragLeave={() => setImportDragOver(false)}
@@ -392,38 +380,22 @@ export default function ClientListTab() {
                         </div>
                       )}
                     </div>
-                  ) : (
-                    <div style={{ textAlign: 'center', padding: '1.25rem 0 0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-                      <div style={{ width: '56px', height: '56px', background: 'rgba(66,133,244,0.05)', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                          <rect x="3" y="3" width="8" height="8" rx="1.5" fill="#4285F4" />
-                          <rect x="13" y="3" width="8" height="8" rx="1.5" fill="#34A853" />
-                          <rect x="3" y="13" width="8" height="8" rx="1.5" fill="#FBBC05" />
-                          <rect x="13" y="13" width="8" height="8" rx="1.5" fill="#EA4335" />
-                        </svg>
-                      </div>
-                      <div>
-                        <h4 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#2A1628' }}>Connect Google Drive</h4>
-                        <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'rgba(42,22,40,0.5)', maxWidth: '300px' }}>Sign in with Google to browse and pick an Excel sheet from your Drive</p>
-                      </div>
-                      <button
-                        onClick={() => { setImportFile(new File([''], 'drive_clients.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })); triggerToast('Google Drive connected.', 'success'); }}
-                        style={{ background: '#4285F4', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'inherit', boxShadow: '0 4px 12px rgba(66,133,244,0.2)' }}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                          <rect x="3" y="3" width="8" height="8" rx="1" fill="#fff" fillOpacity="0.9" />
-                          <rect x="13" y="3" width="8" height="8" rx="1" fill="#fff" fillOpacity="0.9" />
-                          <rect x="3" y="13" width="8" height="8" rx="1" fill="#fff" fillOpacity="0.9" />
-                          <rect x="13" y="13" width="8" height="8" rx="1" fill="#fff" fillOpacity="0.9" />
-                        </svg>
-                        Sign in with Google
-                      </button>
-                    </div>
-                  )}
 
                   <div style={{ background: '#FFFDF9', border: '1px solid #FFE7D0', borderRadius: '12px', padding: '1rem', fontSize: '0.75rem', lineHeight: 1.4, color: 'rgba(42,22,40,0.7)', textAlign: 'left' }}>
                     Template columns required: <span style={{ color: 'rgba(42,22,40,0.45)' }}>Company Name, Email, TRN, Manager, Status, KYC, Books, VAT, CT</span>.{' '}
-                    <span onClick={() => triggerToast('Template downloaded.', 'info')} style={{ cursor: 'pointer', color: '#E8760A', fontWeight: 600 }}>Download template →</span>
+                    <span onClick={() => {
+                      const headers = "Company Name,Email,TRN,Manager,Status,KYC,Books,VAT,CT\n";
+                      const blob = new Blob([headers], { type: 'text/csv;charset=utf-8;' });
+                      const link = document.createElement("a");
+                      const url = URL.createObjectURL(blob);
+                      link.setAttribute("href", url);
+                      link.setAttribute("download", "incHub_client_import_template.csv");
+                      link.style.visibility = 'hidden';
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      triggerToast('Template downloaded.', 'success');
+                    }} style={{ cursor: 'pointer', color: '#E8760A', fontWeight: 600 }}>Download template →</span>
                   </div>
                 </div>
 
@@ -575,8 +547,8 @@ export default function ClientListTab() {
                           <input type="text" placeholder="e.g. Mahesh Maddu" value={addClientForm.authorizedSignatory} onChange={e => setAddClientForm({ ...addClientForm, authorizedSignatory: e.target.value })} style={{ width: '100%', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', fontFamily: 'inherit', outline: 'none' }} />
                         </div>
                         <div>
-                          <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>Emirates ID Number</label>
-                          <input type="text" placeholder="784-XXXX-XXXXXXX-X" value={addClientForm.emiratesId} onChange={e => setAddClientForm({ ...addClientForm, emiratesId: e.target.value })} style={{ width: '100%', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', fontFamily: 'inherit', outline: 'none' }} />
+                          <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>Phone Number</label>
+                          <input type="text" placeholder="e.g. +971 50 123 4567" value={addClientForm.phoneNumber} onChange={e => setAddClientForm({ ...addClientForm, phoneNumber: e.target.value })} style={{ width: '100%', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', fontFamily: 'inherit', outline: 'none' }} />
                         </div>
                       </div>
                     </div>
@@ -678,18 +650,101 @@ export default function ClientListTab() {
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', alignItems: 'end' }}>
                         <div>
                           <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>Account Manager</label>
-                          <select value={addClientForm.manager} onChange={e => setAddClientForm({ ...addClientForm, manager: e.target.value })} style={{ width: '100%', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', fontFamily: 'inherit', outline: 'none', background: '#fff' }}>
-                            <option value="Sara Al Mansoori">Sara Al Mansoori</option>
-                            <option value="Ravi Menon">Ravi Menon</option>
-                            <option value="Fatima Hassan">Fatima Hassan</option>
-                          </select>
+                          <div style={{ position: 'relative' }}>
+                            <div 
+                              onClick={() => setActiveDropdown(activeDropdown === 'addClient_manager' ? null : 'addClient_manager')}
+                              style={{ width: '100%', padding: '0.625rem 0.875rem', borderRadius: '8px', border: activeDropdown === 'addClient_manager' ? '1px solid #E8760A' : '1px solid #DDD0C4', fontSize: '0.8125rem', fontFamily: 'inherit', background: '#fff', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                            >
+                              <span>{addClientForm.manager}</span>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: activeDropdown === 'addClient_manager' ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="M6 9l6 6 6-6"/></svg>
+                            </div>
+                            {activeDropdown === 'addClient_manager' && (
+                              <div style={{ position: 'absolute', bottom: '100%', top: 'auto', left: 0, right: 0, marginBottom: '4px', background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px', boxShadow: '0 -4px 12px rgba(42,22,40,0.1)', zIndex: 100, overflow: 'hidden' }}>
+                                {['Sara Al Mansoori', 'Ravi Menon', 'Fatima Hassan'].map(opt => (
+                                  <div 
+                                    key={opt}
+                                    onClick={() => { setAddClientForm({ ...addClientForm, manager: opt }); setActiveDropdown(null); }}
+                                    style={{ padding: '0.625rem 0.875rem', fontSize: '0.8125rem', cursor: 'pointer', borderBottom: '1px solid #F5F0EB', background: addClientForm.manager === opt ? 'rgba(232,118,10,0.05)' : '#fff', color: addClientForm.manager === opt ? '#E8760A' : '#2A1628', fontWeight: addClientForm.manager === opt ? 600 : 400 }}
+                                    onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(232,118,10,0.02)')}
+                                    onMouseOut={(e) => (e.currentTarget.style.background = addClientForm.manager === opt ? 'rgba(232,118,10,0.05)' : '#fff')}
+                                  >
+                                    {opt}
+                                  </div>
+                                ))}
+                                {!['Sara Al Mansoori', 'Ravi Menon', 'Fatima Hassan'].includes(addClientForm.manager) && addClientForm.manager && (
+                                  <div 
+                                    onClick={() => setActiveDropdown(null)}
+                                    style={{ padding: '0.625rem 0.875rem', fontSize: '0.8125rem', cursor: 'pointer', borderBottom: '1px solid #F5F0EB', background: 'rgba(232,118,10,0.05)', color: '#E8760A', fontWeight: 600 }}
+                                  >
+                                    {addClientForm.manager}
+                                  </div>
+                                )}
+                                <div 
+                                  onClick={() => {
+                                    setActiveDropdown(null);
+                                    const newName = window.prompt('Enter new Account Manager name:');
+                                    if (newName && newName.trim()) {
+                                      setAddClientForm({ ...addClientForm, manager: newName.trim() });
+                                    }
+                                  }}
+                                  style={{ padding: '0.625rem 0.875rem', fontSize: '0.8125rem', cursor: 'pointer', color: '#E8760A', fontWeight: 700 }}
+                                  onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(232,118,10,0.02)')}
+                                  onMouseOut={(e) => (e.currentTarget.style.background = '#fff')}
+                                >
+                                  + Add New Manager...
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
                         <div>
                           <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'rgba(42,22,40,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>Chartered Accountant / Tax Agent</label>
-                          <select value={addClientForm.caAssigned} onChange={e => setAddClientForm({ ...addClientForm, caAssigned: e.target.value })} style={{ width: '100%', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #DDD0C4', fontSize: '0.8125rem', fontFamily: 'inherit', outline: 'none', background: '#fff' }}>
-                            <option value="Amit Shah (FTA Agent #4021)">Amit Shah (FTA Agent #4021)</option>
-                            <option value="Lena Kovac (FTA Agent #3187)">Lena Kovac (FTA Agent #3187)</option>
-                          </select>
+                          <div style={{ position: 'relative' }}>
+                            <div 
+                              onClick={() => setActiveDropdown(activeDropdown === 'addClient_ca' ? null : 'addClient_ca')}
+                              style={{ width: '100%', padding: '0.625rem 0.875rem', borderRadius: '8px', border: activeDropdown === 'addClient_ca' ? '1px solid #E8760A' : '1px solid #DDD0C4', fontSize: '0.8125rem', fontFamily: 'inherit', background: '#fff', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                            >
+                              <span>{addClientForm.caAssigned}</span>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: activeDropdown === 'addClient_ca' ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="M6 9l6 6 6-6"/></svg>
+                            </div>
+                            {activeDropdown === 'addClient_ca' && (
+                              <div style={{ position: 'absolute', bottom: '100%', top: 'auto', left: 0, right: 0, marginBottom: '4px', background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px', boxShadow: '0 -4px 12px rgba(42,22,40,0.1)', zIndex: 100, overflow: 'hidden' }}>
+                                {['Amit Shah (FTA Agent #4021)', 'Lena Kovac (FTA Agent #3187)'].map(opt => (
+                                  <div 
+                                    key={opt}
+                                    onClick={() => { setAddClientForm({ ...addClientForm, caAssigned: opt }); setActiveDropdown(null); }}
+                                    style={{ padding: '0.625rem 0.875rem', fontSize: '0.8125rem', cursor: 'pointer', borderBottom: '1px solid #F5F0EB', background: addClientForm.caAssigned === opt ? 'rgba(232,118,10,0.05)' : '#fff', color: addClientForm.caAssigned === opt ? '#E8760A' : '#2A1628', fontWeight: addClientForm.caAssigned === opt ? 600 : 400 }}
+                                    onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(232,118,10,0.02)')}
+                                    onMouseOut={(e) => (e.currentTarget.style.background = addClientForm.caAssigned === opt ? 'rgba(232,118,10,0.05)' : '#fff')}
+                                  >
+                                    {opt}
+                                  </div>
+                                ))}
+                                {!['Amit Shah (FTA Agent #4021)', 'Lena Kovac (FTA Agent #3187)'].includes(addClientForm.caAssigned) && addClientForm.caAssigned && (
+                                  <div 
+                                    onClick={() => setActiveDropdown(null)}
+                                    style={{ padding: '0.625rem 0.875rem', fontSize: '0.8125rem', cursor: 'pointer', borderBottom: '1px solid #F5F0EB', background: 'rgba(232,118,10,0.05)', color: '#E8760A', fontWeight: 600 }}
+                                  >
+                                    {addClientForm.caAssigned}
+                                  </div>
+                                )}
+                                <div 
+                                  onClick={() => {
+                                    setActiveDropdown(null);
+                                    const newName = window.prompt('Enter new Chartered Accountant / Tax Agent name:');
+                                    if (newName && newName.trim()) {
+                                      setAddClientForm({ ...addClientForm, caAssigned: newName.trim() });
+                                    }
+                                  }}
+                                  style={{ padding: '0.625rem 0.875rem', fontSize: '0.8125rem', cursor: 'pointer', color: '#E8760A', fontWeight: 700 }}
+                                  onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(232,118,10,0.02)')}
+                                  onMouseOut={(e) => (e.currentTarget.style.background = '#fff')}
+                                >
+                                  + Add New Agent...
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                       
@@ -716,30 +771,51 @@ export default function ClientListTab() {
                   <button
                     disabled={isAddingClient}
                     onClick={async () => {
+                      if (currentStep === 1) {
+                        if (!addClientForm.name.trim() || !addClientForm.email.trim() || !addClientForm.tradeLicense.trim()) {
+                          triggerToast('Please fill in Company Name, Email, and Trade License.', 'error');
+                          return;
+                        }
+                      }
+                      if (currentStep === 2) {
+                        if (!addClientForm.financialYearEnd) {
+                          triggerToast('Financial Year End is required.', 'error');
+                          return;
+                        }
+                        if (addClientForm.isVatRegistered === 'Yes' && !addClientForm.trn.trim()) {
+                          triggerToast('TRN is required for VAT registered clients.', 'error');
+                          return;
+                        }
+                      }
+
                       if (currentStep < 4) {
                         setCurrentStep(currentStep + 1);
                       } else {
                         if (isAddingClient) return;
                         try {
                           await addClient({
+                            ...addClientForm,
                             name: addClientForm.name,
                             email: addClientForm.email,
                             trn: addClientForm.trn,
-                            accountManager: addClientForm.manager || 'Unassigned',
-                            status: 'Active',
-                            kycStatus: 'Verified',
-                            booksStatus: 'Awaiting Documents',
-                            vatStatus: addClientForm.isVatRegistered === 'Yes' ? `Registered (${addClientForm.vatFilingPeriod})` : 'Not Registered',
-                            ctStatus: addClientForm.ctStatus,
-                            vatDeadline: getNextVatDeadline(),
-                            ctDeadline: getCtDeadline(),
-                            caAssigned: addClientForm.caAssigned
+                            manager: addClientForm.manager || 'Unassigned',
+                            bookkeeper: addClientForm.caAssigned || 'Unassigned',
+                            status: 'Onboarding', // Initial status
+                            kycStatus: 'Pending',
+                            booksStatus: 'Not Started',
+                            vatDue: addClientForm.isVatRegistered === 'Yes' ? `Registered (${addClientForm.vatFilingPeriod})` : 'Not Registered',
+                            ctDue: addClientForm.ctStatus,
+                            nextDeadline: getNextVatDeadline(),
+                            isVatRegistered: addClientForm.isVatRegistered,
+                            vatFilingPeriod: addClientForm.vatFilingPeriod,
+                            vatCycle: addClientForm.vatCycle,
+                            financialYear: addClientForm.financialYearEnd,
                           }).unwrap();
-                          triggerToast('Client boarded successfully!', 'success');
+                          triggerToast('Client boarded successfully! Google Drive folders are being created.', 'success');
                           setAddClientOpen(false);
                           setCurrentStep(1);
                           setAddClientForm({ 
-                            name: '', email: '', tradeLicense: '', authorizedSignatory: '', emiratesId: '',
+                            name: '', email: '', tradeLicense: '', authorizedSignatory: '', phoneNumber: '',
                             isVatRegistered: 'Yes', trn: '', vatFilingPeriod: 'Quarterly', vatCycle: 'Jan-Apr-Jul-Oct', 
                             estimatedTurnover: '', financialYearEnd: '', tradeLicenseExpiry: '',
                             ctStatus: 'Not registered', ctTrn: '', manager: 'Sara Al Mansoori', caAssigned: 'Amit Shah (FTA Agent #4021)'
@@ -781,9 +857,8 @@ export default function ClientListTab() {
                     <p style={{ margin: '0 0 0.75rem', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Which clients to export?</p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                       {([
-                        { id: 'all', label: 'All Clients', sub: 'Export all clients in the system', count: '248' },
+                        { id: 'all', label: 'All Clients', sub: 'Export all clients in the system', count: String(totalItems) },
                         { id: 'filtered', label: 'Filtered Results', sub: 'Only clients matching current filters', count: String(clients.length) },
-                        { id: 'selected', label: 'Selected Clients', sub: 'Only the clients you have checked', count: String(selectedClients.length) },
                         { id: 'custom', label: 'Custom Count', sub: 'Specify exactly how many to export', count: null },
                       ] as const).map(opt => (
                         <div
@@ -845,6 +920,14 @@ export default function ClientListTab() {
                     <button onClick={() => setExportOpen(false)} style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.6rem 1.25rem', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', color: '#2A1628', fontFamily: 'inherit' }}>Cancel</button>
                     <button
                       onClick={() => {
+                        if (exportFormat === 'print' || exportFormat === 'pdf') {
+                          // Handle Print and PDF using browser print functionality
+                          window.print();
+                          setExportOpen(false);
+                          return;
+                        }
+
+                        // For XLSX and CSV, hit the backend export API
                         const token = localStorage.getItem('crm_access_token');
                         const queryParams = new URLSearchParams();
                         if (search) queryParams.append('search', search);
@@ -853,7 +936,7 @@ export default function ClientListTab() {
                         });
                         queryParams.append('format', exportFormat);
                         if (token) queryParams.append('token', token);
-                        // Redirect to the download URL
+                        
                         const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
                         window.open(`${baseUrl}/v1/clients/export?${queryParams.toString()}`);
                         setExportOpen(false);
@@ -1383,10 +1466,10 @@ export default function ClientListTab() {
               <th style={{ padding: '1rem' }}>ACCOUNT MANAGER</th>
               <th style={{ padding: '1rem' }}>CA ASSIGNED</th>
               <th style={{ padding: '1rem', textAlign: 'center' }}>STATUS</th>
-              <th style={{ padding: '1rem', textAlign: 'center' }}>VAT STATUS</th>
+              <th style={{ padding: '1rem', textAlign: 'center' }}>VAT REGISTERED?</th>
               <th style={{ padding: '1rem', textAlign: 'center' }}>CT STATUS</th>
-              <th style={{ padding: '1rem' }}>VAT DEADLINE</th>
-              <th style={{ padding: '1rem' }}>CT DEADLINE</th>
+              <th style={{ padding: '1rem' }}>VAT CYCLE</th>
+              <th style={{ padding: '1rem' }}>FINANCIAL YEAR</th>
               <th style={{ padding: '1rem', textAlign: 'center' }}>ACTIONS</th>
             </tr>
           </thead>
@@ -1454,10 +1537,10 @@ export default function ClientListTab() {
                   </div>
                 </td>
                 
-                {/* CA Assigned */}
+                {/* CA Assigned / Bookkeeper */}
                 <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ fontWeight: 500, color: (client.caAssigned && client.caAssigned !== '-') ? '#2A1628' : 'rgba(42,22,40,0.4)' }}>{client.caAssigned || '-'}</span>
+                    <span style={{ fontWeight: 500, color: (client.bookkeeper && client.bookkeeper !== '-') ? '#2A1628' : 'rgba(42,22,40,0.4)' }}>{client.bookkeeper || '-'}</span>
                   </div>
                 </td>
 
@@ -1473,42 +1556,42 @@ export default function ClientListTab() {
                   }}>{client.status}</span>
                 </td>
 
-                {/* VAT Status */}
+                {/* VAT REGISTERED? */}
                 <td style={{ padding: '1rem', whiteSpace: 'nowrap', textAlign: 'center' }}>
                   <span style={{
                     fontSize: '0.7rem',
                     fontWeight: 700,
                     padding: '0.25rem 0.5rem',
                     borderRadius: '4px',
-                    background: (client.vatStatus || '').includes('Registered') ? 'rgba(4, 120, 87, 0.08)' : 'rgba(184, 137, 42, 0.08)',
-                    color: (client.vatStatus || '').includes('Registered') ? '#047857' : '#B8892A'
-                  }}>{client.vatStatus || 'Pending'}</span>
+                    background: client.isVatRegistered === 'Yes' ? 'rgba(4, 120, 87, 0.08)' : 'rgba(184, 137, 42, 0.08)',
+                    color: client.isVatRegistered === 'Yes' ? '#047857' : '#B8892A'
+                  }}>{client.isVatRegistered || 'Yes'}</span>
                 </td>
 
-                {/* CT Status */}
+                {/* CT STATUS */}
                 <td style={{ padding: '1rem', whiteSpace: 'nowrap', textAlign: 'center' }}>
-                  {client.ctStatus && client.ctStatus !== '-' ? (
+                  {client.ctDue && client.ctDue !== '-' ? (
                     <span style={{
                       fontSize: '0.7rem',
                       fontWeight: 700,
                       padding: '0.25rem 0.5rem',
                       borderRadius: '4px',
-                      background: client.ctStatus.includes('Registered') ? 'rgba(4, 120, 87, 0.08)' : 'rgba(42,22,40,0.06)',
-                      color: client.ctStatus.includes('Registered') ? '#047857' : 'rgba(42,22,40,0.6)'
-                    }}>{client.ctStatus}</span>
+                      background: client.ctDue.includes('Registered') ? 'rgba(4, 120, 87, 0.08)' : 'rgba(42,22,40,0.06)',
+                      color: client.ctDue.includes('Registered') ? '#047857' : 'rgba(42,22,40,0.6)'
+                    }}>{client.ctDue}</span>
                   ) : (
                     <span style={{ color: 'rgba(42,22,40,0.4)', fontWeight: 600 }}>-</span>
                   )}
                 </td>
 
-                {/* VAT Deadline */}
-                <td style={{ padding: '1rem', whiteSpace: 'nowrap', fontSize: '0.7rem', fontWeight: 600, color: client.vatDeadline && client.vatDeadline !== '-' ? '#E8760A' : 'rgba(42,22,40,0.4)' }}>
-                  {client.vatDeadline || '-'}
+                {/* VAT CYCLE */}
+                <td style={{ padding: '1rem', whiteSpace: 'nowrap', fontSize: '0.7rem', fontWeight: 600, color: client.vatCycle && client.vatCycle !== '-' ? '#E8760A' : 'rgba(42,22,40,0.4)' }}>
+                  {client.vatCycle || '-'}
                 </td>
                 
-                {/* CT Deadline */}
-                <td style={{ padding: '1rem', whiteSpace: 'nowrap', fontSize: '0.7rem', fontWeight: 600, color: client.ctDeadline && client.ctDeadline !== '-' ? '#2A1628' : 'rgba(42,22,40,0.4)' }}>
-                  {client.ctDeadline || '-'}
+                {/* FINANCIAL YEAR */}
+                <td style={{ padding: '1rem', whiteSpace: 'nowrap', fontSize: '0.7rem', fontWeight: 600, color: client.financialYear && client.financialYear !== '-' ? '#2A1628' : 'rgba(42,22,40,0.4)' }}>
+                  {client.financialYear || '-'}
                 </td>
 
                 {/* ── ACTIONS DROPDOWN ── */}
@@ -1535,15 +1618,9 @@ export default function ClientListTab() {
                           {[
                             { label: 'Open Profile', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>, action: () => { setPreviewClient(client); setPreviewOpen(true); setPreviewTab('overview'); } },
                             {
-                              label: 'Delete Client', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>, action: async () => {
-                                if (confirm(`Are you sure you want to delete ${client.name}?`)) {
-                                  try {
-                                    await deleteClient(client.id).unwrap();
-                                    triggerToast('Client deleted successfully!', 'success');
-                                  } catch (e: any) {
-                                    triggerToast(e?.data?.message || 'Failed to delete client', 'error');
-                                  }
-                                }
+                              label: 'Delete Client', ic: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>, action: () => {
+                                setRowActionOpen(null);
+                                setDeleteClientConfirm(client);
                               }, danger: true
                             },
                           ].map((item, ai) => (
@@ -1924,6 +2001,7 @@ export default function ClientListTab() {
             <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #DDD0C4', background: '#FAF8F5', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
               <button onClick={() => setBulkAction({ type: null, title: '' })} style={{ background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.5rem 1rem', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', color: '#2A1628' }}>Cancel</button>
               <button
+                disabled={isBulkUpdating}
                 onClick={async () => {
                   try {
                     await bulkUpdateClients({
@@ -1939,9 +2017,14 @@ export default function ClientListTab() {
                     triggerToast(e?.data?.message || 'Failed to execute bulk action', 'error');
                   }
                 }}
-                style={{ background: bulkAction.type === 'delete' ? '#EF4444' : '#2A1628', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.5rem 1.25rem', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}
+                style={{ background: bulkAction.type === 'delete' ? '#EF4444' : '#2A1628', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.5rem 1.25rem', fontSize: '0.8125rem', fontWeight: 600, cursor: isBulkUpdating ? 'not-allowed' : 'pointer', opacity: isBulkUpdating ? 0.7 : 1, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
               >
-                Confirm
+                {isBulkUpdating ? (
+                  <>
+                    <div style={{ width: '12px', height: '12px', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                    {bulkAction.type === 'delete' ? 'Deleting...' : 'Updating...'}
+                  </>
+                ) : 'Confirm'}
               </button>
             </div>
           </div>
@@ -1985,6 +2068,75 @@ export default function ClientListTab() {
           {toast.type === 'error' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>}
           {toast.type === 'info' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>}
           {toast.message}
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteClientConfirm && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+          background: 'rgba(26,13,24,0.4)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1400
+        }}>
+          <div style={{
+            background: '#ffffff', borderRadius: '16px', width: '400px', maxWidth: '90%',
+            boxShadow: '0 24px 48px rgba(42,22,40,0.1)', overflow: 'hidden', display: 'flex', flexDirection: 'column'
+          }}>
+            <div style={{ padding: '1.5rem', display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
+              <div style={{
+                background: 'rgba(239,68,68,0.1)', color: '#EF4444', width: '48px', height: '48px',
+                borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+              }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              </div>
+              <div>
+                <h3 style={{ margin: '0 0 0.5rem', color: '#2A1628', fontSize: '1.125rem', fontWeight: 700, fontFamily: 'var(--font-serif)' }}>Delete Client</h3>
+                <p style={{ margin: 0, fontSize: '0.875rem', color: 'rgba(42,22,40,0.6)', lineHeight: 1.5 }}>
+                  Are you sure you want to delete <strong>{deleteClientConfirm.name}</strong>? This action cannot be undone and will permanently remove the client and their data.
+                </p>
+              </div>
+            </div>
+            <div style={{
+              padding: '1rem 1.5rem', background: '#FAF8F5', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem',
+              borderTop: '1px solid rgba(42,22,40,0.06)'
+            }}>
+              <button
+                onClick={() => setDeleteClientConfirm(null)}
+                style={{
+                  background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.5rem 1rem',
+                  fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', color: '#2A1628', fontFamily: 'inherit'
+                }}
+              >Cancel</button>
+              <button
+                disabled={isDeletingClient}
+                onClick={async () => {
+                  try {
+                    await deleteClient(deleteClientConfirm.id).unwrap();
+                    triggerToast('Client deleted successfully!', 'success');
+                  } catch (e: any) {
+                    triggerToast(e?.data?.message || 'Failed to delete client', 'error');
+                  }
+                  setDeleteClientConfirm(null);
+                }}
+                style={{
+                  background: '#EF4444', border: 'none', borderRadius: '8px', padding: '0.5rem 1.25rem',
+                  fontSize: '0.8125rem', fontWeight: 600, cursor: isDeletingClient ? 'not-allowed' : 'pointer', color: '#fff', fontFamily: 'inherit',
+                  boxShadow: '0 4px 12px rgba(239,68,68,0.2)', opacity: isDeletingClient ? 0.7 : 1, display: 'flex', alignItems: 'center', gap: '0.5rem'
+                }}
+              >
+                {isDeletingClient ? (
+                  <>
+                    <div style={{ width: '12px', height: '12px', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                    Deleting...
+                  </>
+                ) : 'Delete Client'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

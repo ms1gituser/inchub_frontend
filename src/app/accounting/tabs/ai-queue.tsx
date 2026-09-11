@@ -1643,7 +1643,19 @@ export default function AiQueueTab() {
                                     key={c.id}
                                     onClick={() => {
                                       if (!selectedUploadClients.includes(c.name)) {
-                                        setSelectedUploadClients([...selectedUploadClients, c.name]);
+                                        const newSelected = [...selectedUploadClients, c.name];
+                                        setSelectedUploadClients(newSelected);
+                                        // Auto-fill manager and bookkeeper if this is the first client selected
+                                        if (newSelected.length === 1) {
+                                          if (c.manager) {
+                                            setAssignManager(c.manager);
+                                            setBatchManager(c.manager);
+                                          }
+                                          if (c.bookkeeper) {
+                                            setAssignBookkeeper(c.bookkeeper);
+                                            setBatchBookkeeper(c.bookkeeper);
+                                          }
+                                        }
                                       }
                                       setClientSearch('');
                                     }}
@@ -1673,7 +1685,21 @@ export default function AiQueueTab() {
                                 if (isSel) {
                                   setSelectedUploadClients(selectedUploadClients.filter(x => x !== c));
                                 } else {
-                                  setSelectedUploadClients([...selectedUploadClients, c]);
+                                  const newSelected = [...selectedUploadClients, c];
+                                  setSelectedUploadClients(newSelected);
+                                  if (newSelected.length === 1) {
+                                    const cObj = clientsData.find((x: any) => x.name === c);
+                                    if (cObj) {
+                                      if (cObj.manager) {
+                                        setAssignManager(cObj.manager);
+                                        setBatchManager(cObj.manager);
+                                      }
+                                      if (cObj.bookkeeper) {
+                                        setAssignBookkeeper(cObj.bookkeeper);
+                                        setBatchBookkeeper(cObj.bookkeeper);
+                                      }
+                                    }
+                                  }
                                 }
                               }}
                               style={{
