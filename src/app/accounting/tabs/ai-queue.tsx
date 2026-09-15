@@ -256,6 +256,7 @@ export default function AiQueueTab() {
 
   // Enterprise Upload Modal States
   const [uploadState, setUploadState] = useState<'form' | 'loading' | 'success' | 'error'>('form');
+  const [uploadErrorMsg, setUploadErrorMsg] = useState<string>('');
   const [selectedUploadClients, setSelectedUploadClients] = useState<string[]>([]);
   const [clientSearch, setClientSearch] = useState('');
     const { data: clientsRes } = useGetClientsQuery({ limit: 100 });
@@ -1548,7 +1549,7 @@ export default function AiQueueTab() {
                   <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="12" y1="19" x2="12.01" y2="19"/><line x1="12" y1="5" x2="12" y2="15"/></svg>
                 </div>
                 <h3 style={{ fontSize: '1.35rem', fontWeight: 700, color: '#2A1628', margin: '0 0 0.5rem 0' }}>Upload Error</h3>
-                <p style={{ fontSize: '0.85rem', color: '#EF4444', fontWeight: 600, maxWidth: '420px', margin: '0 0 2rem' }}>Maximum Size Exceeded: File size must be under 50MB</p>
+                <p style={{ fontSize: '0.85rem', color: '#EF4444', fontWeight: 600, maxWidth: '420px', margin: '0 0 2rem' }}>{uploadErrorMsg || 'Maximum Size Exceeded: File size must be under 50MB'}</p>
                 
                 <div style={{ width: '420px', background: '#FAF8F5', border: '1px solid #DDD0C4', borderRadius: '16px', padding: '1.25rem', textAlign: 'left', marginBottom: '2rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.5)' }}>Other Potential Errors Check List:</div>
@@ -2138,6 +2139,8 @@ export default function AiQueueTab() {
                         }).unwrap();
                         setUploadState('success');
                       } catch (err: any) {
+                        const msg = err?.data?.error || err?.message || 'An unknown error occurred during upload.';
+                        setUploadErrorMsg(msg);
                         setUploadState('error');
                       }
                     }}
@@ -2169,6 +2172,8 @@ export default function AiQueueTab() {
                         }).unwrap();
                         setUploadState('success');
                       } catch (err: any) {
+                        const msg = err?.data?.error || err?.message || 'An unknown error occurred during upload.';
+                        setUploadErrorMsg(msg);
                         setUploadState('error');
                       }
                     }}
