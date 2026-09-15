@@ -182,15 +182,15 @@ export default function AccountingPage() {
   const [submittingWaiver, setSubmittingWaiver] = useState(false);
 
   // AI Bookkeeping states (Prefixed with _ to silence unused-vars ESLint check)
-  const [_parsing, setParsing] = useState(false);
+  const [parsing, setParsing] = useState(false);
   const [ledger, setLedger] = useState<any[]>([]);
-  const [_parseAlerts, setParseAlerts] = useState<ParseAlerts | null>(null);
+  const [parseAlerts, setParseAlerts] = useState<ParseAlerts | null>(null);
   const [newVendorName, setNewVendorName] = useState('');
-  const [_creatingVendor, setCreatingVendor] = useState(false);
-  const [_pushingQb, setPushingQb] = useState(false);
+  const [creatingVendor, setCreatingVendor] = useState(false);
+  const [pushingQb, setPushingQb] = useState(false);
 
   // Validation & Suspense state extensions
-  const [_validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [balancedDiff, setBalancedDiff] = useState<number>(0);
   const [suspenseTxs, setSuspenseTxs] = useState<any[]>([]);
   const [resolvingId, setResolvingId] = useState<string | null>(null);
@@ -1722,8 +1722,8 @@ export default function AccountingPage() {
       )}
       </div>
 
-      {/* 9-Stage AI Bookkeeping Engine Panel (Commented out as requested) */}
-      {/*
+      {/* 9-Stage AI Bookkeeping Engine Panel (Uncommented and conditionally hidden) */}
+      <div style={{ display: (tabParam === 'ai-queue' || (!tabParam && activeWorkspaceTab === 'ocr')) ? 'block' : 'none' }}>
       <div style={{ background: '#ffffff', border: '1px solid rgba(42,22,40,0.08)', borderRadius: '16px', padding: '1.75rem', boxShadow: '0 10px 30px -10px rgba(42,22,40,0.06), 0 1px 3px rgba(42,22,40,0.02)', transition: 'all 0.3s ease', marginTop: '2rem' }}>
         <div style={{ borderBottom: '1px solid rgba(42,22,40,0.08)', paddingBottom: '0.75rem', marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 style={{ fontSize: '0.85rem', fontWeight: 700, margin: 0, fontFamily: 'Inter, sans-serif', letterSpacing: '0.22em', textTransform: 'uppercase', color: '#2A1628' }}>
@@ -1932,7 +1932,7 @@ export default function AccountingPage() {
           </div>
         )}
       </div>
-      */}
+      </div>
     </div>
   );
 }
