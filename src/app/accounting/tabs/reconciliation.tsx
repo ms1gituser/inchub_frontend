@@ -28,7 +28,9 @@ import {
   useRetryFailedJobMutation,
   useRetryAllFailedJobsMutation
 } from '@/lib/reconciliationApi';
+import apiClient from '@/lib/apiClient';
 import { useAddVendorMutation } from '@/lib/vendorapi';
+import { useGetClientsQuery } from '@/lib/clientapi';
 
 
 // ============================================================================
@@ -2296,7 +2298,7 @@ interface ImportBankStatementModalProps {
 
 type SourceTab = 'Local Upload' | 'Google Drive' | 'OneDrive' | 'CSV' | 'Excel';
 
-const TABS_ImportBankStatementModal: SourceTab[] = ['Local Upload', 'Google Drive', 'OneDrive', 'CSV', 'Excel'];
+const TABS_ImportBankStatementModal: SourceTab[] = ['Local Upload'];
 
 const BANKS_ImportBankStatementModal = ['Emirates NBD', 'ADCB', 'Mashreq Bank', 'FAB', 'RAKBank', 'Dubai Islamic Bank'];
 
@@ -2851,6 +2853,7 @@ function ImportBankStatementModal({ onClose, onImported }: ImportBankStatementMo
   const [activeTab, setActiveTab] = useState<SourceTab>('Local Upload');
   const [isDragging, setIsDragging] = useState(false);
   const [fileName, setFileName] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [bank, setBank] = useState('');
   const [periodStart, setPeriodStart] = useState('');
   const [periodEnd, setPeriodEnd] = useState('');
@@ -2859,11 +2862,16 @@ function ImportBankStatementModal({ onClose, onImported }: ImportBankStatementMo
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  const { data: clientsData } = useGetClientsQuery({ limit: 1000 });
+  const clients = clientsData?.data || [];
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
+
   const acceptForTab = activeTab === 'CSV' ? '.csv' : activeTab === 'Excel' ? '.xlsx,.xls' : '.csv,.xlsx,.ofx,.qif';
 
   const handleFiles = (files: FileList | null) => {
     if (files && files.length > 0) {
       setFileName(files[0].name);
+      setSelectedFile(files[0]);
     }
   };
 
@@ -2898,20 +2906,80 @@ function ImportBankStatementModal({ onClose, onImported }: ImportBankStatementMo
 
   const canUpload = Boolean(bank) && (activeTab !== 'Local Upload' || Boolean(fileName));
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     if (!canUpload || submitting) return;
+    
+    if (activeTab === 'Local Upload' && !selectedFile) {
+      pushToast({ message: 'Please select a file to upload.', tone: 'error' });
+      return;
+    }
+
     setSubmitting(true);
-    setTimeout(() => {
-      const resolvedFileName = fileName || (activeTab === 'CSV' ? 'bank_statement.csv' : activeTab === 'Excel' ? 'bank_statement.xlsx' : 'bank_statement.csv');
-      setSubmitting(false);
-      onImported(resolvedFileName, bank);
+    try {
+      let base64File = '';
+      let mimeType = 'text/csv';
+      
+      if (activeTab === 'Local Upload' && selectedFile) {
+        mimeType = selectedFile.type || 'text/csv';
+        const reader = new FileReader();
+        base64File = await new Promise<string>((resolve, reject) => {
+          reader.onload = () => {
+            const result = reader.result as string;
+            // Get base64 string without data prefix
+            resolve(result.includes(',') ? result.split(',')[1] : result);
+          };
+          reader.onerror = error => reject(error);
+          reader.readAsDataURL(selectedFile);
+        });
+      }
+
+      await apiClient.post('/bookkeeping/statements/upload', {
+        file: base64File,
+        mime_type: mimeType,
+        file_name: fileName || 'bank_statement.csv',
+        source: 'Portal',
+        target_tenant_id: selectedClientId || undefined
+      });
+
       pushToast({ message: 'Bank statement imported successfully.', tone: 'success' });
+      onImported(fileName || 'bank_statement.csv', bank);
       onClose();
-    }, 600);
+    } catch (error) {
+      console.error('Upload failed:', error);
+      pushToast({ message: 'Failed to upload bank statement.', tone: 'error' });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const renderDropzone = () => (
-    <div
+    <>
+      {activeTab === 'Local Upload' && (
+        <div style={{ width: '100%', marginBottom: '1rem', textAlign: 'left' }}>
+          <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#2A1628', marginBottom: '0.4rem' }}>Select Client (Optional)</label>
+          <select
+            value={selectedClientId}
+            onChange={(e) => setSelectedClientId(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '0.75rem',
+              borderRadius: '8px',
+              border: '1px solid #DDD0C4',
+              fontSize: '0.8125rem',
+              fontFamily: 'inherit',
+              background: '#fff',
+              outline: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            <option value="">-- Auto-Assign based on my login --</option>
+            {clients.map((c: any) => (
+              <option key={c.tenant_id} value={c.tenant_id}>{c.company_name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+      <div
       role="button"
       tabIndex={0}
       onClick={() => fileInputRef.current?.click()}
@@ -2973,7 +3041,8 @@ function ImportBankStatementModal({ onClose, onImported }: ImportBankStatementMo
           <p style={{ margin: '0.2rem 0 0', fontSize: '0.7rem', color: 'rgba(42,22,40,0.5)' }}>or click to browse from your device</p>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 
   const renderCloudTab = (provider: 'Google Drive' | 'OneDrive') => {
@@ -9321,15 +9390,9 @@ function ReconciliationCenterInner() {
   const closePopup = () => setPopup(null);
 
   const addImportedTransaction = (fileName: string, bank: string) => {
-    const id = generateId();
-    const newTx: ReconciliationTransaction = {
-      id, client: CLIENTS[0].name, clientId: CLIENTS[0].id, bankAccount: `${bank} •••• 0001`, bank,
-      statementReference: fileName, transactionDate: TODAY_ISO, description: `Imported line item — ${fileName}`,
-      amount: 1000, currency: 'AED', aiMatchScore: null, matchedEntry: null, difference: 0, differenceType: 'None', status: 'Pending',
-      assignedReviewer: null, manager: MANAGERS[0], bookkeeper: BOOKKEEPERS[0], quickBooksStatus: 'Not Synced', priority: 'Medium', riskLevel: 'Low',
-      lastUpdated: new Date().toISOString(), financialYear: 'FY2026', month: MONTHS[6], tags: [], archived: false, slaHours: 24, processingMinutes: 0,
-    };
-    setTransactions((prev) => [newTx, ...prev]);
+    // Instead of creating a dummy transaction, we trigger a refetch
+    // to get the real parsed transactions from the database
+    refetchQueue();
   };
 
   const confirmMerge = () => {

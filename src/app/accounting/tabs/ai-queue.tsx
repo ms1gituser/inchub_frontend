@@ -260,7 +260,7 @@ export default function AiQueueTab() {
   const [clientSearch, setClientSearch] = useState('');
     const { data: clientsRes } = useGetClientsQuery({ limit: 100 });
     const clientsData = clientsRes?.data?.clients || [];
-  const [uploadedFilesList, setUploadedFilesList] = useState<{ name: string; size: string; pages: number; progress: number }[]>([]);
+  const [uploadedFilesList, setUploadedFilesList] = useState<{ name: string; size: string; pages: number; progress: number; fileBase64?: string; mimeType?: string }[]>([]);
   const [selectedClassification, setSelectedClassification] = useState<string>('Invoice');
   const [processingOptions, setProcessingOptions] = useState<string[]>([
     'OCR', 'AI Extraction', 'Ledger Mapping', 'Duplicate Detection', 'Tax Validation', 'Auto Categorization', 'QuickBooks Preparation'
@@ -476,48 +476,6 @@ export default function AiQueueTab() {
           <button onClick={() => { triggerToast('Workflow queue refreshed.', 'info'); }} style={{ background: '#2A1628', color: '#ffffff', border: 'none', padding: '0.625rem 1.25rem', borderRadius: '8px', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.375rem', boxShadow: '0 4px 12px rgba(42,22,40,0.15)' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
             Refresh
-          </button>
-        </div>
-      </div>
-
-
-      {/* ── EMAIL WEBHOOK INGESTION CARD ── */}
-      <div style={{
-        background: '#FAF8F5',
-        border: '1px solid #DDD0C4',
-        borderRadius: '12px',
-        padding: '1rem',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        boxShadow: '0 4px 12px rgba(42,22,40,0.02)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{ background: 'rgba(232,118,10,0.1)', color: '#E8760A', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ margin: 'auto' }}>
-              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-              <polyline points="22,6 12,13 2,6" />
-            </svg>
-          </div>
-          <div>
-            <h4 style={{ margin: 0, fontSize: '0.8125rem', fontWeight: 700, color: '#2A1628' }}>Inbound Email Document Ingestion</h4>
-            <p style={{ margin: '0.125rem 0 0', fontSize: '0.75rem', color: 'rgba(42,22,40,0.6)' }}>
-              Forward receipts or PDF invoices to your workspace email to automatically feed the AI queue:
-            </p>
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.4rem 0.75rem' }}>
-          <code style={{ fontSize: '0.75rem', fontWeight: 700, color: '#E8760A', fontFamily: 'monospace' }}>
-            invoices@accounting-crm.com
-          </code>
-          <button
-            onClick={() => {
-              navigator.clipboard.writeText('invoices@accounting-crm.com');
-              triggerToast('Email address copied to clipboard!', 'success');
-            }}
-            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'rgba(42,22,40,0.4)', padding: 0 }}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
           </button>
         </div>
       </div>
@@ -1751,24 +1709,33 @@ export default function AiQueueTab() {
                         multiple 
                         id="real-file-upload" 
                         style={{ display: 'none' }}
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const files = Array.from(e.target.files || []);
                           if (files.length === 0) return;
                           
-                          const newFiles = files.map(file => {
-                            let sizeStr = '';
-                            if (file.size < 1024 * 1024) {
-                              sizeStr = (file.size / 1024).toFixed(0) + ' KB';
-                            } else {
-                              sizeStr = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
-                            }
-                            return {
-                              name: file.name,
-                              size: sizeStr,
-                              pages: 1, // Defaulting to 1 as we can't easily parse PDF pages in client-side without a library
-                              progress: 100
-                            };
-                          });
+                          const newFiles = await Promise.all(files.map(file => {
+                            return new Promise<{ name: string; size: string; pages: number; progress: number; fileBase64: string; mimeType: string }>((resolve) => {
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                let sizeStr = '';
+                                if (file.size < 1024 * 1024) {
+                                  sizeStr = (file.size / 1024).toFixed(0) + ' KB';
+                                } else {
+                                  sizeStr = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
+                                }
+                                const base64 = (reader.result as string).split(',')[1];
+                                resolve({
+                                  name: file.name,
+                                  size: sizeStr,
+                                  pages: 1,
+                                  progress: 100,
+                                  fileBase64: base64,
+                                  mimeType: file.type
+                                });
+                              };
+                              reader.readAsDataURL(file);
+                            });
+                          }));
                           setUploadedFilesList([...uploadedFilesList, ...newFiles]);
                         }} 
                       />
@@ -2165,7 +2132,9 @@ export default function AiQueueTab() {
                           tenantId: clientsData?.find((c: any) => c.name === selectedUploadClients[0])?.id,
                           total: '1250.00',
                           currency: 'AED',
-                          reviewer: assignReviewer
+                          reviewer: assignReviewer,
+                            fileBase64: uploadedFilesList[0]?.fileBase64,
+                            mimeType: uploadedFilesList[0]?.mimeType
                         }).unwrap();
                         setUploadState('success');
                       } catch (err: any) {
@@ -2194,7 +2163,9 @@ export default function AiQueueTab() {
                           tenantId: clientsData?.find((c: any) => c.name === selectedUploadClients[0])?.id,
                           total: '1250.00',
                           currency: 'AED',
-                          reviewer: assignReviewer
+                          reviewer: assignReviewer,
+                            fileBase64: uploadedFilesList[0]?.fileBase64,
+                            mimeType: uploadedFilesList[0]?.mimeType
                         }).unwrap();
                         setUploadState('success');
                       } catch (err: any) {
@@ -3290,3 +3261,4 @@ export default function AiQueueTab() {
     </div>
   );
 }
+

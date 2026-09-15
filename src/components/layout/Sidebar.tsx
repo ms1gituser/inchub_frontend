@@ -484,7 +484,7 @@ export default function Sidebar({ collapsed, hidden, onToggle, activeBrand }: Si
                 return (
                   <React.Fragment key={item.href || item.label}>
                     <LinkWrapper
-                      {...(!isLocked && item.href ? { href: item.href === '/accounting' ? '/accounting?tab=dashboard' : item.href } : {})}
+                      {...(!isLocked && item.href ? { href: item.href } : {})}
                       onClick={(e: React.MouseEvent) => {
                         if (isLocked) {
                           e.preventDefault();
