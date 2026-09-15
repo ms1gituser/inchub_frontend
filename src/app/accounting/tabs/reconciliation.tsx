@@ -9534,11 +9534,11 @@ function ReconciliationCenterInner() {
       {popup?.type === 'manualMatch' && (
         <ManualMatchModal
           onClose={closePopup}
-          tx={popup.tx}
+          tx={(popup as any).tx}
           onConfirm={(ledgerEntryLabel) => {
-            mutateMany([popup.tx.id], { status: 'Auto Matched', matchedEntry: ledgerEntryLabel, difference: 0, differenceType: 'None' });
+            mutateMany([(popup as any).tx.id], { status: 'Auto Matched', matchedEntry: ledgerEntryLabel, difference: 0, differenceType: 'None' });
             manualMatch({
-              transaction_id: popup.tx.id,
+              transaction_id: (popup as any).tx.id,
               receipt_id: 'e65e4e7e-3ffb-449e-8c31-f19b88220002',
               override_reason: 'Manual match from UI'
             });
@@ -9548,12 +9548,12 @@ function ReconciliationCenterInner() {
       {popup?.type === 'split' && (
         <SplitTransactionModal
           onClose={closePopup}
-          tx={popup.tx}
+          tx={(popup as any).tx}
           onConfirm={() => {
-            mutateMany([popup.tx.id], { status: 'Ready To Post', difference: 0, differenceType: 'None', tags: Array.from(new Set([...popup.tx.tags, 'Split'])) });
+            mutateMany([(popup as any).tx.id], { status: 'Ready To Post', difference: 0, differenceType: 'None', tags: Array.from(new Set([...(popup as any).tx.tags, 'Split'])) });
             splitTx({
-              transaction_id: popup.tx.id,
-              allocations: [{ receipt_id: 'e65e4e7e-3ffb-449e-8c31-f19b88220002', allocated_amount: popup.tx.amount }]
+              transaction_id: (popup as any).tx.id,
+              allocations: [{ receipt_id: 'e65e4e7e-3ffb-449e-8c31-f19b88220002', allocated_amount: (popup as any).tx.amount }]
             });
           }}
         />
