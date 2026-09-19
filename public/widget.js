@@ -230,11 +230,13 @@
   function handleNext() {
     const stepName = STEPS[step];
     if (stepName === 'name') {
-      const val = (document.getElementById('ih-name') as HTMLInputElement)?.value?.trim();
+      const el = document.getElementById('ih-name');
+      const val = el ? el.value.trim() : '';
       if (!val) return;
       data.name = val;
     } else if (stepName === 'email') {
-      const val = (document.getElementById('ih-email') as HTMLInputElement)?.value?.trim();
+      const el = document.getElementById('ih-email');
+      const val = el ? el.value.trim() : '';
       if (!val || !val.includes('@')) return;
       data.email = val;
     }
@@ -243,7 +245,7 @@
   }
 
   async function handleSubmit() {
-    const submitBtn = document.getElementById('ih-submit') as HTMLButtonElement;
+    const submitBtn = document.getElementById('ih-submit');
     if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Submitting...'; }
 
     try {
@@ -259,11 +261,12 @@
           source: 'widget'
         })
       });
-      const json = await res.json() as any;
+      const json = await res.json();
       bookingLink = json?.data?.booking_link || '';
     } catch (err) {
       console.error('[IncHub Widget] Submission error:', err);
     }
+
 
     step++;
     render();
