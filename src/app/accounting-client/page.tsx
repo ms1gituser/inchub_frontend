@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { get, post } from '@/lib/apiClient';
 import { usePermission } from '@/context/PermissionContext';
 import LoadingScreen from '@/components/ui/LoadingScreen';
@@ -256,11 +256,7 @@ function ClientQueryCard({ primaryBg, accentColor, cardBorderColor }: { primaryB
   const [submitting, setSubmitting] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
 
-  useEffect(() => {
-    fetchClientQueries();
-  }, []);
-
-  const fetchClientQueries = async () => {
+  const fetchClientQueries = useCallback(async () => {
     try {
       const res = await get<{ success: boolean; data: any[] }>('/suspense/client-items');
       if (res?.success) {
@@ -280,7 +276,12 @@ function ClientQueryCard({ primaryBg, accentColor, cardBorderColor }: { primaryB
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchClientQueries();
+  }, [fetchClientQueries]);
+
 
   const handleSendResponse = async (e: React.FormEvent) => {
     e.preventDefault();

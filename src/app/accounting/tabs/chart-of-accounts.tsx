@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { get, post, put, del } from '@/lib/apiClient';
 import { useNotification } from '@/context/NotificationContext';
 
@@ -11,6 +11,7 @@ export interface COAAccount {
     normal_balance: 'DEBIT' | 'CREDIT';
     is_active: boolean;
     vat_applicable: boolean;
+    children?: COAAccount[];
 }
 
 export default function ChartOfAccountsTab() {
@@ -34,7 +35,7 @@ export default function ChartOfAccountsTab() {
       vat_applicable: false
   });
 
-  const fetchAccounts = async () => {
+  const fetchAccounts = useCallback(async () => {
       setLoading(true);
       try {
           const res = await get<{success: boolean, data: COAAccount[]}>('/chart-of-accounts');
@@ -50,11 +51,11 @@ export default function ChartOfAccountsTab() {
       } finally {
           setLoading(false);
       }
-  };
+  }, [showToast]);
 
   useEffect(() => {
       fetchAccounts();
-  }, []);
+  }, [fetchAccounts]);
 
   const handleSave = async (e: React.FormEvent) => {
       e.preventDefault();
