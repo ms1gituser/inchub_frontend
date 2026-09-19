@@ -15,7 +15,7 @@ export const clientApi = createApi({
       return headers;
     },
   }),
-  tagTypes: ['Client', 'ClientKPI'],
+  tagTypes: ['Client', 'ClientKPI', 'ClientDrawer'],
   endpoints: (builder) => ({
     getClients: builder.query<any, any>({
       query: (params) => {
@@ -61,14 +61,14 @@ export const clientApi = createApi({
         method: 'PUT',
         body,
       }),
-      invalidatesTags: ['Client', 'ClientKPI'],
+      invalidatesTags: ['Client', 'ClientKPI', 'ClientDrawer'],
     }),
     deleteClient: builder.mutation<any, string>({
       query: (id) => ({
         url: `/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: ['Client', 'ClientKPI'],
+      invalidatesTags: ['Client', 'ClientKPI', 'ClientDrawer'],
     }),
     bulkUpdateClients: builder.mutation<any, { ids: string[]; action: string; value: any }>({
       query: (body) => ({
@@ -76,7 +76,7 @@ export const clientApi = createApi({
         method: 'POST',
         body,
       }),
-      invalidatesTags: ['Client', 'ClientKPI'],
+      invalidatesTags: ['Client', 'ClientKPI', 'ClientDrawer'],
     }),
     importClients: builder.mutation<any, { file: string }>({
       query: (body) => ({
@@ -84,13 +84,27 @@ export const clientApi = createApi({
         method: 'POST',
         body,
       }),
-      invalidatesTags: ['Client', 'ClientKPI'],
+      invalidatesTags: ['Client', 'ClientKPI', 'ClientDrawer'],
     }),
     getClientDrawerDetails: builder.query<any, string>({
       query: (id) => ({
         url: `/${id}/drawer`,
         method: 'GET',
       }),
+      providesTags: (result, error, id) => [{ type: 'ClientDrawer', id }, 'ClientDrawer'],
+    }),
+    uploadClientDocument: builder.mutation<any, { id: string; name: string; category?: string }>({
+      query: ({ id, name, category }) => ({
+        url: `/${id}/documents`,
+        method: 'POST',
+        body: { name, category },
+      }),
+      invalidatesTags: (result, error, { id }) => [
+        'Client',
+        'ClientKPI',
+        'ClientDrawer',
+        { type: 'ClientDrawer', id }
+      ],
     }),
   }),
 });
@@ -104,4 +118,5 @@ export const {
   useBulkUpdateClientsMutation,
   useImportClientsMutation,
   useGetClientDrawerDetailsQuery,
+  useUploadClientDocumentMutation,
 } = clientApi;

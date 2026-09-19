@@ -7,6 +7,7 @@ import {
   usePostFileMutation, usePostAmendMutation, useAddCtReturnMutation, usePostBulkMutation, useImportReturnsMutation,
   usePostNoteMutation, usePostDocumentMutation,
 } from '@/lib/ctApi';
+import { useGetClientsQuery } from '@/lib/clientapi';
 
 // ============================================================================
 // Types
@@ -486,6 +487,7 @@ function ModalShell({ onClose, eyebrow, titlePlain, titleAccent, maxWidth = '540
 
 export default function CorporateTaxTab() {
   const { data: queueRes, isLoading: queueLoading, refetch } = useGetQueueQuery({ limit: 1000 });
+  const { data: clientsRes } = useGetClientsQuery({ limit: 100 });
   const { data: statsRes } = useGetStatsQuery();
   const { data: analyticsRes } = useGetAnalyticsQuery();
   const { data: metaRes } = useGetMetadataQuery();
@@ -503,6 +505,20 @@ export default function CorporateTaxTab() {
   const [isLoading, setIsLoading] = useState(false);
   const [toasts, setToasts] = useState<{ id: string; message: string; tone: 'success' | 'danger' | 'info' | 'warning' }[]>([]);
   const nextIdRef = useRef(1);
+
+  const clientsList = useMemo(() => {
+    const set = new Set<string>();
+    if (clientsRes?.data?.clients) {
+      clientsRes.data.clients.forEach((c: any) => {
+        const name = c.company_name || c.name || c.client_name;
+        if (name) set.add(name);
+      });
+    }
+    data.forEach((d) => {
+      if (d.client) set.add(d.client);
+    });
+    return Array.from(set).sort();
+  }, [clientsRes, data]);
 
   // Sync queueRes.data into local state when it updates
   const prevQueueDataRef = useRef<CtReturnItem[] | undefined>(undefined);
@@ -526,6 +542,7 @@ export default function CorporateTaxTab() {
   const [drawerTab, setDrawerTab] = useState<'overview' | 'financials' | 'adjustments' | 'computation' | 'validation' | 'timeline' | 'activity' | 'documents' | 'quickBooksSync' | 'notes'>('overview');
 
   // Filter bar states
+  const [filterClient, setFilterClient] = useState('All');
   const [filterManager, setFilterManager] = useState('All');
   const [filterReviewer, setFilterReviewer] = useState('All');
   const [filterPeriod, setFilterPeriod] = useState('All');
@@ -658,6 +675,7 @@ export default function CorporateTaxTab() {
     return data
       .filter((r) => {
         if (activeStatusTab !== 'All' && r.status !== activeStatusTab) return false;
+        if (filterClient !== 'All' && r.client !== filterClient) return false;
         if (filterManager !== 'All' && r.manager !== filterManager) return false;
         if (filterReviewer !== 'All' && r.reviewer !== filterReviewer) return false;
         if (filterPeriod !== 'All' && r.taxPeriod !== filterPeriod) return false;
@@ -694,6 +712,7 @@ export default function CorporateTaxTab() {
   }, [
     data,
     activeStatusTab,
+    filterClient,
     filterManager,
     filterReviewer,
     filterPeriod,
@@ -750,6 +769,7 @@ export default function CorporateTaxTab() {
 
   // Active drawer transaction details object
   const activeTx = useMemo(() => {
+    if (!drawerTxId) return null;
     return drawerDetailsRes?.data?.ctReturn || data.find((x) => x.id === drawerTxId) || null;
   }, [data, drawerTxId, drawerDetailsRes]);
 
@@ -1288,7 +1308,7 @@ export default function CorporateTaxTab() {
       )}
 
       {/* ── 5. FILTERS BAR ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr', gap: '0.5rem', background: '#ffffff', border: '1px solid #DDD0C4', padding: '0.625rem', borderRadius: '12px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr', gap: '0.5rem', background: '#ffffff', border: '1px solid #DDD0C4', padding: '0.625rem', borderRadius: '12px' }}>
         <div style={{ position: 'relative' }}>
           <input
             type="text"
@@ -1318,6 +1338,7 @@ export default function CorporateTaxTab() {
           </div>
         </div>
 
+        <CustomSelect value={filterClient} onChange={setFilterClient} options={['All', ...clientsList]} placeholder="Client" />
         <CustomSelect value={filterManager} onChange={setFilterManager} options={['All', ...dynamicManagers]} placeholder="Manager" />
         <CustomSelect value={filterYear} onChange={setFilterYear} options={['All', ...YEARS]} placeholder="Year" />
         <CustomSelect value={filterPeriod} onChange={setFilterPeriod} options={['All', ...PERIODS]} placeholder="Period" />
@@ -1744,7 +1765,8 @@ export default function CorporateTaxTab() {
             role="presentation"
             onClick={(e) => e.stopPropagation()}
             style={{
-              width: '580px',
+              width: '640px',
+              maxWidth: '90vw',
               height: '100%',
               background: '#ffffff',
               boxShadow: '-8px 0 32px rgba(42,22,40,0.15)',
@@ -1766,7 +1788,7 @@ export default function CorporateTaxTab() {
               <button
                 type="button"
                 onClick={() => setDrawerTxId(null)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px', color: 'rgba(42,22,40,0.4)' }}
+                style={{ background: 'transparent', border: 'none', outline: 'none', cursor: 'pointer', padding: '4px', color: 'rgba(42,22,40,0.4)' }}
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -1775,42 +1797,47 @@ export default function CorporateTaxTab() {
             </div>
 
             {/* Tab strip */}
-            <div className="hide-scrollbar" style={{ display: 'flex', gap: '1rem', padding: '0.5rem 2rem', borderBottom: '1px solid rgba(42,22,40,0.06)', overflowX: 'auto', flexShrink: 0 }}>
-              {[
-                { key: 'overview' as const, label: 'Overview' },
-                { key: 'financials' as const, label: 'Financial Statements' },
-                { key: 'adjustments' as const, label: 'Tax Adjustments' },
-                { key: 'computation' as const, label: 'Tax Computation' },
-                { key: 'validation' as const, label: 'Validation' },
-                { key: 'timeline' as const, label: 'Timeline' },
-                { key: 'activity' as const, label: 'Activity' },
-                { key: 'documents' as const, label: 'Documents' },
-                { key: 'quickBooksSync' as const, label: 'QuickBooks Sync' },
-                { key: 'notes' as const, label: 'Notes' },
-              ].map((t) => {
-                const isTab = drawerTab === t.key;
-                return (
-                  <button
-                    key={t.key}
-                    type="button"
-                    onClick={() => setDrawerTab(t.key)}
-                    style={{
-                      padding: '0.6rem 0',
-                      border: 'none',
-                      background: 'transparent',
-                      color: isTab ? '#E8760A' : 'rgba(42,22,40,0.5)',
-                      fontSize: '0.8125rem',
-                      fontWeight: isTab ? 700 : 600,
-                      cursor: 'pointer',
-                      borderBottom: isTab ? '2px solid #E8760A' : 'none',
-                      whiteSpace: 'nowrap',
-                      fontFamily: 'inherit',
-                    }}
-                  >
-                    {t.label}
-                  </button>
-                );
-              })}
+            <div className="hide-scrollbar" style={{ width: '100%', overflowX: 'auto', borderBottom: '1px solid rgba(42,22,40,0.06)', flexShrink: 0, scrollBehavior: 'smooth' }}>
+              <div style={{ display: 'flex', gap: '1.25rem', padding: '0.5rem 1.75rem', minWidth: 'max-content' }}>
+                {[
+                  { key: 'overview' as const, label: 'Overview' },
+                  { key: 'financials' as const, label: 'Financial Statements' },
+                  { key: 'adjustments' as const, label: 'Tax Adjustments' },
+                  { key: 'computation' as const, label: 'Tax Computation' },
+                  { key: 'validation' as const, label: 'Validation' },
+                  { key: 'timeline' as const, label: 'Timeline' },
+                  { key: 'activity' as const, label: 'Activity' },
+                  { key: 'documents' as const, label: 'Documents' },
+                  { key: 'quickBooksSync' as const, label: 'QuickBooks Sync' },
+                  { key: 'notes' as const, label: 'Notes' },
+                ].map((t) => {
+                  const isTab = drawerTab === t.key;
+                  return (
+                    <button
+                      key={t.key}
+                      type="button"
+                      onClick={() => setDrawerTab(t.key)}
+                      style={{
+                        padding: '0.6rem 0',
+                        border: 'none',
+                        outline: 'none',
+                        boxShadow: 'none',
+                        background: 'transparent',
+                        color: isTab ? '#E8760A' : 'rgba(42,22,40,0.5)',
+                        fontSize: '0.8125rem',
+                        fontWeight: isTab ? 700 : 600,
+                        cursor: 'pointer',
+                        borderBottom: isTab ? '2px solid #E8760A' : '2px solid transparent',
+                        whiteSpace: 'nowrap',
+                        fontFamily: 'inherit',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {t.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Drawer Body Scroll */}

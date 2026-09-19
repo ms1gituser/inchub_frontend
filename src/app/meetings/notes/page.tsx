@@ -53,24 +53,52 @@ const MOCK_MEETING_NOTES = [
 export default function MeetingNotesPage() {
   const { currentBrand } = usePermission();
   const [stage, setStage] = useState<number | null>(null);
+  const [notesList, setNotesList] = useState<any[]>(MOCK_MEETING_NOTES);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchData = async () => {
       try {
-        const res = await get<{ success: boolean; data: TenantProfile }>('/bookkeeping/profile');
-        if (res?.success && res.data?.onboarding_stage) {
-          setStage(res.data.onboarding_stage);
+        const [profRes, notesRes] = await Promise.allSettled([
+          get<{ success: boolean; data: TenantProfile }>('/bookkeeping/profile'),
+          get<{ success: boolean; data: any[] }>('/chat/meeting-notes')
+        ]);
+
+        if (profRes.status === 'fulfilled' && profRes.value?.success && profRes.value.data?.onboarding_stage) {
+          setStage(profRes.value.data.onboarding_stage);
         } else {
-          setStage(1);
+          setStage(2);
+        }
+
+        if (notesRes.status === 'fulfilled' && notesRes.value?.success && Array.isArray(notesRes.value.data) && notesRes.value.data.length > 0) {
+          const formatted = notesRes.value.data.map((n: any) => ({
+            id: n.id,
+            meetingId: n.id,
+            meetingTitle: n.title || 'Executive Meeting Notes',
+            date: n.created_at || new Date().toISOString(),
+            keyPoints: n.topics_json || n.summary?.topics || [],
+            actionItems: (n.action_items_json || n.summary?.action_items || []).map((act: any, idx: number) => ({
+              id: idx,
+              desc: typeof act === 'string' ? act : act.desc || act.action,
+              owner: typeof act === 'object' && act.owner ? act.owner : 'IncHub Team',
+              status: typeof act === 'object' && act.status ? act.status : 'Pending'
+            })),
+            queries: (n.decisions_json || n.summary?.decisions || []).map((d: any, idx: number) => ({
+              id: idx,
+              question: typeof d === 'string' ? d : d.decision || d.topic,
+              answer: 'Agreed in meeting',
+              status: 'Answered'
+            }))
+          }));
+          setNotesList(formatted);
         }
       } catch (e) {
-        setStage(1);
+        setStage(2);
       } finally {
         setLoading(false);
       }
     };
-    fetchProfile();
+    fetchData();
   }, []);
 
   const isFinancial = currentBrand === 'financial';
@@ -132,7 +160,7 @@ export default function MeetingNotesPage() {
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-        {MOCK_MEETING_NOTES.map((note) => {
+        {notesList.map((note) => {
           const dt = new Date(note.date);
           const dateStr = dt.toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' });
 
@@ -169,7 +197,7 @@ export default function MeetingNotesPage() {
                     Key Discussion Points
                   </h3>
                   <ul style={{ margin: 0, paddingLeft: '1.25rem', color: 'rgba(0,0,0,0.8)', fontSize: '0.875rem', lineHeight: 1.6 }}>
-                    {note.keyPoints.map((kp, i) => (
+                    {note.keyPoints.map((kp: string, i: number) => (
                       <li key={i} style={{ marginBottom: '0.5rem' }}>{kp}</li>
                     ))}
                   </ul>
@@ -182,7 +210,7 @@ export default function MeetingNotesPage() {
                     Action Items
                   </h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-                    {note.actionItems.map(act => (
+                    {note.actionItems.map((act: any) => (
                       <div key={act.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.625rem 1rem', border: `1px solid ${cardBorderColor}`, borderRadius: '6px', background: '#fafafa', flexWrap: 'wrap', gap: '0.5rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
                            <div style={{
@@ -216,7 +244,7 @@ export default function MeetingNotesPage() {
                       Open Queries
                     </h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      {note.queries.map(q => (
+                      {note.queries.map((q: any) => (
                         <div key={q.id} style={{ padding: '0.875rem', borderLeft: `3px solid ${q.status === 'Answered' ? '#10b981' : '#f59e0b'}`, background: '#fafafa', borderRadius: '0 6px 6px 0' }}>
                           <p style={{ margin: '0 0 0.375rem', fontSize: '0.875rem', fontWeight: 600, color: primaryBg }}>Q: {q.question}</p>
                           {q.answer ? (

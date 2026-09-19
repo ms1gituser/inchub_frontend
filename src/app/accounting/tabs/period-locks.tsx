@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { get, post } from '@/lib/apiClient';
 import { useNotification } from '@/context/NotificationContext';
+import { useGetClientsQuery } from '@/lib/clientapi';
 
 interface MonthPeriod {
   id: string;
@@ -59,17 +60,31 @@ export default function PeriodLocksTab() {
   const [showCloseModal, setShowCloseModal] = useState<MonthPeriod | null>(null);
   const [reportPath, setReportPath] = useState('');
   const [invoicePath, setInvoicePath] = useState('');
+  // Client Context State
+  const [selectedClient, setSelectedClient] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  
+  // Fetch real clients
+  const { data: clientsRes } = useGetClientsQuery({ page: 1, limit: 100 });
+  const actualClients = clientsRes?.data?.clients || [];
+  
+  useEffect(() => {
+    if (actualClients.length > 0 && !selectedClient) {
+      setSelectedClient(actualClients[0].name);
+    }
+  }, [actualClients, selectedClient]);
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await get<{ success: boolean; data: MonthPeriod[]; compliance: ComplianceData }>('/bookkeeping/months');
+      const queryParam = selectedClient ? `?client=${encodeURIComponent(selectedClient)}` : '';
+      const res = await get<{ success: boolean; data: MonthPeriod[]; compliance: ComplianceData }>(`/bookkeeping/months${queryParam}`);
       if (res?.success) {
         setMonths(res.data || []);
         setCompliance(res.compliance || null);
       }
       
-      const tasksRes = await get<{ success: boolean; data: TaskItem[] }>('/bookkeeping/compliance/tasks');
+      const tasksRes = await get<{ success: boolean; data: TaskItem[] }>(`/bookkeeping/compliance/tasks${queryParam}`);
       if (tasksRes?.success) {
         setTasks(tasksRes.data || []);
       }
@@ -80,7 +95,7 @@ export default function PeriodLocksTab() {
     } finally {
       setLoading(false);
     }
-  }, [showToast]);
+  }, [selectedClient, showToast]);
 
   useEffect(() => {
     fetchData();
@@ -116,7 +131,8 @@ export default function PeriodLocksTab() {
         try {
           const res = await post<{ success: boolean; message: string }>('/bookkeeping/months/create', {
             year: nextYear,
-            month: nextMonth
+            month: nextMonth,
+            client: selectedClient
           });
           if (res?.success) {
             showToast(res.message || 'New accounting period created.', 'success');
@@ -145,7 +161,8 @@ export default function PeriodLocksTab() {
     try {
       const res = await post<{ success: boolean; message: string }>(`/bookkeeping/months/${showCloseModal.id}/close`, {
         report_file_path: reportPath.trim(),
-        invoice_file_path: invoicePath.trim()
+        invoice_file_path: invoicePath.trim(),
+        client: selectedClient
       });
       if (res?.success) {
         showToast(res.message || 'Period closed successfully.', 'success');
@@ -189,6 +206,53 @@ export default function PeriodLocksTab() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', fontFamily: 'Inter, sans-serif' }}>
       
+      {/* 0. Client Context Selector */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#FAF8F5', padding: '1rem', borderRadius: '12px', border: '1px solid #DDD0C4' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'rgba(232,118,10,0.1)', color: '#E8760A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.85rem' }}>
+            {selectedClient ? selectedClient.slice(0, 2).toUpperCase() : '..'}
+          </div>
+          <div>
+            <span style={{ display: 'block', fontSize: '0.65rem', fontWeight: 800, color: 'rgba(42,22,40,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '2px' }}>Active Client Workspace</span>
+            <div style={{ position: 'relative' }}>
+              <div 
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', fontSize: '1rem', fontWeight: 700, color: '#2A1628', userSelect: 'none' }}
+              >
+                {selectedClient || 'Loading clients...'}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ transform: isDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease', color: 'rgba(42,22,40,0.5)' }}><polyline points="6 9 12 15 18 9" /></svg>
+              </div>
+              
+              {isDropdownOpen && (
+                <>
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 10 }} onClick={() => setIsDropdownOpen(false)} />
+                  <div className="hide-scrollbar" style={{ position: 'absolute', top: 'calc(100% + 12px)', left: '-12px', background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: '12px', boxShadow: '0 12px 32px rgba(42,22,40,0.12)', zIndex: 20, minWidth: '260px', padding: '0.4rem', display: 'flex', flexDirection: 'column', gap: '0.15rem', maxHeight: '320px', overflowY: 'auto', fontFamily: 'var(--font-sans), Inter, sans-serif' }}>
+                    {actualClients.length === 0 && <div style={{ padding: '0.6rem 0.8rem', fontSize: '0.8rem', color: 'rgba(42,22,40,0.5)', fontWeight: 500 }}>Loading...</div>}
+                    {actualClients.map((c: any) => (
+                      <div 
+                        key={c.id} 
+                        onClick={() => { setSelectedClient(c.name || 'Unknown'); setIsDropdownOpen(false); }}
+                        style={{ padding: '0.6rem 0.6rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: selectedClient === c.name ? 700 : 500, color: selectedClient === c.name ? '#E8760A' : '#2A1628', background: selectedClient === c.name ? 'rgba(232,118,10,0.06)' : 'transparent', display: 'flex', alignItems: 'center', gap: '0.6rem', transition: 'background 0.1s' }}
+                        onMouseEnter={(e) => { if (selectedClient !== c.name) e.currentTarget.style.background = '#FAF8F5'; }}
+                        onMouseLeave={(e) => { if (selectedClient !== c.name) e.currentTarget.style.background = 'transparent'; }}
+                      >
+                        <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'rgba(232,118,10,0.08)', color: '#E8760A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800, flexShrink: 0 }}>
+                          {(c.name || 'UN').slice(0, 2).toUpperCase()}
+                        </div>
+                        {c.name || 'Unknown Client'}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+        <span style={{ fontSize: '0.7rem', color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '0.2rem 0.6rem', borderRadius: '4px', fontWeight: 700 }}>
+          Live Connection
+        </span>
+      </div>
+
       {/* 1. Header Overview Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
         {/* Transaction Volume Card */}

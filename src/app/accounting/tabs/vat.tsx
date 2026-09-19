@@ -17,6 +17,7 @@ import {
   usePostNoteMutation,
   usePostDocumentMutation
 } from '@/lib/vatApi';
+import { useGetClientsQuery } from '@/lib/clientapi';
 
 // ============================================================================
 // Types
@@ -639,6 +640,7 @@ function Portal({ children }: { children: React.ReactNode }) {
 
 export default function VatCenterTab() {
   const { data: queueRes, isLoading: queueLoading, refetch } = useGetQueueQuery({ limit: 1000 });
+  const { data: clientsRes } = useGetClientsQuery({ limit: 100 });
   const [fileReturn] = usePostFileMutation();
   const [amendReturn] = usePostAmendMutation();
   const [addVatReturn] = useAddVatReturnMutation();
@@ -652,6 +654,20 @@ export default function VatCenterTab() {
   // Local state datasets
   const [data, setData] = useState<VatReturnItem[]>([]);
   const [toasts, setToasts] = useState<{ id: string; message: string; tone: 'success' | 'danger' | 'info' | 'warning' }[]>([]);
+
+  const clientsList = useMemo(() => {
+    const set = new Set<string>();
+    if (clientsRes?.data?.clients) {
+      clientsRes.data.clients.forEach((c: any) => {
+        const name = c.company_name || c.name || c.client_name;
+        if (name) set.add(name);
+      });
+    }
+    data.forEach((d) => {
+      if (d.client) set.add(d.client);
+    });
+    return Array.from(set).sort();
+  }, [clientsRes, data]);
 
   // Sync queueRes.data into local state when it updates
   const prevQueueDataRef = useRef<VatReturnItem[] | undefined>(undefined);
@@ -717,6 +733,7 @@ export default function VatCenterTab() {
   const [drawerTab, setDrawerTab] = useState<'overview' | 'transactions' | 'breakdown' | 'validation' | 'timeline' | 'activity' | 'documents' | 'history' | 'notes' | 'quickBooksSync'>('overview');
 
   // Filter bar states
+  const [filterClient, setFilterClient] = useState('All');
   const [filterManager, setFilterManager] = useState('All');
   const [filterReviewer, setFilterReviewer] = useState('All');
   const [filterQuarter, setFilterQuarter] = useState('All');
@@ -778,6 +795,7 @@ export default function VatCenterTab() {
         item.trn.includes(search);
       const matchStatus =
         activeStatusTab === 'All' || item.status.toLowerCase() === activeStatusTab.toLowerCase();
+      const matchClient = filterClient === 'All' || item.client === filterClient;
       const matchManager = filterManager === 'All' || item.manager === filterManager;
       const matchReviewer = filterReviewer === 'All' || item.reviewer === filterReviewer;
       const matchQuarter = filterQuarter === 'All' || item.quarter === filterQuarter;
@@ -786,7 +804,7 @@ export default function VatCenterTab() {
       const matchPriority = filterPriority === 'All' || item.priority === filterPriority;
       const matchRisk = filterRisk === 'All' || item.risk === filterRisk;
       const matchCountry = filterCountry === 'All' || item.country === filterCountry;
-      return matchSearch && matchStatus && matchManager && matchReviewer && matchQuarter && matchYear && matchType && matchPriority && matchRisk && matchCountry;
+      return matchSearch && matchStatus && matchClient && matchManager && matchReviewer && matchQuarter && matchYear && matchType && matchPriority && matchRisk && matchCountry;
     });
     if (sortCol) {
       list = [...list].sort((a, b) => {
@@ -799,7 +817,7 @@ export default function VatCenterTab() {
       });
     }
     return list;
-  }, [data, search, activeStatusTab, filterManager, filterReviewer, filterQuarter, filterYear, filterType, filterPriority, filterRisk, filterCountry, sortCol, sortDir]);
+  }, [data, search, activeStatusTab, filterClient, filterManager, filterReviewer, filterQuarter, filterYear, filterType, filterPriority, filterRisk, filterCountry, sortCol, sortDir]);
 
   // Page split calculation
   const pagedData = useMemo(() => {
@@ -810,7 +828,7 @@ export default function VatCenterTab() {
 
   // Drawer details query
   const { data: drawerDetailsRes } = useGetDrawerDetailsQuery(drawerTxId || '', { skip: !drawerTxId });
-  const activeTx = drawerDetailsRes?.data?.vatReturn || data.find((x) => x.id === drawerTxId) || null;
+  const activeTx = drawerTxId ? (drawerDetailsRes?.data?.vatReturn || data.find((x) => x.id === drawerTxId) || null) : null;
   const drawerTransactions = drawerDetailsRes?.data?.transactions || [];
   const drawerTimeline = drawerDetailsRes?.data?.timeline || [];
   const drawerActivityLog = drawerDetailsRes?.data?.activityLog || [];
@@ -1275,6 +1293,7 @@ export default function VatCenterTab() {
             <button
               type="button"
               onClick={() => {
+                setFilterClient('All');
                 setFilterManager('All');
                 setFilterReviewer('All');
                 setFilterQuarter('All');
@@ -1304,7 +1323,15 @@ export default function VatCenterTab() {
         </div>
 
         {/* Dropdown Filters Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '0.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.5rem' }}>
+          <div>
+            <CustomSelect
+              value={filterClient === 'All' ? '' : filterClient}
+              onChange={(v) => { setFilterClient(v || 'All'); setCurrentPage(1); }}
+              options={['All', ...clientsList]}
+              placeholder="Client: All"
+            />
+          </div>
           <div>
             <CustomSelect
               value={filterManager === 'All' ? '' : filterManager}
@@ -1844,41 +1871,46 @@ export default function VatCenterTab() {
             <div style={{ width: '100%', height: '1px', background: 'rgba(42,22,40,0.06)' }} />
 
             {/* Tab strip */}
-            <div className="hide-scrollbar" style={{ display: 'flex', gap: '1rem', padding: '0.5rem 2rem', borderBottom: '1px solid rgba(42,22,40,0.06)', overflowX: 'auto', flexShrink: 0 }}>
-              {[
-                { key: 'overview' as const, label: 'Overview' },
-                { key: 'transactions' as const, label: 'Transactions' },
-                { key: 'breakdown' as const, label: 'Breakdown' },
-                { key: 'validation' as const, label: 'Validation' },
-                { key: 'timeline' as const, label: 'Timeline' },
-                { key: 'activity' as const, label: 'Activity' },
-                { key: 'documents' as const, label: 'Documents' },
-                { key: 'quickBooksSync' as const, label: 'QuickBooks Sync' },
-                { key: 'notes' as const, label: 'Notes' },
-              ].map((t) => {
-                const isTab = drawerTab === t.key;
-                return (
-                  <button
-                    key={t.key}
-                    type="button"
-                    onClick={() => setDrawerTab(t.key)}
-                    style={{
-                      padding: '0.6rem 0',
-                      border: 'none',
-                      background: 'transparent',
-                      color: isTab ? '#E8760A' : 'rgba(42,22,40,0.5)',
-                      fontSize: '0.8125rem',
-                      fontWeight: isTab ? 700 : 600,
-                      cursor: 'pointer',
-                      borderBottom: isTab ? '2px solid #E8760A' : 'none',
-                      whiteSpace: 'nowrap',
-                      fontFamily: 'inherit',
-                    }}
-                  >
-                    {t.label}
-                  </button>
-                );
-              })}
+            <div className="hide-scrollbar" style={{ width: '100%', overflowX: 'auto', borderBottom: '1px solid rgba(42,22,40,0.06)', flexShrink: 0, scrollBehavior: 'smooth' }}>
+              <div style={{ display: 'flex', gap: '1rem', padding: '0.5rem 2rem', minWidth: 'max-content' }}>
+                {[
+                  { key: 'overview' as const, label: 'Overview' },
+                  { key: 'transactions' as const, label: 'Transactions' },
+                  { key: 'breakdown' as const, label: 'Breakdown' },
+                  { key: 'validation' as const, label: 'Validation' },
+                  { key: 'timeline' as const, label: 'Timeline' },
+                  { key: 'activity' as const, label: 'Activity' },
+                  { key: 'documents' as const, label: 'Documents' },
+                  { key: 'quickBooksSync' as const, label: 'QuickBooks Sync' },
+                  { key: 'notes' as const, label: 'Notes' },
+                ].map((t) => {
+                  const isTab = drawerTab === t.key;
+                  return (
+                    <button
+                      key={t.key}
+                      type="button"
+                      onClick={() => setDrawerTab(t.key)}
+                      style={{
+                        padding: '0.6rem 0',
+                        border: 'none',
+                        outline: 'none',
+                        boxShadow: 'none',
+                        background: 'transparent',
+                        color: isTab ? '#E8760A' : 'rgba(42,22,40,0.5)',
+                        fontSize: '0.8125rem',
+                        fontWeight: isTab ? 700 : 600,
+                        cursor: 'pointer',
+                        borderBottom: isTab ? '2px solid #E8760A' : '2px solid transparent',
+                        whiteSpace: 'nowrap',
+                        fontFamily: 'inherit',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {t.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Tab Body */}
@@ -2052,16 +2084,17 @@ export default function VatCenterTab() {
               {drawerTab === 'activity' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   {drawerActivityLog.map((act: any, idx: number) => {
-                    const isApproved = act.action.includes('Filed') || act.action.includes('Approved');
-                    const isCreated = act.action.includes('Created') || act.action.includes('Imported');
-                    const isRejected = act.action.includes('Rejected') || act.action.includes('Failed');
+                    const actionText = String(act?.action || act?.act || 'Activity');
+                    const isApproved = actionText.includes('Filed') || actionText.includes('Approved');
+                    const isCreated = actionText.includes('Created') || actionText.includes('Imported');
+                    const isRejected = actionText.includes('Rejected') || actionText.includes('Failed');
                     const badgeBg = isApproved ? '#E6F4EA' : isCreated ? '#E8F0FE' : isRejected ? '#FCE8E6' : '#FFF0E2';
                     const badgeColor = isApproved ? '#137333' : isCreated ? '#1A73E8' : isRejected ? '#C5221F' : '#E8760A';
                     return (
                       <div key={idx} style={{ padding: '0.6rem 0.75rem', background: '#FAF8F5', borderRadius: '8px', border: '1px solid rgba(42,22,40,0.03)', fontSize: '0.75rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 600 }}>
                           <span style={{ background: badgeBg, color: badgeColor, padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 700 }}>
-                            {act.action}
+                            {actionText}
                           </span>
                           <span style={{ color: 'rgba(42,22,40,0.45)' }}>{act.timestamp ? act.timestamp.split('T')[0] : ''}</span>
                         </div>

@@ -988,13 +988,14 @@ export default function ReconciliationPanel({ onReconciled }: ReconciliationPane
                   )}
 
                   {/* 6-Level Score Meter Grid */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.35rem', marginBottom: '0.75rem', fontSize: '0.6rem', textAlign: 'center' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '0.35rem', marginBottom: '0.75rem', fontSize: '0.6rem', textAlign: 'center' }}>
                     {[
                       { label: 'L1 Amount', score: selectedCandidate.l1_amount_score },
                       { label: 'L2 Date', score: selectedCandidate.l2_date_score },
                       { label: 'L3 Vendor', score: selectedCandidate.l3_vendor_score },
                       { label: 'L4 Reference', score: selectedCandidate.l4_reference_score },
-                      { label: 'L5 Description', score: selectedCandidate.l5_description_score }
+                      { label: 'L5 Description', score: selectedCandidate.l5_description_score },
+                      { label: 'L6 Category', score: selectedCandidate.l6_score || 0 }
                     ].map((lvl, index) => (
                       <div key={index} style={{ background: '#F6F2EE', padding: '0.35rem 0.15rem', borderRadius: '6px', border: '1px solid rgba(42,22,40,0.04)' }}>
                         <div style={{ color: 'rgba(42,22,40,0.5)', fontWeight: 700 }}>{lvl.label}</div>

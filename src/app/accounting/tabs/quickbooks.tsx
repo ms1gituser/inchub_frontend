@@ -1026,6 +1026,7 @@ export default function QuickBooksTab() {
   const [quickQboNote, setQuickQboNote] = useState('');
 
   const activeTx = useMemo(() => {
+    if (!drawerTxId) return null;
     return drawerDetailsRes?.data?.connection || data.find((x) => x.id === drawerTxId) || null;
   }, [data, drawerTxId, drawerDetailsRes]);
 
@@ -1897,45 +1898,50 @@ export default function QuickBooksTab() {
             <div style={{ width: '100%', height: '1px', background: 'rgba(42,22,40,0.06)' }} />
 
             {/* Tab switchers header strip */}
-            <div className="hide-scrollbar" style={{ display: 'flex', gap: '1rem', padding: '0.5rem 2rem', borderBottom: '1px solid rgba(42,22,40,0.06)', overflowX: 'auto', flexShrink: 0 }}>
-              {[
-                { key: 'overview' as const, label: 'Overview' },
-                { key: 'connection' as const, label: 'Connection' },
-                { key: 'mappings' as const, label: 'Mappings' },
-                { key: 'journalEntries' as const, label: 'Journal Entries' },
-                { key: 'invoices' as const, label: 'Invoices' },
-                { key: 'payments' as const, label: 'Payments' },
-                { key: 'syncLogs' as const, label: 'Sync Logs' },
-                { key: 'validation' as const, label: 'Validation' },
-                { key: 'timeline' as const, label: 'Timeline' },
-                { key: 'activity' as const, label: 'Activity' },
-                { key: 'documents' as const, label: 'Documents' },
-                { key: 'settings' as const, label: 'Settings' },
-                { key: 'notes' as const, label: 'Notes' }
-              ].map((tab) => {
-                const isTabActive = drawerTab === tab.key;
-                return (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    onClick={() => setDrawerTab(tab.key)}
-                    style={{
-                      padding: '0.6rem 0',
-                      border: 'none',
-                      background: 'transparent',
-                      color: isTabActive ? '#E8760A' : 'rgba(42,22,40,0.5)',
-                      fontSize: '0.8125rem',
-                      fontWeight: isTabActive ? 700 : 600,
-                      cursor: 'pointer',
-                      borderBottom: isTabActive ? '2px solid #E8760A' : 'none',
-                      whiteSpace: 'nowrap',
-                      fontFamily: 'inherit',
-                    }}
-                  >
-                    {tab.label}
-                  </button>
-                );
-              })}
+            <div className="hide-scrollbar" style={{ width: '100%', overflowX: 'auto', borderBottom: '1px solid rgba(42,22,40,0.06)', flexShrink: 0, scrollBehavior: 'smooth' }}>
+              <div style={{ display: 'flex', gap: '1rem', padding: '0.5rem 2rem', minWidth: 'max-content' }}>
+                {[
+                  { key: 'overview' as const, label: 'Overview' },
+                  { key: 'connection' as const, label: 'Connection' },
+                  { key: 'mappings' as const, label: 'Mappings' },
+                  { key: 'journalEntries' as const, label: 'Journal Entries' },
+                  { key: 'invoices' as const, label: 'Invoices' },
+                  { key: 'payments' as const, label: 'Payments' },
+                  { key: 'syncLogs' as const, label: 'Sync Logs' },
+                  { key: 'validation' as const, label: 'Validation' },
+                  { key: 'timeline' as const, label: 'Timeline' },
+                  { key: 'activity' as const, label: 'Activity' },
+                  { key: 'documents' as const, label: 'Documents' },
+                  { key: 'settings' as const, label: 'Settings' },
+                  { key: 'notes' as const, label: 'Notes' }
+                ].map((tab) => {
+                  const isTabActive = drawerTab === tab.key;
+                  return (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setDrawerTab(tab.key)}
+                      style={{
+                        padding: '0.6rem 0',
+                        border: 'none',
+                        outline: 'none',
+                        boxShadow: 'none',
+                        background: 'transparent',
+                        color: isTabActive ? '#E8760A' : 'rgba(42,22,40,0.5)',
+                        fontSize: '0.8125rem',
+                        fontWeight: isTabActive ? 700 : 600,
+                        cursor: 'pointer',
+                        borderBottom: isTabActive ? '2px solid #E8760A' : '2px solid transparent',
+                        whiteSpace: 'nowrap',
+                        fontFamily: 'inherit',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Tab Body */}
@@ -2427,7 +2433,20 @@ export default function QuickBooksTab() {
           onClose={() => setPopup({ type: null })}
           onExport={(format, scope) => {
             setPopup({ type: null });
-            pushToast(`Export started in ${format.toUpperCase()} format for ${scope} connection scope.`, 'success');
+            const token = typeof window !== 'undefined' ? localStorage.getItem('crm_access_token') || '' : '';
+            const baseUrl = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:5000/api/v1` : 'http://127.0.0.1:5000/api/v1';
+            const idsQuery = selectedIds.length > 0 ? `&ids=${encodeURIComponent(selectedIds.join(','))}` : '';
+            const downloadUrl = `${baseUrl}/qbo-connections/export?format=${encodeURIComponent(format)}${idsQuery}&token=${encodeURIComponent(token)}`;
+            
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = downloadUrl;
+            document.body.appendChild(iframe);
+            setTimeout(() => {
+              try { document.body.removeChild(iframe); } catch {}
+            }, 60000);
+            
+            pushToast(`Exporting QBO connections in ${format.toUpperCase()} format (${scope})...`, 'success');
           }}
         />
       )}

@@ -651,10 +651,7 @@ export default function Sidebar({ collapsed, hidden, onToggle, activeBrand }: Si
                           { label: 'QuickBooks', tab: 'quickbooks' },
                           { label: 'Vendors', tab: 'vendors' }
                         ].map((subItem) => {
-                          const isSubActive = pathname === '/accounting' && (
-                            currentTab === subItem.tab ||
-                            (subItem.tab === 'dashboard' && !currentTab)
-                          );
+                          const isSubActive = pathname === '/accounting' && currentTab === subItem.tab;
                           return (
                             <Link
                               key={subItem.tab}

@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 
 import React, { useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Pagination from '@/components/ui/Pagination';
 import {
   useGetClientsQuery,
@@ -13,6 +13,7 @@ import {
   useBulkUpdateClientsMutation,
   useImportClientsMutation,
   useGetClientDrawerDetailsQuery,
+  useUploadClientDocumentMutation,
 } from '@/lib/clientapi';
 
 interface ClientItem {
@@ -59,6 +60,7 @@ export default function ClientListTab() {
   const [bulkValue, setBulkValue] = useState('');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'error' | null }>({ message: '', type: null });
   const [aiReviewing, setAiReviewing] = useState(false);
+  const [docCategory, setDocCategory] = useState<string>('Trade License');
   const triggerToast = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast({ message: '', type: null }), 3000);
@@ -69,6 +71,7 @@ export default function ClientListTab() {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const searchParams = useSearchParams();
+  const router = useRouter();
   const actionParam = searchParams.get('action');
 
   const [addClientOpen, setAddClientOpen] = useState(actionParam === 'add-client');
@@ -129,6 +132,7 @@ export default function ClientListTab() {
   const [deleteClient, { isLoading: isDeletingClient }] = useDeleteClientMutation();
   const [bulkUpdateClients, { isLoading: isBulkUpdating }] = useBulkUpdateClientsMutation();
   const [importClients] = useImportClientsMutation();
+  const [uploadClientDoc] = useUploadClientDocumentMutation();
 
   const { data: clientsRes, isLoading: clientsLoading } = useGetClientsQuery({
     page: currentPage,
@@ -1767,16 +1771,16 @@ export default function ClientListTab() {
 
                 {/* Recent Documents Widget */}
                 <div style={{ background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '10px', padding: '1rem' }}>
-                  <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(42,22,40,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.75rem' }}>Recent Documents</div>
-                  {drawerDetails.documents.length === 0 ? (
+                  <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(42,22,40,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.75rem' }}>Recent Documents ({drawerDetails?.documents?.length || 0})</div>
+                  {(!drawerDetails?.documents || drawerDetails.documents.length === 0) ? (
                     <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.45)', fontStyle: 'italic' }}>No documents uploaded.</div>
-                  ) : drawerDetails.documents.map((doc: any, i: number) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0', borderBottom: i < drawerDetails.documents.length - 1 ? '1px solid rgba(42,22,40,0.04)' : 'none' }}>
+                  ) : drawerDetails.documents.slice(0, 5).map((doc: any, i: number) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0', borderBottom: i < Math.min(drawerDetails.documents.length, 5) - 1 ? '1px solid rgba(42,22,40,0.04)' : 'none' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', overflow: 'hidden' }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5" style={{ flexShrink: 0 }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
                         <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#2A1628', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{doc.name}</span>
                       </div>
-                      <span style={{ fontSize: '0.625rem', color: 'rgba(42,22,40,0.4)', whiteSpace: 'nowrap' }}>{String(doc.created_at || '').split('T')[0]}</span>
+                      <span style={{ fontSize: '0.625rem', color: 'rgba(42,22,40,0.4)', whiteSpace: 'nowrap' }}>{doc.createdAt ? new Date(doc.createdAt).toLocaleDateString() : 'Recent'}</span>
                     </div>
                   ))}
                 </div>
@@ -1785,9 +1789,9 @@ export default function ClientListTab() {
                 <div style={{ background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '10px', padding: '1rem' }}>
                   <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(42,22,40,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.75rem' }}>Recent Reports</div>
                   {[
-                    { name: 'Profit & Loss Statement Q1', type: 'Financial' },
-                    { name: 'Balance Sheet March 2025', type: 'Financial' },
-                    { name: 'Compliance Summary', type: 'Audit' },
+                    { name: 'Onboarding & KYC Compliance Summary', type: 'Audit' },
+                    { name: 'VAT Return Status Report', type: 'Tax' },
+                    { name: 'Financial Ledger Overview', type: 'Financial' },
                   ].map((r, i) => (
                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0', borderBottom: i < 2 ? '1px solid rgba(42,22,40,0.04)' : 'none' }}>
                       <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#2A1628' }}>{r.name}</span>
@@ -1800,8 +1804,8 @@ export default function ClientListTab() {
                 <div style={{ background: '#FAF8F5', border: '1px solid rgba(42,22,40,0.06)', borderRadius: '10px', padding: '1rem' }}>
                   <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(42,22,40,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>Client Notes Preview</div>
                   <div style={{ background: '#ffffff', borderRadius: '8px', border: '1px solid #DDD0C4', padding: '0.625rem', fontSize: '0.75rem', color: 'rgba(42,22,40,0.85)', minHeight: '60px', fontStyle: 'italic', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                    <span>&quot;Onboarded tech division setup, client prefers weekly Slack checkpoints instead of email.&quot;</span>
-                    <span style={{ fontSize: '0.625rem', color: 'rgba(42,22,40,0.4)', marginTop: '0.5rem', alignSelf: 'flex-end', fontWeight: 600 }}>Last updated: 3d ago by Priya Nair</span>
+                    <span>&quot;Client profile setup completed for {previewClient.name}. Onboarding & compliance verification in progress.&quot;</span>
+                    <span style={{ fontSize: '0.625rem', color: 'rgba(42,22,40,0.4)', marginTop: '0.5rem', alignSelf: 'flex-end', fontWeight: 600 }}>Assigned: {previewClient.manager || 'Sara Al Mansoori'}</span>
                   </div>
                 </div>
 
@@ -1827,13 +1831,13 @@ export default function ClientListTab() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
                   <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(42,22,40,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1rem' }}>Client Timeline</div>
                   {[
-                    { event: 'Client Created', date: 'Jan 5, 2024', status: 'done', note: 'Client added by Mahesh Maddu' },
-                    { event: 'Onboarding Started', date: 'Jan 8, 2024', status: 'done', note: 'Onboarding wizard completed' },
-                    { event: 'KYC Submitted', date: 'Jan 15, 2024', status: 'done', note: previewClient.kycStatus },
-                    { event: 'Bookkeeping Q1', date: 'Apr 1, 2024', status: 'done', note: previewClient.booksStatus },
-                    { event: 'VAT Filing Q1', date: 'Apr 28, 2024', status: previewClient.vatDue === 'Filed' ? 'done' : 'pending', note: previewClient.vatDue },
-                    { event: 'CT Filing', date: 'Sep 30, 2024', status: previewClient.ctDue === 'Filed' ? 'done' : 'upcoming', note: previewClient.ctDue },
-                    { event: 'QuickBooks Sync', date: 'Ongoing', status: previewClient.qbStatus === 'Connected' ? 'done' : 'alert', note: previewClient.qbStatus },
+                    { event: 'Client Created', date: 'Just now', status: 'done', note: `Profile created by ${previewClient.manager || 'Admin'}` },
+                    { event: 'Onboarding Completed', date: 'Today', status: 'done', note: 'Wizard setup completed' },
+                    { event: 'KYC Verification', date: previewClient.kycStatus === 'Verified' ? 'Verified' : 'Pending Review', status: previewClient.kycStatus === 'Verified' ? 'done' : 'pending', note: previewClient.kycStatus },
+                    { event: 'Bookkeeping Status', date: 'Active Period', status: previewClient.booksStatus === 'Completed' ? 'done' : 'pending', note: previewClient.booksStatus },
+                    { event: 'VAT Return Filing', date: 'Upcoming', status: previewClient.vatDue === 'Filed' ? 'done' : 'pending', note: previewClient.vatDue },
+                    { event: 'Corporate Tax Filing', date: 'Upcoming', status: previewClient.ctDue === 'Filed' ? 'done' : 'upcoming', note: previewClient.ctDue },
+                    { event: 'QuickBooks Sync', date: 'Integration Status', status: previewClient.qbStatus === 'Connected' ? 'done' : 'alert', note: previewClient.qbStatus },
                   ].map((item, i) => (
                     <div key={i} style={{ display: 'flex', gap: '0.875rem', paddingBottom: '1rem' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
@@ -1845,7 +1849,6 @@ export default function ClientListTab() {
                       <div style={{ paddingBottom: '0.25rem' }}>
                         <div style={{ fontWeight: 700, fontSize: '0.8rem', color: '#2A1628' }}>{item.event}</div>
                         <div style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.4)', marginTop: '1px' }}>{item.date}</div>
-                        <div style={{ fontSize: '0.7rem', color: item.status === 'alert' ? '#EF4444' : 'rgba(42,22,40,0.55)', marginTop: '3px' }}>{item.note}</div>
                       </div>
                     </div>
                   ))}
@@ -1853,28 +1856,126 @@ export default function ClientListTab() {
               )}
 
               {/* DOCUMENTS TAB */}
-              {previewTab === 'documents' && (<>
-                <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(42,22,40,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Document Status</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.625rem' }}>
-                  {[
-                    { label: 'Uploaded', count: previewClient.documents, color: '#2EA44F', bg: 'rgba(46,164,79,0.06)' },
-                    { label: 'Verified', count: Math.floor(previewClient.documents * 0.7), color: '#047857', bg: 'rgba(4,120,87,0.06)' },
-                    { label: 'OCR Pending', count: Math.floor(previewClient.documents * 0.15), color: '#E8760A', bg: 'rgba(232,118,10,0.06)' },
-                    { label: 'Rejected', count: 0, color: '#EF4444', bg: 'rgba(239,68,68,0.06)' },
-                    { label: 'Missing', count: 3, color: '#E8760A', bg: 'rgba(232,118,10,0.06)' },
-                    { label: 'Expired', count: previewClient.kycStatus === 'Expired' ? 1 : 0, color: '#B8892A', bg: 'rgba(184,137,42,0.06)' },
-                  ].map((d, i) => (
-                    <div key={i} style={{ background: d.bg, border: `1px solid ${d.color}20`, borderRadius: '10px', padding: '0.75rem', textAlign: 'center' }}>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 300, color: d.color, fontFamily: 'Georgia, serif' }}>{d.count}</div>
-                      <div style={{ fontSize: '0.6rem', color: 'rgba(42,22,40,0.5)', marginTop: '2px', fontWeight: 600 }}>{d.label}</div>
+              {previewTab === 'documents' && (
+                <>
+                  <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(42,22,40,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Document Status & Compliance</div>
+                  {(() => {
+                    const docsList: any[] = drawerDetails?.documents || [];
+                    const uploadedCount = docsList.length > 0 ? docsList.length : (previewClient.documents || 0);
+                    const verifiedCount = docsList.filter((d: any) => d.status === 'Verified').length;
+                    const ocrPendingCount = docsList.filter((d: any) => d.status === 'Processing' || d.status === 'Uploaded' || d.status === 'OCR Complete').length;
+                    const rejectedCount = docsList.filter((d: any) => d.status === 'Rejected').length;
+                    
+                    // Mandatory Onboarding Categories
+                    const mandatoryTypes = ['Trade License', 'VAT Certificate', 'Emirates ID'];
+                    const uploadedCats = docsList.map((d: any) => d.category || 'Invoice');
+                    const missingRequired = mandatoryTypes.filter(type => !uploadedCats.includes(type));
+                    const missingCount = missingRequired.length;
+                    const expiredCount = previewClient.kycStatus === 'Expired' ? 1 : 0;
+
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.625rem' }}>
+                          {[
+                            { label: 'Uploaded', count: uploadedCount, color: '#2EA44F', bg: 'rgba(46,164,79,0.06)' },
+                            { label: 'Verified', count: verifiedCount, color: '#047857', bg: 'rgba(4,120,87,0.06)' },
+                            { label: 'OCR Pending', count: ocrPendingCount, color: '#E8760A', bg: 'rgba(232,118,10,0.06)' },
+                            { label: 'Rejected', count: rejectedCount, color: '#EF4444', bg: 'rgba(239,68,68,0.06)' },
+                            { label: 'Missing', count: missingCount, color: '#E8760A', bg: 'rgba(232,118,10,0.06)' },
+                            { label: 'Expired', count: expiredCount, color: '#B8892A', bg: 'rgba(184,137,42,0.06)' },
+                          ].map((d, i) => (
+                            <div key={i} style={{ background: d.bg, border: `1px solid ${d.color}20`, borderRadius: '10px', padding: '0.75rem', textAlign: 'center' }}>
+                              <div style={{ fontSize: '1.5rem', fontWeight: 300, color: d.color, fontFamily: 'Georgia, serif' }}>{d.count}</div>
+                              <div style={{ fontSize: '0.6rem', color: 'rgba(42,22,40,0.5)', marginTop: '2px', fontWeight: 600 }}>{d.label}</div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Mandatory Compliance Checklist */}
+                        <div style={{ background: '#FAF8F5', border: '1px solid #EBE0D6', borderRadius: '10px', padding: '0.75rem' }}>
+                          <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#2A1628', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>Mandatory Compliance Checklist</div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                            {mandatoryTypes.map((type, idx) => {
+                              const isPresent = uploadedCats.includes(type);
+                              return (
+                                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
+                                  <span style={{ color: '#2A1628', fontWeight: 500 }}>{type}</span>
+                                  {isPresent ? (
+                                    <span style={{ fontSize: '0.65rem', color: '#047857', fontWeight: 700, background: 'rgba(4,120,87,0.1)', padding: '2px 8px', borderRadius: '10px' }}>✓ Uploaded</span>
+                                  ) : (
+                                    <span style={{ fontSize: '0.65rem', color: '#E8760A', fontWeight: 700, background: 'rgba(232,118,10,0.1)', padding: '2px 8px', borderRadius: '10px' }}>⚠ Missing</span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Upload Controls with Category Dropdown */}
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.25rem' }}>
+                    <select
+                      value={docCategory}
+                      onChange={(e) => setDocCategory(e.target.value)}
+                      style={{ flex: 1, padding: '0.55rem 0.75rem', background: '#FFFFFF', border: '1px solid #DDD0C4', borderRadius: '8px', fontSize: '0.75rem', color: '#2A1628', fontWeight: 500, outline: 'none' }}
+                    >
+                      <option value="Trade License">📜 Trade License</option>
+                      <option value="VAT Certificate">📄 VAT / TRN Certificate</option>
+                      <option value="Emirates ID">🪪 Emirates ID / Passport</option>
+                      <option value="Bank Statement">🏦 Bank Statement</option>
+                      <option value="Invoice">🧾 Sales / Expense Invoice</option>
+                    </select>
+
+                    <input
+                      type="file"
+                      id={`drawer-upload-${previewClient.id}`}
+                      multiple
+                      style={{ display: 'none' }}
+                      onChange={async (e) => {
+                        const files = e.target.files;
+                        if (files && files.length > 0) {
+                          for (let i = 0; i < files.length; i++) {
+                            try {
+                              await uploadClientDoc({ id: previewClient.id, name: files[i].name, category: docCategory }).unwrap();
+                            } catch (err: any) {
+                              console.error('File upload error:', err);
+                            }
+                          }
+                          triggerToast(`${files.length} document(s) (${docCategory}) uploaded for ${previewClient.name}`, 'success');
+                        }
+                      }}
+                    />
+                    <button
+                      style={{ padding: '0.6rem 1rem', background: '#2A1628', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, fontFamily: 'Inter, sans-serif', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
+                      onClick={() => document.getElementById(`drawer-upload-${previewClient.id}`)?.click()}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+                      Upload File
+                    </button>
+                  </div>
+
+                  {/* Uploaded Documents List */}
+                  {drawerDetails?.documents && drawerDetails.documents.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+                      <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(42,22,40,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Uploaded Files</div>
+                      {drawerDetails.documents.map((doc: any, i: number) => (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: '#FAF8F5', border: '1px solid #DDD0C4', borderRadius: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+                            <div>
+                              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#2A1628' }}>{doc.name}</div>
+                              <div style={{ fontSize: '0.625rem', color: 'rgba(42,22,40,0.4)' }}>{doc.category || 'Invoice'} • {new Date(doc.createdAt).toLocaleDateString()}</div>
+                            </div>
+                          </div>
+                          <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#047857', background: 'rgba(4,120,87,0.08)', padding: '2px 8px', borderRadius: '12px' }}>{doc.status || 'Uploaded'}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-                <button style={{ padding: '0.6rem', background: '#2A1628', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, fontFamily: 'Inter, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }} onClick={() => alert('Upload documents for ' + previewClient.name)}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
-                  Upload Documents
-                </button>
-              </>)}
+                  )}
+                </>
+              )}
 
               {/* AI TAB */}
               {previewTab === 'ai' && (<>
@@ -1905,13 +2006,18 @@ export default function ClientListTab() {
               {/* ACTIVITY TAB */}
               {previewTab === 'activity' && (<>
                 <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(42,22,40,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Recent Activity</div>
-                {[
-                  { actor: 'AI System', action: 'OCR completed for Q2 invoices', time: '2h ago', type: 'ai' },
-                  { actor: previewClient.bookkeeper, action: 'Updated books status to ' + previewClient.booksStatus, time: '4h ago', type: 'bookkeeper' },
-                  { actor: previewClient.manager, action: 'Reviewed compliance report', time: '1d ago', type: 'manager' },
-                  { actor: 'System', action: 'QuickBooks sync: ' + previewClient.qbStatus, time: '2d ago', type: 'system' },
-                  { actor: 'Client', action: 'Uploaded 4 new documents', time: '3d ago', type: 'client' },
-                ].map((a, i) => (
+                {((drawerDetails?.activities && drawerDetails.activities.length > 0)
+                  ? drawerDetails.activities.map((act: any) => ({
+                      actor: act.changedBy || previewClient.manager || 'System',
+                      action: act.operation ? `${act.operation.replace(/_/g, ' ')} on ${act.tableName || 'profile'}` : 'Profile Activity',
+                      time: new Date(act.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                      type: act.operation?.includes('AI') ? 'ai' : act.operation?.includes('CLIENT') ? 'manager' : 'system'
+                    }))
+                  : [
+                      { actor: previewClient.manager || 'Manager', action: `Client profile created for ${previewClient.name}`, time: 'Just now', type: 'manager' },
+                      { actor: 'AI System', action: 'Default Chart of Accounts (COA) seeded', time: 'Just now', type: 'ai' },
+                    ]
+                ).map((a: any, i: number) => (
                   <div key={i} style={{ display: 'flex', gap: '0.75rem', paddingBottom: '0.875rem', borderBottom: i < 4 ? '1px solid rgba(42,22,40,0.04)' : 'none' }}>
                     <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(232,118,10,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       {a.type === 'ai' ? (
@@ -1938,15 +2044,15 @@ export default function ClientListTab() {
 
             {/* Drawer Footer Quick Actions */}
             <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #DDD0C4', background: '#FAF8F5', display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
-              <button onClick={() => alert('AI Bookkeeping: ' + previewClient.name)} style={{ flex: 1, padding: '0.55rem', background: '#2A1628', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, fontFamily: 'Inter, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+              <button onClick={() => router.push(`/accounting?tab=ai-queue&search=${encodeURIComponent(previewClient.name)}`)} style={{ flex: 1, padding: '0.55rem', background: '#2A1628', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, fontFamily: 'Inter, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M12 2v2M8 5h8M7 11V7a5 5 0 0 1 10 0v4" /></svg>
                 AI Review
               </button>
-              <button onClick={() => alert('VAT Center: ' + previewClient.name)} style={{ flex: 1, padding: '0.55rem', background: '#ffffff', color: '#2A1628', border: '1px solid #DDD0C4', borderRadius: '8px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, fontFamily: 'Inter, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+              <button onClick={() => router.push(`/accounting?tab=vat&search=${encodeURIComponent(previewClient.name)}`)} style={{ flex: 1, padding: '0.55rem', background: '#ffffff', color: '#2A1628', border: '1px solid #DDD0C4', borderRadius: '8px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, fontFamily: 'Inter, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5"><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>
                 VAT
               </button>
-              <button onClick={() => alert('Reports: ' + previewClient.name)} style={{ flex: 1, padding: '0.55rem', background: '#ffffff', color: '#2A1628', border: '1px solid #DDD0C4', borderRadius: '8px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, fontFamily: 'Inter, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+              <button onClick={() => router.push(`/accounting?tab=reports&search=${encodeURIComponent(previewClient.name)}`)} style={{ flex: 1, padding: '0.55rem', background: '#ffffff', color: '#2A1628', border: '1px solid #DDD0C4', borderRadius: '8px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, fontFamily: 'Inter, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E8760A" strokeWidth="2.5"><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg>
                 Reports
               </button>

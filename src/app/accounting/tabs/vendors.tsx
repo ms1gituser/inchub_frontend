@@ -837,12 +837,13 @@ export default function VendorsTab() {
       return;
     }
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('crm_access_token') : null;
+      const token = typeof window !== 'undefined' ? localStorage.getItem('crm_access_token') || '' : '';
       const base = typeof window !== 'undefined'
         ? `${window.location.protocol}//${window.location.hostname}:5000/api/v1/vendors`
-        : '';
+        : 'http://127.0.0.1:5000/api/v1/vendors';
       const params = new URLSearchParams();
       params.append('format', format === 'excel' ? 'xlsx' : format);
+      if (token) params.append('token', token);
       if (scope === 'filtered') {
         if (filterCategory !== 'All') params.append('category', filterCategory);
         if (filterCountry !== 'All') params.append('country', filterCountry);
@@ -855,19 +856,14 @@ export default function VendorsTab() {
         }
         params.append('ids', selectedIds.join(','));
       }
-      const resp = await fetch(`${base}/export?${params.toString()}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (!resp.ok) throw new Error('Export request failed');
-      const blob = await resp.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `vendors_export.${format === 'excel' ? 'xlsx' : format}`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      const downloadUrl = `${base}/export?${params.toString()}`;
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = downloadUrl;
+      document.body.appendChild(iframe);
+      setTimeout(() => {
+        try { document.body.removeChild(iframe); } catch {}
+      }, 60000);
       setPopup({ type: null });
       pushToast(`Vendor registry exported as .${format === 'excel' ? 'XLSX' : format.toUpperCase()}.`, 'success');
     } catch {

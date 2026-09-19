@@ -328,6 +328,7 @@ export interface DrawerActionHandlers {
   acceptSuggestion: (tx: ReconciliationTransaction, matchId: string) => void;
   rejectSuggestion: (tx: ReconciliationTransaction, matchId: string) => void;
   autoCreateVendor: (tx: ReconciliationTransaction) => void;
+  submitManualAdjustment: (tx: ReconciliationTransaction, amount: number, reason: string) => void;
 }
 
 export interface DrawerTabProps {
@@ -806,7 +807,7 @@ function ModalShell({ onClose, eyebrow, titlePlain, titleAccent, maxWidth = '540
     <div
       role="presentation"
       onClick={onClose}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(42,22,40,0.45)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(42,22,40,0.45)', backdropFilter: 'blur(4px)', zIndex: 1300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
     >
       <FocusTrap onEscape={onClose}>
         <div
@@ -1227,17 +1228,21 @@ function ConfirmationModal({ config, onClose }: ConfirmationModalProps) {
 
   const handleConfirm = async () => {
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 550));
-    config.onConfirm();
-    setSubmitting(false);
-    onClose();
+    try {
+      await config.onConfirm();
+    } catch (e) {
+      // ignore
+    } finally {
+      setSubmitting(false);
+      onClose();
+    }
   };
 
   return (
     <div
       role="presentation"
       onClick={onClose}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(42,22,40,0.45)', backdropFilter: 'blur(4px)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(42,22,40,0.45)', backdropFilter: 'blur(4px)', zIndex: 1400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
     >
       <FocusTrap onEscape={onClose}>
         <div
@@ -1267,7 +1272,7 @@ function ConfirmationModal({ config, onClose }: ConfirmationModalProps) {
             <button
               onClick={handleConfirm}
               disabled={submitting}
-              style={{ background: tone, color: '#fff', border: 'none', borderRadius: '8px', padding: '0.6rem 1.5rem', fontSize: '0.8125rem', fontWeight: 600, cursor: submitting ? 'default' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: submitting ? 0.85 : 1 }}
+              style={{ flex: 1, padding: '0.85rem', background: tone, color: '#fff', border: 'none', borderRadius: '12px', fontSize: '0.9rem', fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1, fontFamily: 'inherit', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
             >
               {submitting && <ButtonSpinner />}
               {config.confirmLabel}
@@ -1518,27 +1523,40 @@ function AiMatchingTab({ tx, actions, drawerData }: DrawerTabProps & { drawerDat
            <GhostButton label="Auto-Create Vendor" tone="#137333" onClick={() => actions.autoCreateVendor(tx)} />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {suggestions.map((s) => (
-            <div key={s.id} style={{ border: `1.5px solid ${s.confidence >= 70 ? '#137333' : '#DDD0C4'}`, borderRadius: '10px', padding: '0.85rem', background: '#fff' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.6rem' }}>
+          <style>{`
+            @keyframes slideInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+            @keyframes fillBar { from { width: 0%; } }
+          `}</style>
+          {suggestions.map((s, idx) => (
+            <div key={s.id} style={{ border: `1.5px solid ${s.confidence >= 70 ? 'rgba(19, 115, 51, 0.3)' : 'rgba(221, 208, 196, 0.5)'}`, borderRadius: '16px', padding: '1rem', background: 'linear-gradient(145deg, #ffffff, #fdfbf9)', boxShadow: '0 8px 24px rgba(42,22,40,0.04)', animation: `slideInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) ${idx * 0.1}s both` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: '0.8rem', color: '#2A1628' }}>{s.ledgerEntry}</div>
-                  <div style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.5)' }}>{tx.currency} {s.amount.toLocaleString()} &middot; {s.date}</div>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#2A1628', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {s.ledgerEntry}
+                    {s.confidence >= 80 && <svg width="14" height="14" viewBox="0 0 24 24" fill="#137333"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.5)', marginTop: '2px' }}>{tx.currency} {s.amount.toLocaleString()} &middot; {s.date}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 700, color: s.confidence >= 70 ? '#137333' : s.confidence >= 40 ? '#E65100' : '#D32F2F' }}>{s.confidence}%</div>
-                  {s.isDuplicateRisk && <RiskPill risk="High" size="sm" />}
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: s.confidence >= 70 ? '#137333' : s.confidence >= 40 ? '#E8760A' : '#D32F2F', letterSpacing: '-0.5px' }}>{s.confidence}%</div>
+                  {s.isDuplicateRisk && <div style={{ marginTop: '4px' }}><RiskPill risk="High" size="sm" /></div>}
                 </div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '0.75rem' }}>
-                {s.reasonBreakdown.map((r) => (
-                  <div key={r.label} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '0.65rem', color: 'rgba(42,22,40,0.55)', width: '130px', flexShrink: 0 }}>{r.label}</span>
-                    <div style={{ flex: 1, height: '5px', borderRadius: '3px', background: '#F0E8DF', overflow: 'hidden' }}>
-                      <div style={{ width: `${r.score}%`, height: '100%', background: '#E8760A' }} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', marginBottom: '1rem', background: 'rgba(42,22,40,0.02)', padding: '0.75rem', borderRadius: '12px', border: '1px solid rgba(42,22,40,0.03)' }}>
+                {s.reasonBreakdown.map((r, rIdx) => (
+                  <div key={r.label} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.2rem 0' }}>
+                    <span style={{ fontSize: '0.68rem', color: '#554B54', width: '135px', flexShrink: 0, fontWeight: 500 }}>{r.label}</span>
+                    <div style={{ flex: 1, height: '6px', borderRadius: '3px', background: 'rgba(42,22,40,0.06)', overflow: 'hidden' }}>
+                      <div style={{ 
+                        width: `${r.score}%`, 
+                        height: '100%', 
+                        background: r.score >= 80 ? 'linear-gradient(90deg, #10B981, #059669)' : r.score >= 50 ? 'linear-gradient(90deg, #FBBF24, #D97706)' : 'linear-gradient(90deg, #F87171, #DC2626)',
+                        borderRadius: '3px',
+                        animation: `fillBar 1s cubic-bezier(0.16, 1, 0.3, 1) ${idx * 0.1 + rIdx * 0.05}s both`
+                      }} />
                     </div>
-                    <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#2A1628', width: '30px', textAlign: 'right' }}>{r.score}%</span>
+                    <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#2A1628', width: '32px', textAlign: 'right' }}>{r.score}%</span>
                   </div>
                 ))}
               </div>
@@ -1655,7 +1673,7 @@ function ManualMatchTab({ tx, actions }: DrawerTabProps) {
             style={{ border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.5rem 0.65rem', fontSize: '0.78rem', outline: 'none', fontFamily: 'inherit', resize: 'vertical' }}
           />
           <button
-            onClick={() => { pushToast({ message: 'Manual adjustment saved.', tone: 'success' }); setAdjustmentAmount(''); setAdjustmentReason(''); }}
+            onClick={() => { actions.submitManualAdjustment(tx, Number(adjustmentAmount), adjustmentReason); setAdjustmentAmount(''); setAdjustmentReason(''); }}
             disabled={!adjustmentAmount || !adjustmentReason}
             style={{ alignSelf: 'flex-start', background: '#2A1628', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.5rem 1rem', fontSize: '0.75rem', fontWeight: 700, cursor: adjustmentAmount && adjustmentReason ? 'pointer' : 'not-allowed', opacity: adjustmentAmount && adjustmentReason ? 1 : 0.5, fontFamily: 'inherit' }}
           >
@@ -7483,6 +7501,7 @@ interface FilterBarProps {
   savedViews: SavedView[];
   onApplyView: (view: SavedView) => void;
   onManageColumns: () => void;
+  clientOptions?: string[];
 }
 
 function DropdownFilter({
@@ -7561,12 +7580,14 @@ function TagsFilter({ value, onChange }: { value: string[]; onChange: (v: string
   );
 }
 
-function FilterBar({ filters, onChange, onReset, onOpenSaveView, savedViews, onApplyView, onManageColumns }: FilterBarProps) {
+function FilterBar({ filters, onChange, onReset, onOpenSaveView, savedViews, onApplyView, onManageColumns, clientOptions }: FilterBarProps) {
   const [viewsOpen, setViewsOpen] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   const isDateFiltered = filters.dateStart !== '' || filters.dateEnd !== '';
   const isAmountFiltered = filters.amountMin !== '' || filters.amountMax !== '';
+
+  const clientList = clientOptions && clientOptions.length > 0 ? clientOptions : CLIENTS.map((c) => c.name);
 
   return (
     <div
@@ -7650,7 +7671,7 @@ function FilterBar({ filters, onChange, onReset, onOpenSaveView, savedViews, onA
 
       {/* Main filters row */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <DropdownFilter label="Client" value={filters.client} options={['All', ...CLIENTS.map((c) => c.name)]} onSelect={(v) => onChange({ client: v })} width="170px" />
+        <DropdownFilter label="Client" value={filters.client} options={['All', ...clientList]} onSelect={(v) => onChange({ client: v })} width="170px" />
         <DropdownFilter label="Manager" value={filters.manager} options={['All', ...MANAGERS]} onSelect={(v) => onChange({ manager: v })} />
         <DropdownFilter label="Bookkeeper" value={filters.bookkeeper} options={['All', ...BOOKKEEPERS]} onSelect={(v) => onChange({ bookkeeper: v })} />
         <DropdownFilter label="Status" value={filters.status} options={['All', ...STATUSES]} onSelect={(v) => onChange({ status: v })} />
@@ -8899,6 +8920,14 @@ function ReconciliationCenterInner() {
   const [persisted] = useState(loadPersistedState);
   const [mainTab, setMainTab] = useState<'queue' | 'suspense'>('queue');
 
+  const { data: clientsData } = useGetClientsQuery({ limit: 100 });
+  const dynamicClientNames = useMemo(() => {
+    const profiles = clientsData?.data?.profiles || clientsData?.data || clientsData?.profiles || [];
+    const liveNames = Array.isArray(profiles) ? profiles.map((p: any) => p.company_name || p.name || p.companyName).filter(Boolean) : [];
+    const set = new Set([...liveNames, ...CLIENTS.map((c) => c.name)]);
+    return Array.from(set);
+  }, [clientsData]);
+
   const { data: queueRes, isLoading: queueLoading, refetch: refetchQueue } = useGetQueueQuery({ limit: 1000 });
   const { data: statsRes } = useGetStatsQuery();
   const { data: analyticsRes } = useGetAnalyticsQuery();
@@ -8919,7 +8948,7 @@ function ReconciliationCenterInner() {
   const [savePreferences] = usePutPreferencesMutation();
 
   const runBulk = (action: string, ids: string[], value?: any) => {
-    postBulk({ ids, action, value })
+    return postBulk({ ids, action, value })
       .unwrap()
       .then((res: any) => {
         pushToast({ message: res?.message || `Bulk action '${action}' applied.`, tone: 'success' });
@@ -9309,6 +9338,20 @@ function ReconciliationCenterInner() {
     openAuditExport: (tx) => setPopup({ type: 'auditExport', tx }),
     openRetryFailedJobs: () => setPopup({ type: 'retryFailedJobs' }),
     autoCreateVendor: (tx) => setPopup({ type: 'autoCreateVendor', tx }),
+    submitManualAdjustment: (tx, amount, reason) => {
+      manualMatch({
+        transaction_id: tx.id,
+        receipt_id: 'e65e4e7e-3ffb-449e-8c31-f19b88220002', // Mock receipt ID for manual adj
+        allocated_amount: amount,
+        override_reason: reason
+      }).then((res: any) => {
+        if (res.error) {
+          pushToast({ message: res.error.data?.message || 'Failed to save adjustment', tone: 'error' });
+        } else {
+          pushToast({ message: 'Manual adjustment saved successfully.', tone: 'success' });
+        }
+      });
+    },
     acceptSuggestion: (tx, matchId) => {
       if (matchId.includes('-sm-')) {
         pushToast({ message: 'This is a mock AI suggestion for testing the UI. Real matches will be saved to the database.', tone: 'info' });
@@ -9470,6 +9513,7 @@ function ReconciliationCenterInner() {
         savedViews={savedViews}
         onApplyView={handleApplyView}
         onManageColumns={() => setPopup({ type: 'manageColumns' })}
+        clientOptions={dynamicClientNames}
       />
 
       <BulkActionBar selectedCount={selectedIds.length} onAction={handleBulkAction} />

@@ -21,6 +21,7 @@ import CorporateTaxTab from './tabs/corporate-tax';
 import ReportsTab from './tabs/reports';
 import QuickBooksTab from './tabs/quickbooks';
 import VendorsTab from './tabs/vendors';
+import ChartOfAccountsTab from './tabs/chart-of-accounts';
 import PeriodLocksTab from './tabs/period-locks';
 
 // Types
@@ -152,7 +153,7 @@ export default function AccountingPage() {
   const [lockedMonths, setLockedMonths] = useState<string[]>([]);
   const [ctFilings, setCtFilings] = useState<CtFiling[]>([]);
   const [lockError, setLockError] = useState<string | null>(null);
-  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<'ocr' | 'reconciliation' | 'suspense' | 'quickbooks' | 'kyc' | 'period-locks' | 'corporate-tax'>('ocr');
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<'ocr' | 'reconciliation' | 'suspense' | 'quickbooks' | 'kyc' | 'period-locks' | 'corporate-tax' | 'chart-of-accounts'>('ocr');
   const [reportsSubTab, setReportsSubTab] = useState<'reports' | 'period-locks'>('reports');
 
   // Sync tab selection with query parameter
@@ -172,6 +173,8 @@ export default function AccountingPage() {
         setActiveWorkspaceTab('period-locks');
       } else if (tabParam === 'corporate-tax') {
         setActiveWorkspaceTab('corporate-tax');
+      } else if (tabParam === 'chart-of-accounts') {
+        setActiveWorkspaceTab('chart-of-accounts');
       }
     }
   }, [tabParam]);
@@ -1114,6 +1117,24 @@ export default function AccountingPage() {
             >
               Corporate Tax
             </button>
+            <button
+              onClick={() => setActiveWorkspaceTab('chart-of-accounts')}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                borderBottom: activeWorkspaceTab === 'chart-of-accounts' ? '3px solid #2A1628' : 'none',
+                color: activeWorkspaceTab === 'chart-of-accounts' ? '#2A1628' : 'rgba(42,22,40,0.5)',
+                fontSize: '0.85rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                padding: '0.5rem 1rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                flexShrink: 0
+              }}
+            >
+              Chart of Accounts
+            </button>
           </div>
         )}
 
@@ -1123,6 +1144,7 @@ export default function AccountingPage() {
       {tabParam === 'reconciliation' && <ReconciliationTab />}
       {tabParam === 'vat' && <VatTab />}
       {tabParam === 'corporate-tax' && <CorporateTaxTab />}
+      {tabParam === 'chart-of-accounts' && <ChartOfAccountsTab />}
       {tabParam === 'reports' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {/* Sub-tab Switcher Header */}
@@ -1511,6 +1533,14 @@ export default function AccountingPage() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {!tabParam && activeWorkspaceTab === 'chart-of-accounts' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginTop: '1.5rem' }}>
+          <div style={{ background: '#ffffff', border: '1px solid rgba(42,22,40,0.08)', borderRadius: '16px', padding: '1.75rem', boxShadow: '0 10px 30px -10px rgba(42,22,40,0.06), 0 1px 3px rgba(42,22,40,0.02)', display: 'flex', flexDirection: 'column', transition: 'all 0.3s ease' }}>
+            <ChartOfAccountsTab />
           </div>
         </div>
       )}

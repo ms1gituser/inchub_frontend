@@ -114,7 +114,9 @@ if (typeof window !== 'undefined') {
     if (
       r instanceof ApiError ||
       r?.name === 'ApiError' ||
-      (typeof r === 'object' && r?.code === 'NETWORK_ERROR')
+      (typeof r === 'object' && r?.code === 'NETWORK_ERROR') ||
+      (typeof r === 'object' && r?.code === 'REQUEST_TIMEOUT') ||
+      (typeof r === 'object' && String(r?.message || '').toLowerCase().includes('timeout'))
     ) {
       event.preventDefault();
       console.warn('[ApiClient] Handled rejection (dev-overlay suppressed):', r?.message ?? r);

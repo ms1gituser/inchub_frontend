@@ -125,3 +125,23 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #B8892A;
 }
+
+/* ─── Scrollbar Hiding & Focus Resets ───────────────────────────────────────── */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+button:focus,
+button:focus-visible,
+[role="button"]:focus,
+[role="button"]:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+

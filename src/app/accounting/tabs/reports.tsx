@@ -5,6 +5,7 @@ import {
   useGetQueueQuery, useGetStatsQuery, useGetAnalyticsQuery, useGetDrawerDetailsQuery, useGetMetadataQuery,
   usePostGenerateMutation, usePostBulkMutation, usePostNoteMutation, usePostDocumentMutation,
 } from '@/lib/reportsApi';
+import { resolveToken } from '@/lib/apiClient';
 
 // ============================================================================
 // TYPES & MOCKS
@@ -676,6 +677,7 @@ export default function ReportsTab() {
   const [shareEmail, setShareEmail] = useState('');
 
   const activeTx = useMemo(() => {
+    if (!drawerTxId) return null;
     return drawerDetailsRes?.data?.report || data.find((x) => x.id === drawerTxId) || null;
   }, [data, drawerTxId, drawerDetailsRes]);
 
@@ -1399,41 +1401,45 @@ export default function ReportsTab() {
             </div>
 
             {/* Drawer Segment tabs */}
-            <div style={{ display: 'flex', gap: '1.25rem', borderBottom: '1px solid rgba(42,22,40,0.06)', padding: '0 2rem', overflowX: 'auto' }} className="hide-scrollbar">
-              {[
-                { key: 'overview' as const, label: 'overview' },
-                { key: 'charts' as const, label: 'charts' },
-                { key: 'transactions' as const, label: 'transactions' },
-                { key: 'attachments' as const, label: 'attachments' },
-                { key: 'history' as const, label: 'history' },
-                { key: 'sharing' as const, label: 'sharing' },
-                { key: 'export' as const, label: 'export' },
-                { key: 'notes' as const, label: 'notes' }
-              ].map((tab) => {
-                const isActive = drawerTab === tab.key;
-                return (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    onClick={() => setDrawerTab(tab.key)}
-                    style={{
-                      padding: '0.6rem 0',
-                      border: 'none',
-                      background: 'transparent',
-                      color: isActive ? '#E8760A' : 'rgba(42,22,40,0.5)',
-                      fontSize: '0.8125rem',
-                      fontWeight: isActive ? 700 : 600,
-                      cursor: 'pointer',
-                      borderBottom: isActive ? '2px solid #E8760A' : 'none',
-                      whiteSpace: 'nowrap',
-                      fontFamily: 'inherit',
-                      textTransform: 'capitalize'
-                    }}
-                  >
-                    {tab.label}
-                  </button>
-                );
-              })}
+            <div className="hide-scrollbar" style={{ width: '100%', overflowX: 'auto', borderBottom: '1px solid rgba(42,22,40,0.06)', flexShrink: 0, scrollBehavior: 'smooth' }}>
+              <div style={{ display: 'flex', gap: '1.25rem', padding: '0.5rem 2rem', minWidth: 'max-content' }}>
+                {[
+                  { key: 'overview' as const, label: 'Overview' },
+                  { key: 'charts' as const, label: 'Charts' },
+                  { key: 'transactions' as const, label: 'Transactions' },
+                  { key: 'attachments' as const, label: 'Attachments' },
+                  { key: 'history' as const, label: 'History' },
+                  { key: 'sharing' as const, label: 'Sharing' },
+                  { key: 'export' as const, label: 'Export' },
+                  { key: 'notes' as const, label: 'Notes' }
+                ].map((tab) => {
+                  const isActive = drawerTab === tab.key;
+                  return (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setDrawerTab(tab.key)}
+                      style={{
+                        padding: '0.6rem 0',
+                        border: 'none',
+                        outline: 'none',
+                        boxShadow: 'none',
+                        background: 'transparent',
+                        color: isActive ? '#E8760A' : 'rgba(42,22,40,0.5)',
+                        fontSize: '0.8125rem',
+                        fontWeight: isActive ? 700 : 600,
+                        cursor: 'pointer',
+                        borderBottom: isActive ? '2px solid #E8760A' : '2px solid transparent',
+                        whiteSpace: 'nowrap',
+                        fontFamily: 'inherit',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Drawer Content */}
@@ -1811,12 +1817,24 @@ export default function ReportsTab() {
                         </div>
                         <button
                           type="button"
-                          onClick={async () => {
+                          onClick={() => {
                             if (!activeTx) return;
                             try {
-                              await postBulk({ ids: [activeTx.id], action: 'export' }).unwrap();
+                              const formatStr = e.type.toLowerCase();
+                              const token = resolveToken() || (typeof window !== 'undefined' ? (localStorage.getItem('crm_access_token') || localStorage.getItem('token') || '') : '');
+                              const downloadUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/reports/export?ids=${activeTx.id}&format=${formatStr}&token=${encodeURIComponent(token)}`;
+                              
+                              const iframe = document.createElement('iframe');
+                              iframe.style.display = 'none';
+                              iframe.src = downloadUrl;
+                              document.body.appendChild(iframe);
+                              setTimeout(() => {
+                                try { document.body.removeChild(iframe); } catch {}
+                              }, 60000);
+
+                              postBulk({ ids: [activeTx.id], action: 'export' }).catch(() => {});
                               pushToast(`${e.type} export package download started.`, 'success');
-                            } catch { pushToast('Export failed.', 'danger'); }
+                            } catch { pushToast('Export download failed.', 'danger'); }
                           }}
                           style={{ background: '#2A1628', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.4rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
                         >

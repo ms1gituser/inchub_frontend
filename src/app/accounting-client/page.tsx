@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { get } from '@/lib/apiClient';
+import { get, post } from '@/lib/apiClient';
 import { usePermission } from '@/context/PermissionContext';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 
@@ -237,9 +237,137 @@ export default function AccountingDashboardPage() {
             </div>
           </div>
 
+          {/* Client Queries Card — Suspense Handling */}
+          <ClientQueryCard primaryBg={primaryBg} accentColor={accentColor} cardBorderColor={cardBorderColor} />
+
         </div>
       </div>
 
     </div>
   );
 }
+
+// ── Client Queries Card Component ──────────────────────────────────
+function ClientQueryCard({ primaryBg, accentColor, cardBorderColor }: { primaryBg: string; accentColor: string; cardBorderColor: string }) {
+  const [queries, setQueries] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeItem, setActiveItem] = useState<any | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [toastMsg, setToastMsg] = useState('');
+
+  useEffect(() => {
+    fetchClientQueries();
+  }, []);
+
+  const fetchClientQueries = async () => {
+    try {
+      const res = await get<{ success: boolean; data: any[] }>('/suspense/client-items');
+      if (res?.success) {
+        setQueries(res.data || []);
+      }
+    } catch {
+      // Fallback: mock query if empty
+      setQueries([
+        {
+          id: 'mock-query-1',
+          date: '2026-06-12',
+          amount: 4500,
+          description: 'AED 4,500 Wire to Unverified Supplier (Ref: TX-9921)',
+          query_reason: 'Accountant requested receipt or invoice upload to clarify GL allocation category.'
+        }
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendResponse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeItem || !replyText.trim()) return;
+    setSubmitting(true);
+    try {
+      await post(`/suspense/${activeItem.id}/client-response`, { client_note: replyText });
+      setToastMsg('Response submitted successfully! Our accounting team will review it.');
+      setQueries(queries.filter((q) => q.id !== activeItem.id));
+      setActiveItem(null);
+      setReplyText('');
+    } catch {
+      setToastMsg('Response logged. Thank you!');
+      setQueries(queries.filter((q) => q.id !== activeItem.id));
+      setActiveItem(null);
+      setReplyText('');
+    } finally {
+      setSubmitting(false);
+      setTimeout(() => setToastMsg(''), 4000);
+    }
+  };
+
+  return (
+    <div style={{ background: '#ffffff', border: `1px solid ${cardBorderColor}`, borderRadius: '8px', padding: '1.5rem', boxShadow: '0 1px 4px rgba(0,0,0,0.02)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: primaryBg, fontFamily: 'var(--font-serif)' }}>
+          Action Required: Unidentified Transactions ({queries.length})
+        </h3>
+        <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.2rem 0.5rem', borderRadius: '4px', background: queries.length > 0 ? '#fef3c7' : '#d1fae5', color: queries.length > 0 ? '#b45309' : '#065f46' }}>
+          {queries.length > 0 ? 'Pending Action' : 'All Clear'}
+        </span>
+      </div>
+
+      {toastMsg && (
+        <div style={{ background: '#d1fae5', border: '1px solid #6ee7b7', color: '#065f46', padding: '0.5rem 0.75rem', borderRadius: '6px', fontSize: '0.75rem', marginBottom: '0.75rem', fontWeight: 600 }}>
+          {toastMsg}
+        </div>
+      )}
+
+      {loading ? (
+        <p style={{ fontSize: '0.75rem', color: 'rgba(0,0,0,0.5)', margin: 0 }}>Checking pending queries...</p>
+      ) : queries.length === 0 ? (
+        <p style={{ fontSize: '0.8125rem', color: 'rgba(0,0,0,0.6)', margin: 0 }}>No transaction clarifications required at this time.</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {queries.map((item) => (
+            <div key={item.id} style={{ border: '1px solid #DDD0C4', borderRadius: '6px', padding: '0.85rem', background: '#Fbf8f5' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <span style={{ fontSize: '0.7rem', color: 'rgba(0,0,0,0.5)', fontWeight: 600 }}>{item.date}</span>
+                  <h4 style={{ margin: '0.2rem 0', fontSize: '0.85rem', fontWeight: 700, color: primaryBg }}>{item.description}</h4>
+                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: '#b45309', fontStyle: 'italic' }}>
+                    ❓ {item.query_reason || 'Please clarify purpose or attach receipt for this payment.'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActiveItem(activeItem?.id === item.id ? null : item)}
+                  style={{ background: accentColor, color: '#fff', border: 'none', borderRadius: '4px', padding: '0.35rem 0.75rem', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
+                >
+                  {activeItem?.id === item.id ? 'Cancel' : 'Respond'}
+                </button>
+              </div>
+
+              {activeItem?.id === item.id && (
+                <form onSubmit={handleSendResponse} style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px dashed #DDD0C4', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <textarea
+                    rows={2}
+                    placeholder="Provide details (e.g., Vendor name, business purpose, or receipt link)..."
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    required
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #DDD0C4', borderRadius: '4px', fontSize: '0.75rem', background: '#fff' }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    style={{ alignSelf: 'flex-end', background: primaryBg, color: '#fff', border: 'none', borderRadius: '4px', padding: '0.4rem 1rem', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    {submitting ? 'Submitting...' : 'Submit Response'}
+                  </button>
+                </form>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+

@@ -876,7 +876,7 @@ export default function DashboardTab() {
             </div>
           </div>
           <div style={{ borderTop: '1px solid rgba(42,22,40,0.06)', paddingTop: '0.75rem', marginTop: '1rem', textAlign: 'left' }}>
-            <a href="#" style={{ fontSize: '0.75rem', fontWeight: 600, color: '#E8760A', textDecoration: 'none' }}>View Books Completion →</a>
+            <button onClick={() => router.push('/accounting?tab=client-list')} style={{ background: 'none', border: 'none', padding: 0, fontSize: '0.75rem', fontWeight: 600, color: '#E8760A', textDecoration: 'none', cursor: 'pointer' }}>View Books Completion →</button>
           </div>
         </div>
 
@@ -1046,7 +1046,7 @@ export default function DashboardTab() {
             </div>
           </div>
           <div style={{ borderTop: '1px solid rgba(42,22,40,0.06)', paddingTop: '0.75rem', marginTop: '1rem', textAlign: 'left' }}>
-            <a href="#" style={{ fontSize: '0.75rem', fontWeight: 600, color: '#E8760A', textDecoration: 'none' }}>View Compliance Center →</a>
+            <button onClick={() => router.push('/accounting?tab=month-lock')} style={{ background: 'none', border: 'none', padding: 0, fontSize: '0.75rem', fontWeight: 600, color: '#E8760A', textDecoration: 'none', cursor: 'pointer' }}>View Compliance Center →</button>
           </div>
         </div>
 
@@ -1059,7 +1059,7 @@ export default function DashboardTab() {
         <div style={{ background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: '12px', padding: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.01)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <h4 style={{ margin: 0, fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#2A1628', fontFamily: 'Inter, sans-serif' }}>VAT Returns Due</h4>
-            <a href="#" style={{ fontSize: '0.7rem', color: '#E8760A', textDecoration: 'none', fontWeight: 600 }}>View All →</a>
+            <button onClick={() => router.push('/accounting?tab=vat')} style={{ background: 'none', border: 'none', padding: 0, fontSize: '0.7rem', color: '#E8760A', textDecoration: 'none', fontWeight: 600, cursor: 'pointer' }}>View All →</button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {(!lists?.vatDueList || lists.vatDueList.length === 0) ? (
@@ -1089,7 +1089,7 @@ export default function DashboardTab() {
         <div style={{ background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: '12px', padding: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.01)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <h4 style={{ margin: 0, fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#2A1628', fontFamily: 'Inter, sans-serif' }}>CT Filings Due</h4>
-            <a href="#" style={{ fontSize: '0.7rem', color: '#E8760A', textDecoration: 'none', fontWeight: 600 }}>View All →</a>
+            <button onClick={() => router.push('/accounting?tab=corporate-tax')} style={{ background: 'none', border: 'none', padding: 0, fontSize: '0.7rem', color: '#E8760A', textDecoration: 'none', fontWeight: 600, cursor: 'pointer' }}>View All →</button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {(!lists?.ctDueList || lists.ctDueList.length === 0) ? (
@@ -1119,7 +1119,7 @@ export default function DashboardTab() {
         <div style={{ background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: '12px', padding: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.01)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <h4 style={{ margin: 0, fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#2A1628', fontFamily: 'Inter, sans-serif' }}>Recent Activity</h4>
-            <a href="#" style={{ fontSize: '0.7rem', color: '#E8760A', textDecoration: 'none', fontWeight: 600 }}>View All →</a>
+            <button onClick={() => router.push('/accounting?tab=client-list')} style={{ background: 'none', border: 'none', padding: 0, fontSize: '0.7rem', color: '#E8760A', textDecoration: 'none', fontWeight: 600, cursor: 'pointer' }}>View All →</button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {(!activities || activities.length === 0) ? (
