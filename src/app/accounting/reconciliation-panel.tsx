@@ -195,7 +195,8 @@ export default function ReconciliationPanel({ onReconciled }: ReconciliationPane
     try {
       const res = await get<{ success: boolean; data: Receipt[] }>('/bookkeeping/matching/receipts');
       if (res?.success) {
-        setReceipts(res.data || []);
+        const receiptData = Array.isArray(res.data) ? res.data : Array.isArray((res as any)?.data?.data) ? (res as any).data.data : [];
+        setReceipts(receiptData);
       }
     } catch (err) {
       console.error('[Fetch Receipts Err]', err);
@@ -212,7 +213,8 @@ export default function ReconciliationPanel({ onReconciled }: ReconciliationPane
         `/reconciliation/history?page=${historyPage}&limit=10`
       );
       if (res?.success) {
-        setHistoryItems(res.data || []);
+        const historyData = Array.isArray(res.data) ? res.data : Array.isArray((res as any)?.data?.data) ? (res as any).data.data : [];
+        setHistoryItems(historyData);
         setHistoryTotalPages(res.pagination?.totalPages || 1);
       }
     } catch (err) {
@@ -792,7 +794,7 @@ export default function ReconciliationPanel({ onReconciled }: ReconciliationPane
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.50rem', maxHeight: '550px', overflowY: 'auto' }}>
             {loading ? (
               <p style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.5)', textAlign: 'center', padding: '2rem' }}>Loading queue items...</p>
-            ) : queue.length === 0 ? (
+            ) : !Array.isArray(queue) || queue.length === 0 ? (
               <div style={{ border: '1px dashed #DDD0C4', borderRadius: '8px', padding: '2rem', textAlign: 'center', color: 'rgba(42,22,40,0.5)' }}>
                 All transaction matching complete! No items in queue.
               </div>
@@ -1097,7 +1099,7 @@ export default function ReconciliationPanel({ onReconciled }: ReconciliationPane
                   style={{ width: '100%', padding: '0.45rem', border: '1px solid #DDD0C4', borderRadius: '6px', fontSize: '0.75rem', background: '#fff' }}
                 >
                   <option value="">-- Choose matchable invoice --</option>
-                  {receipts.map((r) => (
+                  {Array.isArray(receipts) && receipts.map((r) => (
                     <option key={r.id} value={r.id}>
                       {r.vendor_name} ({new Date(r.date).toLocaleDateString()}) — AED {parseFloat(r.amount).toFixed(2)}
                     </option>
@@ -1501,7 +1503,7 @@ export default function ReconciliationPanel({ onReconciled }: ReconciliationPane
             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {loadingHistory ? (
                 <p style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.5)', textAlign: 'center', padding: '2rem' }}>Loading history logs...</p>
-              ) : historyItems.length === 0 ? (
+              ) : !Array.isArray(historyItems) || historyItems.length === 0 ? (
                 <p style={{ fontSize: '0.75rem', color: 'rgba(42,22,40,0.5)', textAlign: 'center', fontStyle: 'italic' }}>No history matching log found.</p>
               ) : (
                 historyItems.map((item) => (
