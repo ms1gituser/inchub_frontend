@@ -292,10 +292,11 @@ export default function AccountingPage() {
   const fetchCtArchive = async () => {
     try {
       const res = await get<CtArchiveResponse>('/bookkeeping/ct/archive');
-      if (res?.success) {
-        setLockedMonths(res.data.monthly_archives?.map((a: { period: string }) => a.period) || []);
-        setCtFilings(res.data.corporate_tax_filings || []);
+      if (res?.success && res.data) {
+        setLockedMonths(Array.isArray(res.data.monthly_archives) ? res.data.monthly_archives.map((a: { period: string }) => a.period) : []);
+        setCtFilings(Array.isArray(res.data.corporate_tax_filings) ? res.data.corporate_tax_filings : []);
       }
+
     } catch (e: unknown) {
       console.error('[Archive Fetch Error]', e);
     }

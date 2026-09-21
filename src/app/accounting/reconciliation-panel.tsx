@@ -176,9 +176,11 @@ export default function ReconciliationPanel({ onReconciled }: ReconciliationPane
         `/reconciliation/queue?${params.toString()}`
       );
       if (res?.success) {
-        setQueue(res.data || []);
-        setTotalItems(res.pagination?.total || 0);
+        const queueData = Array.isArray(res.data) ? res.data : Array.isArray((res as any)?.data?.data) ? (res as any).data.data : [];
+        setQueue(queueData);
+        setTotalItems(res.pagination?.total || queueData.length || 0);
       }
+
     } catch (err) {
       console.error('[Fetch Queue Err]', err);
       showToast('Failed to load pending reconciliations queue.', 'error');
