@@ -1819,7 +1819,7 @@ function describeAuditEntry(log: any): string {
 }
 
 function ActivityTab({ tx, actions, drawerData }: DrawerTabProps & { drawerData?: any }) {
-  const logs: ActivityLogEntry[] = drawerData?.activityLog
+  const logs: ActivityLogEntry[] = Array.isArray(drawerData?.activityLog)
     ? drawerData.activityLog.map((log: any) => ({
         id: log.id,
         transactionId: tx.id,
@@ -1903,7 +1903,7 @@ const TYPE_ICON: Record<string, React.ReactNode> = {
 function DocumentsTab({ tx, drawerData }: DrawerTabProps & { drawerData?: any }) {
   const { pushToast } = useReconciliation();
   const [addDocument] = usePostDocumentMutation();
-  const docs: (ReconciliationDocument & { fileKey?: string })[] = drawerData?.documents
+  const docs: (ReconciliationDocument & { fileKey?: string })[] = Array.isArray(drawerData?.documents)
     ? drawerData.documents.map((d: any) => ({ ...d, uploadedAt: d.createdAt }))
     : getDocumentsForTransaction(tx);
 
@@ -2008,7 +2008,7 @@ function renderBody(body: string) {
 function NotesTab({ tx, actions, drawerData }: DrawerTabProps & { drawerData?: any }) {
   const { pushToast } = useReconciliation();
   const [addNote] = usePostNoteMutation();
-  const notes: ReconciliationNote[] = drawerData?.notes
+  const notes: ReconciliationNote[] = Array.isArray(drawerData?.notes)
     ? drawerData.notes.map((n: any) => ({ ...n, timestamp: n.createdAt, attachments: n.attachments || [] }))
     : getNotesForTransaction(tx);
   const [quickNote, setQuickNote] = useState('');
@@ -2881,7 +2881,8 @@ function ImportBankStatementModal({ onClose, onImported }: ImportBankStatementMo
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const { data: clientsData } = useGetClientsQuery({ limit: 1000 });
-  const clients = clientsData?.data || [];
+  const rawClients = clientsData?.data?.profiles || clientsData?.data || clientsData?.profiles || clientsData || [];
+  const clients = Array.isArray(rawClients) ? rawClients : [];
   const [selectedClientId, setSelectedClientId] = useState<string>('');
 
   const acceptForTab = activeTab === 'CSV' ? '.csv' : activeTab === 'Excel' ? '.xlsx,.xls' : '.csv,.xlsx,.ofx,.qif';
@@ -8922,8 +8923,9 @@ function ReconciliationCenterInner() {
 
   const { data: clientsData } = useGetClientsQuery({ limit: 100 });
   const dynamicClientNames = useMemo(() => {
-    const profiles = clientsData?.data?.profiles || clientsData?.data || clientsData?.profiles || [];
-    const liveNames = Array.isArray(profiles) ? profiles.map((p: any) => p.company_name || p.name || p.companyName).filter(Boolean) : [];
+    const raw = clientsData?.data?.profiles || clientsData?.data || clientsData?.profiles || clientsData || [];
+    const profiles = Array.isArray(raw) ? raw : [];
+    const liveNames = profiles.map((p: any) => p.company_name || p.name || p.companyName).filter(Boolean);
     const set = new Set([...liveNames, ...CLIENTS.map((c) => c.name)]);
     return Array.from(set);
   }, [clientsData]);
@@ -8962,14 +8964,23 @@ function ReconciliationCenterInner() {
 
 
   useEffect(() => {
-    if (queueRes?.data) {
-      setTransactions(queueRes.data);
+    if (queueRes) {
+      const rawQueue = Array.isArray(queueRes.data)
+        ? queueRes.data
+        : Array.isArray(queueRes.data?.data)
+        ? queueRes.data.data
+        : Array.isArray(queueRes.queue)
+        ? queueRes.queue
+        : Array.isArray(queueRes)
+        ? queueRes
+        : [];
+      setTransactions(rawQueue);
     }
   }, [queueRes]);
 
   const [filters, setFiltersState] = useState<FilterState>(persisted.filters ?? DEFAULT_FILTERS);
   const [statusChip, setStatusChip] = useState<string>(persisted.statusChip ?? 'All');
-  const savedViews: SavedView[] = savedViewsRes?.data || [];
+  const savedViews: SavedView[] = Array.isArray(savedViewsRes?.data) ? savedViewsRes.data : Array.isArray(savedViewsRes?.data?.data) ? savedViewsRes.data.data : [];
 
   const [sortKey, setSortKey] = useState<string>(persisted.sortKey ?? 'transactionDate');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>(persisted.sortDir ?? 'desc');
@@ -9038,6 +9049,7 @@ function ReconciliationCenterInner() {
 
   // ---------- Derived data ----------
   const filteredTransactions = useMemo(() => {
+    if (!Array.isArray(transactions)) return [];
     return transactions.filter((t) => {
       if (mainTab === 'suspense' && t.status !== 'Exception') {
         return false;
