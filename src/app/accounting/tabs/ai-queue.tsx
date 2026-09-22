@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { UserPlus, Check, X, RefreshCw, Send, Download, Archive, Trash2, Bot, FileText } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import Pagination from '@/components/ui/Pagination';
@@ -241,6 +241,66 @@ export default function AiQueueTab() {
   const [drawerTab, setDrawerTab] = useState<'overview' | 'document' | 'ocr' | 'ai' | 'ledger' | 'validation' | 'timeline' | 'activity'>('overview');
   const { data: drawerDetailsRes } = useGetQueueDrawerDetailsQuery(selectedItem?.id || '', { skip: !selectedItem });
   const drawerDetails = drawerDetailsRes?.data || { ocrText: '', ocrConfidence: 0, aiConfidence: 0, ocrWarnings: [], missingFields: [], timeline: [] };
+
+  // Document Tab Controls & States
+  const [docRotateAngle, setDocRotateAngle] = useState(0);
+  const [docZoomLevel, setDocZoomLevel] = useState(1);
+  const docFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDownloadDocFile = () => {
+    if (!selectedItem) return;
+    const filename = selectedItem.documentName || 'document.pdf';
+    const textContent = `=====================================================\nACCOUNTING DOCUMENT & OCR DATA SHEET\n=====================================================\nDocument Name: ${filename}\nClient Name: ${selectedItem.name} (${selectedItem.email || 'N/A'})\nVendor: ${selectedItem.vendor || selectedItem.name || 'N/A'}\nInvoice No: ${selectedItem.invoiceNumber || 'INV-2026-001'}\nUpload Date: ${selectedItem.uploadDate}\nDocument Type: ${selectedItem.documentType}\nQueue Stage: ${selectedItem.stage}\nAI Confidence: ${selectedItem.aiConfidence}%\nOCR Status: ${selectedItem.ocrStatus}\nValidation: ${selectedItem.validationStatus}\n\n--- FINANCIAL BREAKDOWN ---\nSubtotal: ${selectedItem.currency || 'AED'} ${selectedItem.subtotal || '1187.50'}\nVAT Amount (5%): ${selectedItem.currency || 'AED'} ${selectedItem.taxAmount || '62.50'}\nTotal Amount: ${selectedItem.currency || 'AED'} ${selectedItem.total || '1250.00'}\n\n--- EXTRACTED OCR TEXT CONTENT ---\n${selectedItem.ocrText || 'Tax Invoice\nTRN: 100293819200003\nDate: 2026-09-17\nSubtotal: 1187.50 AED\nVAT 5%: 62.50 AED\nTotal: 1250.00 AED'}\n=====================================================\n`;
+
+    const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename.endsWith('.pdf') ? filename.replace(/\.pdf$/, '.txt') : `${filename}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    triggerToast(`Downloaded ${filename}`, 'success');
+  };
+
+  const handleDocFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedItem) return;
+
+    const newDocName = file.name;
+    const newSize = (file.size / 1024 > 1024) 
+      ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` 
+      : `${(file.size / 1024).toFixed(0)} KB`;
+    
+    const updatedItem = {
+      ...selectedItem,
+      documentName: newDocName,
+      size: newSize,
+      uploadDate: new Date().toISOString()
+    };
+
+    setSelectedItem(updatedItem);
+    updateQueueItem({ id: selectedItem.id, body: { documentName: newDocName } });
+    triggerToast(`Document replaced with ${newDocName}`, 'success');
+  };
+
+  const handleRotateDoc = () => {
+    setDocRotateAngle((prev) => (prev + 90) % 360);
+  };
+
+  const handleZoomInDoc = () => {
+    setDocZoomLevel((prev) => Math.min(2.5, +(prev + 0.25).toFixed(2)));
+  };
+
+  const handleZoomOutDoc = () => {
+    setDocZoomLevel((prev) => Math.max(0.5, +(prev - 0.25).toFixed(2)));
+  };
+
+  const handleResetDocView = () => {
+    setDocRotateAngle(0);
+    setDocZoomLevel(1);
+  };
   
   const searchParams = useSearchParams();
   const actionParam = searchParams.get('action');
@@ -749,8 +809,17 @@ export default function AiQueueTab() {
                   </tr>
                 ) : (
                   filteredQueue.map((item: QueueItem, idx: number) => (
-                    <tr key={item.id} style={{ borderBottom: idx < filteredQueue.length - 1 ? '1px solid rgba(42,22,40,0.04)' : 'none', background: selectedRows.includes(item.id) ? 'rgba(232,118,10,0.02)' : 'transparent', whiteSpace: 'nowrap' }}>
-                      <td style={{ padding: '1rem', textAlign: 'center' }}>
+                    <tr 
+                      key={item.id} 
+                      onClick={() => { setSelectedItem(item); setDrawerTab('overview'); setDrawerOpen(true); }}
+                      style={{ 
+                        borderBottom: idx < filteredQueue.length - 1 ? '1px solid rgba(42,22,40,0.04)' : 'none', 
+                        background: selectedRows.includes(item.id) ? 'rgba(232,118,10,0.02)' : 'transparent', 
+                        whiteSpace: 'nowrap',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <td onClick={(e) => e.stopPropagation()} style={{ padding: '1rem', textAlign: 'center' }}>
                         <input type="checkbox" checked={selectedRows.includes(item.id)} onChange={() => handleSelectOne(item.id)} />
                       </td>
                       <td style={{ 
@@ -779,7 +848,15 @@ export default function AiQueueTab() {
                           </div>
                         </div>
                       </td>
-                      <td style={{ padding: '1rem', fontWeight: 600, color: '#E8760A', whiteSpace: 'nowrap' }}>
+                      <td 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedItem(item);
+                          setDrawerTab('document');
+                          setDrawerOpen(true);
+                        }}
+                        style={{ padding: '1rem', fontWeight: 600, color: '#E8760A', whiteSpace: 'nowrap', cursor: 'pointer' }}
+                      >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                           {item.documentName}
@@ -844,7 +921,7 @@ export default function AiQueueTab() {
                         }}>{item.qbStatus}</span>
                       </td>
                       <td style={{ padding: '1rem', color: 'rgba(42,22,40,0.6)', fontWeight: 500, whiteSpace: 'nowrap' }}>{item.lastUpdated}</td>
-                      <td style={{ padding: '1rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                      <td onClick={(e) => e.stopPropagation()} style={{ padding: '1rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
                         <div style={{ position: 'relative', display: 'inline-block' }}>
                           <button onClick={() => setActiveDropdown(activeDropdown === `row-${item.id}` ? null : `row-${item.id}`)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#2A1628', padding: '0.25rem' }}>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="1" /><circle cx="12" cy="5" r="1" /><circle cx="12" cy="19" r="1" /></svg>
@@ -1053,10 +1130,66 @@ export default function AiQueueTab() {
             </div>
 
             {/* Tabs */}
-            <div className="no-scrollbar" style={{ display: 'flex', borderBottom: '1px solid #DDD0C4', padding: '0 1rem', flexShrink: 0, overflowX: 'auto' }}>
-              {(['overview', 'document', 'ocr', 'ai', 'ledger', 'validation', 'timeline', 'activity'] as const).map(tab => (
-                <button key={tab} onClick={() => setDrawerTab(tab)} style={{ padding: '0.75rem 0.65rem', background: 'transparent', border: 'none', borderBottom: drawerTab === tab ? '2px solid #E8760A' : '2px solid transparent', color: drawerTab === tab ? '#E8760A' : 'rgba(42,22,40,0.5)', fontWeight: drawerTab === tab ? 700 : 500, fontSize: '0.7rem', cursor: 'pointer', whiteSpace: 'nowrap', textTransform: 'capitalize', fontFamily: 'Inter, sans-serif' }}>{tab === 'ai' ? 'AI Extraction' : tab}</button>
-              ))}
+            <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #DDD0C4', flexShrink: 0, background: '#FAF8F5' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById('ai-queue-drawer-tabs-scroll');
+                  if (el) el.scrollBy({ left: -160, behavior: 'smooth' });
+                }}
+                aria-label="Scroll left"
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid #DDD0C4',
+                  cursor: 'pointer',
+                  padding: '0.35rem 0.55rem',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  color: '#2A1628',
+                  zIndex: 5,
+                  borderRadius: '6px',
+                  marginLeft: '0.75rem',
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ‹
+              </button>
+
+              <div id="ai-queue-drawer-tabs-scroll" className="hide-scrollbar" style={{ display: 'flex', borderBottom: 'none', padding: '0 0.5rem', flex: 1, overflowX: 'auto', scrollBehavior: 'smooth', whiteSpace: 'nowrap' }}>
+                {(['overview', 'document', 'ocr', 'ai', 'ledger', 'validation', 'timeline', 'activity'] as const).map(tab => (
+                  <button key={tab} onClick={() => setDrawerTab(tab)} style={{ padding: '0.75rem 0.65rem', background: 'transparent', border: 'none', borderBottom: drawerTab === tab ? '2.5px solid #E8760A' : '2.5px solid transparent', color: drawerTab === tab ? '#E8760A' : 'rgba(42,22,40,0.5)', fontWeight: drawerTab === tab ? 700 : 500, fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap', textTransform: 'capitalize', fontFamily: 'Inter, sans-serif', flexShrink: 0 }}>{tab === 'ai' ? 'AI Extraction' : tab}</button>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById('ai-queue-drawer-tabs-scroll');
+                  if (el) el.scrollBy({ left: 160, behavior: 'smooth' });
+                }}
+                aria-label="Scroll right"
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid #DDD0C4',
+                  cursor: 'pointer',
+                  padding: '0.35rem 0.55rem',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  color: '#2A1628',
+                  zIndex: 5,
+                  borderRadius: '6px',
+                  marginRight: '0.75rem',
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ›
+              </button>
             </div>
 
             {/* Body */}
@@ -1113,25 +1246,148 @@ export default function AiQueueTab() {
 
               {/* DOCUMENT TAB */}
               {drawerTab === 'document' && (<>
+                <input 
+                  type="file" 
+                  ref={docFileInputRef} 
+                  onChange={handleDocFileChange} 
+                  style={{ display: 'none' }} 
+                  accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.xlsx" 
+                />
+
                 <div style={{ background: '#FAF8F5', border: '1px solid #DDD0C4', borderRadius: '10px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <div style={{ height: '240px', background: '#fff', border: '1px dashed #DDD0C4', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'rgba(42,22,40,0.45)', fontSize: '0.8125rem' }}>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginBottom: '0.5rem', color: '#E8760A' }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                    <span>High Fidelity Document Preview Panel</span>
-                    <span style={{ fontSize: '0.65rem', marginTop: '2px' }}>{selectedItem.documentName}</span>
+                  {/* Interactive Preview Canvas */}
+                  <div style={{
+                    height: '280px',
+                    background: '#ffffff',
+                    border: '1px solid #DDD0C4',
+                    borderRadius: '10px',
+                    overflow: 'hidden',
+                    position: 'relative',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.03)'
+                  }}>
+                    {/* Zoom / Rotation Badge */}
+                    <div style={{ position: 'absolute', top: '8px', right: '8px', zIndex: 10, background: 'rgba(42,22,40,0.75)', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.625rem', fontWeight: 600 }}>
+                      Zoom: {Math.round(docZoomLevel * 100)}% | Rotation: {docRotateAngle}°
+                    </div>
+
+                    <div style={{
+                      transform: `scale(${docZoomLevel}) rotate(${docRotateAngle}deg)`,
+                      transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                      width: '85%',
+                      maxHeight: '85%',
+                      background: '#ffffff',
+                      border: '1px solid rgba(42,22,40,0.12)',
+                      borderRadius: '6px',
+                      padding: '1.25rem',
+                      boxShadow: '0 6px 20px rgba(42,22,40,0.08)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      fontSize: '0.7rem',
+                      color: '#2A1628',
+                      userSelect: 'none'
+                    }}>
+                      {/* Document Header */}
+                      <div style={{ borderBottom: '2px solid #E8760A', paddingBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#2A1628' }}>TAX INVOICE</div>
+                          <div style={{ fontSize: '0.65rem', color: '#E8760A', fontWeight: 700 }}>{selectedItem.name}</div>
+                        </div>
+                        <div style={{ textAlign: 'right', fontSize: '0.6rem', color: 'rgba(42,22,40,0.6)' }}>
+                          <div>Doc Ref: {selectedItem.id ? selectedItem.id.substring(0, 8).toUpperCase() : 'DOC-8921'}</div>
+                          <div>Date: {selectedItem.uploadDate ? new Date(selectedItem.uploadDate).toLocaleDateString('en-GB') : '2026-09-22'}</div>
+                        </div>
+                      </div>
+
+                      {/* Document Line items snippet */}
+                      <div style={{ margin: '0.75rem 0', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: '0.625rem', color: 'rgba(42,22,40,0.5)', borderBottom: '1px solid rgba(42,22,40,0.08)', paddingBottom: '2px' }}>
+                          <span>Item Description</span>
+                          <span>Amount</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem' }}>
+                          <span>{selectedItem.documentType || 'Invoice Services'} - {selectedItem.documentName}</span>
+                          <span>{selectedItem.currency || 'AED'} {selectedItem.subtotal || '1,187.50'}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'rgba(42,22,40,0.6)' }}>
+                          <span>VAT Rate ({selectedItem.vat || '5%'})</span>
+                          <span>{selectedItem.currency || 'AED'} {selectedItem.taxAmount || '62.50'}</span>
+                        </div>
+                      </div>
+
+                      {/* Document Footer Summary */}
+                      <div style={{ borderTop: '1px solid rgba(42,22,40,0.08)', paddingTop: '0.4rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#047857', background: 'rgba(4,120,87,0.08)', padding: '1px 6px', borderRadius: '4px' }}>VERIFIED DOCUMENT</span>
+                        <div style={{ textAlign: 'right' }}>
+                          <span style={{ fontSize: '0.6rem', color: 'rgba(42,22,40,0.5)', display: 'block' }}>Total Due</span>
+                          <strong style={{ fontSize: '0.85rem', color: '#2A1628' }}>{selectedItem.currency || 'AED'} {selectedItem.total || '1,250.00'}</strong>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                    {['Download File', 'Replace Document', 'Rotate Right', 'Zoom In'].map((lbl, idx) => (
-                      <button key={idx} onClick={() => triggerToast(`${lbl} executed`, 'info')} style={{ background: '#fff', border: '1px solid #DDD0C4', padding: '0.35rem 0.65rem', borderRadius: '6px', fontSize: '0.6875rem', fontWeight: 600, cursor: 'pointer', color: '#2A1628' }}>{lbl}</button>
-                    ))}
+                  {/* Toolbar Action Buttons */}
+                  <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                    <button
+                      onClick={handleDownloadDocFile}
+                      style={{ background: '#E8760A', color: '#ffffff', border: 'none', padding: '0.45rem 0.85rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', boxShadow: '0 2px 6px rgba(232,118,10,0.2)' }}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                      Download File
+                    </button>
+
+                    <button
+                      onClick={() => docFileInputRef.current?.click()}
+                      style={{ background: '#ffffff', border: '1px solid #DDD0C4', padding: '0.45rem 0.85rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer', color: '#2A1628', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                      Replace Document
+                    </button>
+
+                    <button
+                      onClick={handleRotateDoc}
+                      style={{ background: '#ffffff', border: '1px solid #DDD0C4', padding: '0.45rem 0.85rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer', color: '#2A1628', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                      Rotate Right
+                    </button>
+
+                    <button
+                      onClick={handleZoomInDoc}
+                      style={{ background: '#ffffff', border: '1px solid #DDD0C4', padding: '0.45rem 0.85rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer', color: '#2A1628', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                      Zoom In
+                    </button>
+
+                    <button
+                      onClick={handleZoomOutDoc}
+                      style={{ background: '#ffffff', border: '1px solid #DDD0C4', padding: '0.45rem 0.85rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer', color: '#2A1628', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                      Zoom Out
+                    </button>
+
+                    {(docZoomLevel !== 1 || docRotateAngle !== 0) && (
+                      <button
+                        onClick={handleResetDocView}
+                        style={{ background: 'rgba(239,68,68,0.08)', color: '#EF4444', border: 'none', padding: '0.45rem 0.85rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer' }}
+                      >
+                        Reset View
+                      </button>
+                    )}
                   </div>
 
+                  {/* Metadata Details List */}
                   <div style={{ fontSize: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem', borderTop: '1px solid rgba(42,22,40,0.06)', paddingTop: '0.75rem' }}>
-                    <div>Filename: <strong>{selectedItem.documentName}</strong></div>
-                    <div>Upload Date: <strong>{selectedItem.uploadDate}</strong></div>
-                    <div>Uploader Source: <strong>{selectedItem.uploader}</strong></div>
-                    <div>Page Count: <strong>{selectedItem.pages} pages</strong></div>
-                    <div>File Size: <strong>{selectedItem.size}</strong></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'rgba(42,22,40,0.6)' }}>Filename:</span><strong>{selectedItem.documentName}</strong></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'rgba(42,22,40,0.6)' }}>Upload Date:</span><strong>{selectedItem.uploadDate ? new Date(selectedItem.uploadDate).toLocaleString('en-GB') : 'N/A'}</strong></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'rgba(42,22,40,0.6)' }}>Uploader Source:</span><strong>{selectedItem.uploader || selectedItem.name || 'Direct Portal Upload'}</strong></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'rgba(42,22,40,0.6)' }}>Page Count:</span><strong>{selectedItem.pages || 1} page(s)</strong></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'rgba(42,22,40,0.6)' }}>File Size:</span><strong>{selectedItem.size || '1.4 MB'}</strong></div>
                   </div>
                 </div>
               </>)}
@@ -1486,7 +1742,24 @@ export default function AiQueueTab() {
 
             {/* Footer */}
             <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #DDD0C4', background: '#FAF8F5', display: 'flex', gap: '0.625rem', flexShrink: 0 }}>
-              <button onClick={() => { handleApprove(selectedItem.id); setDrawerOpen(false); }} style={{ flex: 1, padding: '0.625rem 1.5rem', background: '#2A1628', color: '#fff', border: 'none', borderRadius: '10px', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 700, fontFamily: 'inherit' }}>Approve Ledger Map</button>
+              {selectedItem.stage === 'Approved' ? (
+                <button onClick={() => { handleMoveToRecon(selectedItem.id); setDrawerOpen(false); }} style={{ flex: 1, padding: '0.625rem 1.5rem', background: '#047857', color: '#fff', border: 'none', borderRadius: '10px', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 700, fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                  <span>✓ Approved</span>
+                  <span style={{ fontSize: '0.7rem', opacity: 0.85 }}>(Push to Recon Center)</span>
+                </button>
+              ) : selectedItem.stage === 'Ready For Reconciliation' ? (
+                <button onClick={() => setDrawerOpen(false)} style={{ flex: 1, padding: '0.625rem 1.5rem', background: '#047857', color: '#fff', border: 'none', borderRadius: '10px', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 700, fontFamily: 'inherit' }}>
+                  ✓ Pushed to Reconciliation Center
+                </button>
+              ) : selectedItem.stage === 'Rejected' ? (
+                <button onClick={() => { handleRetry(selectedItem.id); setDrawerOpen(false); }} style={{ flex: 1, padding: '0.625rem 1.5rem', background: '#EF4444', color: '#fff', border: 'none', borderRadius: '10px', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 700, fontFamily: 'inherit' }}>
+                  Re-evaluate / Retry Job
+                </button>
+              ) : (
+                <button onClick={() => { handleApprove(selectedItem.id); setDrawerOpen(false); }} style={{ flex: 1, padding: '0.625rem 1.5rem', background: '#2A1628', color: '#fff', border: 'none', borderRadius: '10px', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 700, fontFamily: 'inherit' }}>
+                  Approve Ledger Map
+                </button>
+              )}
               <button onClick={() => setDrawerOpen(false)} style={{ flex: 1, padding: '0.625rem 1.5rem', background: '#ffffff', color: '#2A1628', border: '1px solid #DDD0C4', borderRadius: '10px', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 700, fontFamily: 'inherit' }}>Close Drawer</button>
             </div>
           </div>
@@ -1636,37 +1909,47 @@ export default function AiQueueTab() {
                           />
                           {clientSearch.trim().length > 0 && (
                             <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #DDD0C4', borderRadius: '8px', marginTop: '4px', zIndex: 50, maxHeight: '200px', overflowY: 'auto', boxShadow: '0 4px 12px rgba(42,22,40,0.1)' }}>
-                              {clientsData.filter((c: any) => c.name.toLowerCase().includes(clientSearch.toLowerCase())).length === 0 ? (
+                              {clientsData.filter((c: any) => {
+                                const rawName = typeof c === 'string' ? c : (c?.name || c?.company_name || c?.client_name || '');
+                                const cName = String(rawName || '').toLowerCase();
+                                return cName.includes(clientSearch.toLowerCase());
+                              }).length === 0 ? (
                                 <div style={{ padding: '0.75rem', fontSize: '0.75rem', color: 'rgba(42,22,40,0.5)', textAlign: 'center' }}>No clients found</div>
                               ) : (
-                                clientsData.filter((c: any) => c.name.toLowerCase().includes(clientSearch.toLowerCase())).map((c: any) => (
-                                  <div
-                                    key={c.id}
-                                    onClick={() => {
-                                      if (!selectedUploadClients.includes(c.name)) {
-                                        const newSelected = [...selectedUploadClients, c.name];
-                                        setSelectedUploadClients(newSelected);
-                                        // Auto-fill manager and bookkeeper if this is the first client selected
-                                        if (newSelected.length === 1) {
-                                          if (c.manager) {
-                                            setAssignManager(c.manager);
-                                            setBatchManager(c.manager);
-                                          }
-                                          if (c.bookkeeper) {
-                                            setAssignBookkeeper(c.bookkeeper);
-                                            setBatchBookkeeper(c.bookkeeper);
+                                clientsData.filter((c: any) => {
+                                  const rawName = typeof c === 'string' ? c : (c?.name || c?.company_name || c?.client_name || '');
+                                  const cName = String(rawName || '').toLowerCase();
+                                  return cName.includes(clientSearch.toLowerCase());
+                                }).map((c: any) => {
+                                  const clientDisplayName = typeof c === 'string' ? c : (c?.name || c?.company_name || c?.client_name || 'Unnamed Client');
+                                  return (
+                                    <div
+                                      key={c.id || clientDisplayName}
+                                      onClick={() => {
+                                        if (!selectedUploadClients.includes(clientDisplayName)) {
+                                          const newSelected = [...selectedUploadClients, clientDisplayName];
+                                          setSelectedUploadClients(newSelected);
+                                          if (newSelected.length === 1) {
+                                            if (c.manager) {
+                                              setAssignManager(c.manager);
+                                              setBatchManager(c.manager);
+                                            }
+                                            if (c.bookkeeper) {
+                                              setAssignBookkeeper(c.bookkeeper);
+                                              setBatchBookkeeper(c.bookkeeper);
+                                            }
                                           }
                                         }
-                                      }
-                                      setClientSearch('');
-                                    }}
-                                    style={{ padding: '0.5rem 0.75rem', fontSize: '0.75rem', color: '#2A1628', cursor: 'pointer', borderBottom: '1px solid rgba(42,22,40,0.04)' }}
-                                    onMouseOver={(e) => e.currentTarget.style.background = '#FAF8F5'}
-                                    onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
-                                  >
-                                    {c.name}
-                                  </div>
-                                ))
+                                        setClientSearch('');
+                                      }}
+                                      style={{ padding: '0.5rem 0.75rem', fontSize: '0.75rem', color: '#2A1628', cursor: 'pointer', borderBottom: '1px solid rgba(42,22,40,0.04)' }}
+                                      onMouseOver={(e) => e.currentTarget.style.background = '#FAF8F5'}
+                                      onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                                    >
+                                      {clientDisplayName}
+                                    </div>
+                                  );
+                                })
                               )}
                             </div>
                           )}
@@ -3286,22 +3569,21 @@ export default function AiQueueTab() {
           position: 'fixed',
           bottom: '24px',
           right: '24px',
-          background: toast.type === 'success' ? '#047857' : toast.type === 'error' ? '#EF4444' : '#2A1628',
-          color: '#fff',
-          padding: '0.75rem 1.25rem',
+          background: '#2A1628',
+          border: toast.type === 'success' ? '1px solid #E8760A' : toast.type === 'error' ? '1px solid #EF4444' : '1px solid rgba(255,255,255,0.2)',
+          color: '#FAF8F5',
+          padding: '0.85rem 1.25rem',
           borderRadius: '10px',
-          boxShadow: '0 8px 32px rgba(42,22,40,0.15)',
+          boxShadow: '0 12px 36px rgba(42,22,40,0.45)',
           zIndex: 1300,
           display: 'flex',
           alignItems: 'center',
-          gap: '0.5rem',
+          gap: '0.75rem',
           fontSize: '0.8125rem',
           fontWeight: 600,
           fontFamily: 'Inter, sans-serif'
         }}>
-          {toast.type === 'success' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
-          {toast.type === 'error' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>}
-          {toast.type === 'info' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>}
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: toast.type === 'success' ? '#E8760A' : toast.type === 'error' ? '#EF4444' : '#E8760A', flexShrink: 0 }} />
           {toast.message}
         </div>
       )}

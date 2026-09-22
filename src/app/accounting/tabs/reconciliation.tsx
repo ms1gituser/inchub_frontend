@@ -402,18 +402,20 @@ export function restrictionReason(role: Role, action: PermissionAction): string 
 export const TODAY_ISO = '2026-07-08';
 
 export const CLIENTS: { id: string; name: string }[] = [
-  { id: 'c1', name: 'ABC Trading LLC' },
-  { id: 'c2', name: 'XYZ Holdings Limited' },
-  { id: 'c3', name: 'Delta Properties FZCO' },
-  { id: 'c4', name: 'Alpha Tech FZCO' },
-  { id: 'c5', name: 'Beta Industries LLC' },
-  { id: 'c6', name: 'Gamma Solutions FZCO' },
-  { id: 'c7', name: 'Nova Hospitality LLC' },
-  { id: 'c8', name: 'Prime Consultants FZCO' },
-  { id: 'c9', name: 'Sigma Services LLC' },
-  { id: 'c10', name: 'Vertex Enterprises LLC' },
-  { id: 'c11', name: 'Orion Retail Group LLC' },
-  { id: 'c12', name: 'Falcon Logistics FZCO' },
+  { id: 'c0', name: 'Mascot software' },
+  { id: 'c1', name: 'Hitman' },
+  { id: 'c2', name: 'ABC Trading LLC' },
+  { id: 'c3', name: 'XYZ Holdings Limited' },
+  { id: 'c4', name: 'Delta Properties FZCO' },
+  { id: 'c5', name: 'Alpha Tech FZCO' },
+  { id: 'c6', name: 'Beta Industries LLC' },
+  { id: 'c7', name: 'Gamma Solutions FZCO' },
+  { id: 'c8', name: 'Nova Hospitality LLC' },
+  { id: 'c9', name: 'Prime Consultants FZCO' },
+  { id: 'c10', name: 'Sigma Services LLC' },
+  { id: 'c11', name: 'Vertex Enterprises LLC' },
+  { id: 'c12', name: 'Orion Retail Group LLC' },
+  { id: 'c13', name: 'Falcon Logistics FZCO' },
 ];
 
 export const MANAGERS = ['Sara Al Marri', 'James Whitfield', 'Fatima Noor', 'David Chen'];
@@ -1290,33 +1292,57 @@ function ConfirmationModal({ config, onClose }: ConfirmationModalProps) {
 // ============================================================================
 
 
-const TONE_COLORS_ToastStack: Record<string, string> = { success: '#047857', error: '#EF4444', warning: '#D97706', info: '#2A1628' };
+const TONE_STYLES_ToastStack: Record<string, { bg: string; border: string; accent: string }> = {
+  success: { bg: '#2A1628', border: '1px solid #E8760A', accent: '#E8760A' },
+  error: { bg: '#2A1628', border: '1px solid #EF4444', accent: '#EF4444' },
+  warning: { bg: '#2A1628', border: '1px solid #F59E0B', accent: '#F59E0B' },
+  info: { bg: '#2A1628', border: '1px solid rgba(255,255,255,0.2)', accent: '#E8760A' },
+};
 
 function ToastStack() {
   const { toasts, dismissToast } = useReconciliation();
   if (toasts.length === 0) return null;
   return (
-    <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 1300, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-      {toasts.map((t) => (
-        <div
-          key={t.id}
-          role="status"
-          style={{ background: TONE_COLORS_ToastStack[t.tone], color: '#fff', borderRadius: '10px', padding: '0.75rem 1.25rem', boxShadow: '0 8px 32px rgba(42,22,40,0.15)', fontSize: '0.8125rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: '260px', maxWidth: '360px' }}
-        >
-          <span style={{ flex: 1 }}>{t.message}</span>
-          {t.actionLabel && t.onAction && (
-            <button
-              onClick={() => { t.onAction?.(); dismissToast(t.id); }}
-              style={{ background: 'rgba(255,255,255,0.18)', border: 'none', borderRadius: '6px', padding: '0.3rem 0.65rem', color: '#fff', fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer', flexShrink: 0 }}
-            >
-              {t.actionLabel}
+    <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 1300, display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+      {toasts.map((t) => {
+        const styleConfig = TONE_STYLES_ToastStack[t.tone] || TONE_STYLES_ToastStack.info;
+        return (
+          <div
+            key={t.id}
+            role="status"
+            style={{
+              background: styleConfig.bg,
+              border: styleConfig.border,
+              color: '#FAF8F5',
+              borderRadius: '10px',
+              padding: '0.85rem 1.25rem',
+              boxShadow: '0 12px 36px rgba(42, 22, 40, 0.45)',
+              fontSize: '0.8125rem',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              minWidth: '280px',
+              maxWidth: '380px',
+              backdropFilter: 'blur(8px)'
+            }}
+          >
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: styleConfig.accent, flexShrink: 0 }} />
+            <span style={{ flex: 1, lineHeight: 1.4 }}>{t.message}</span>
+            {t.actionLabel && t.onAction && (
+              <button
+                onClick={() => { t.onAction?.(); dismissToast(t.id); }}
+                style={{ background: 'rgba(232, 118, 10, 0.25)', border: '1px solid #E8760A', borderRadius: '6px', padding: '0.35rem 0.65rem', color: '#E8760A', fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer', flexShrink: 0 }}
+              >
+                {t.actionLabel}
+              </button>
+            )}
+            <button onClick={() => dismissToast(t.id)} aria-label="Dismiss notification" style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', display: 'flex', flexShrink: 0 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
             </button>
-          )}
-          <button onClick={() => dismissToast(t.id)} aria-label="Dismiss notification" style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', display: 'flex', flexShrink: 0 }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-          </button>
-        </div>
-      ))}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -1611,9 +1637,10 @@ function ManualMatchTab({ tx, actions }: DrawerTabProps) {
     if (found) setStaged(found);
   };
 
-  const liveDifference = staged ? tx.amount - staged.amount : tx.amount;
+  const isReconciled = tx.status === 'Posted' || tx.status === 'Auto Matched' || tx.difference === 0;
+  const liveDifference = isReconciled ? 0 : (staged ? tx.amount - staged.amount : tx.amount);
   const adjustedAmount = adjustmentAmount ? parseFloat(adjustmentAmount) || 0 : 0;
-  const resultingBalance = liveDifference - adjustedAmount;
+  const resultingBalance = isReconciled ? 0 : liveDifference - adjustedAmount;
 
   return (
     <>
@@ -2259,36 +2286,49 @@ function ReconciliationDrawerContent({ transaction, activeTab, onTabChange, onCl
 
           {/* Bottom action bar */}
           <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #DDD0C4', background: '#FAF8F5', display: 'flex', gap: '0.6rem', flexWrap: 'wrap', flexShrink: 0 }}>
-            <button
-              onClick={() => actions.requestApprove(tx)}
-              disabled={!can(role, 'approve')}
-              title={restrictionReason(role, 'approve') || undefined}
-              style={{ flex: 1, minWidth: '110px', background: '#137333', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.65rem', fontSize: '0.78rem', fontWeight: 700, cursor: can(role, 'approve') ? 'pointer' : 'not-allowed', opacity: can(role, 'approve') ? 1 : 0.5, fontFamily: 'inherit' }}
-            >
-              Approve
-            </button>
-            <button
-              onClick={() => actions.requestReject(tx)}
-              disabled={!can(role, 'reject')}
-              title={restrictionReason(role, 'reject') || undefined}
-              style={{ flex: 1, minWidth: '100px', background: '#fff', color: '#D32F2F', border: '1px solid #D32F2F55', borderRadius: '8px', padding: '0.65rem', fontSize: '0.78rem', fontWeight: 700, cursor: can(role, 'reject') ? 'pointer' : 'not-allowed', opacity: can(role, 'reject') ? 1 : 0.5, fontFamily: 'inherit' }}
-            >
-              Reject
-            </button>
-            <button
-              onClick={() => actions.requestChanges(tx)}
-              style={{ flex: 1, minWidth: '130px', background: '#fff', color: '#2A1628', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.65rem', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
-            >
-              Request Changes
-            </button>
+            {tx.status === 'Posted' || tx.status === 'Auto Matched' ? (
+              <button
+                disabled
+                style={{ flex: 1, minWidth: '160px', background: '#137333', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.65rem', fontSize: '0.78rem', fontWeight: 700, cursor: 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem', fontFamily: 'inherit' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                Reconciled &amp; Approved
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => actions.requestApprove(tx)}
+                  disabled={!can(role, 'approve')}
+                  title={restrictionReason(role, 'approve') || undefined}
+                  style={{ flex: 1, minWidth: '110px', background: '#137333', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.65rem', fontSize: '0.78rem', fontWeight: 700, cursor: can(role, 'approve') ? 'pointer' : 'not-allowed', opacity: can(role, 'approve') ? 1 : 0.5, fontFamily: 'inherit' }}
+                >
+                  Approve
+                </button>
+                <button
+                  onClick={() => actions.requestReject(tx)}
+                  disabled={!can(role, 'reject')}
+                  title={restrictionReason(role, 'reject') || undefined}
+                  style={{ flex: 1, minWidth: '100px', background: '#fff', color: '#D32F2F', border: '1px solid #D32F2F55', borderRadius: '8px', padding: '0.65rem', fontSize: '0.78rem', fontWeight: 700, cursor: can(role, 'reject') ? 'pointer' : 'not-allowed', opacity: can(role, 'reject') ? 1 : 0.5, fontFamily: 'inherit' }}
+                >
+                  Reject
+                </button>
+                <button
+                  onClick={() => actions.requestChanges(tx)}
+                  style={{ flex: 1, minWidth: '130px', background: '#fff', color: '#2A1628', border: '1px solid #DDD0C4', borderRadius: '8px', padding: '0.65rem', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  Request Changes
+                </button>
+              </>
+            )}
+
             <button
               onClick={handlePost}
-              disabled={!can(role, 'postToQuickBooks') || postSubmitting}
+              disabled={!can(role, 'postToQuickBooks') || postSubmitting || tx.quickBooksStatus === 'Synced'}
               title={restrictionReason(role, 'postToQuickBooks') || undefined}
-              style={{ flex: 1, minWidth: '150px', background: '#2A1628', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.65rem', fontSize: '0.78rem', fontWeight: 700, cursor: can(role, 'postToQuickBooks') ? 'pointer' : 'not-allowed', opacity: can(role, 'postToQuickBooks') ? 1 : 0.5, fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
+              style={{ flex: 1, minWidth: '150px', background: tx.quickBooksStatus === 'Synced' ? '#047857' : '#2A1628', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.65rem', fontSize: '0.78rem', fontWeight: 700, cursor: can(role, 'postToQuickBooks') ? 'pointer' : 'not-allowed', opacity: can(role, 'postToQuickBooks') ? 1 : 0.5, fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
             >
               {postSubmitting && <ButtonSpinner />}
-              Post To QuickBooks
+              {tx.quickBooksStatus === 'Synced' ? '✓ Synced to QuickBooks' : 'Post To QuickBooks'}
             </button>
             <button
               onClick={onClose}
@@ -2873,6 +2913,18 @@ function ImportBankStatementModal({ onClose, onImported }: ImportBankStatementMo
   const [fileName, setFileName] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [bank, setBank] = useState('');
+  const [bankOptions, setBankOptions] = useState<string[]>([
+    'Emirates NBD',
+    'ADCB',
+    'Mashreq Bank',
+    'FAB',
+    'RAKBank',
+    'Dubai Islamic Bank',
+    'HSBC UAE',
+    'Commercial Bank of Dubai'
+  ]);
+  const [isAddingBank, setIsAddingBank] = useState(false);
+  const [newBankInput, setNewBankInput] = useState('');
   const [periodStart, setPeriodStart] = useState('');
   const [periodEnd, setPeriodEnd] = useState('');
   const [connected, setConnected] = useState<Record<string, boolean>>({});
@@ -2881,8 +2933,22 @@ function ImportBankStatementModal({ onClose, onImported }: ImportBankStatementMo
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const { data: clientsData } = useGetClientsQuery({ limit: 1000 });
-  const rawClients = clientsData?.data?.profiles || clientsData?.data || clientsData?.profiles || clientsData || [];
-  const clients = Array.isArray(rawClients) ? rawClients : [];
+  const rawClients =
+    clientsData?.data?.clients ||
+    clientsData?.data?.profiles ||
+    (Array.isArray(clientsData?.data) ? clientsData?.data : []) ||
+    clientsData?.profiles ||
+    (Array.isArray(clientsData) ? clientsData : []) ||
+    [];
+  const apiClients = Array.isArray(rawClients) ? rawClients : [];
+  const defaultClients = [
+    { tenant_id: 'tenant-acme', company_name: 'Acme Corp' },
+    { tenant_id: 'tenant-globex', company_name: 'Globex UAE' },
+    { tenant_id: 'tenant-stark', company_name: 'Stark Industries' },
+    { tenant_id: 'tenant-mascot', company_name: 'Mascot software' },
+    { tenant_id: 'tenant-hitman', company_name: 'Hitman' }
+  ];
+  const clients = apiClients.length > 0 ? apiClients : defaultClients;
   const [selectedClientId, setSelectedClientId] = useState<string>('');
 
   const acceptForTab = activeTab === 'CSV' ? '.csv' : activeTab === 'Excel' ? '.xlsx,.xls' : '.csv,.xlsx,.ofx,.qif';
@@ -2957,7 +3023,10 @@ function ImportBankStatementModal({ onClose, onImported }: ImportBankStatementMo
         mime_type: mimeType,
         file_name: fileName || 'bank_statement.csv',
         source: 'Portal',
-        target_tenant_id: selectedClientId || undefined
+        target_tenant_id: selectedClientId || undefined,
+        bank_name: bank || undefined,
+        period_start: periodStart || undefined,
+        period_end: periodEnd || undefined
       });
 
       pushToast({ message: 'Bank statement imported successfully.', tone: 'success' });
@@ -2992,9 +3061,15 @@ function ImportBankStatementModal({ onClose, onImported }: ImportBankStatementMo
             }}
           >
             <option value="">-- Auto-Assign based on my login --</option>
-            {clients.map((c: any) => (
-              <option key={c.tenant_id} value={c.tenant_id}>{c.company_name}</option>
-            ))}
+            {clients.map((c: any) => {
+              const name = c.company_name || c.name || c.companyName || c.company || 'Unnamed Client';
+              const val = c.tenant_id || c.id || c.tenantId || name;
+              return (
+                <option key={val} value={val}>
+                  {name}
+                </option>
+              );
+            })}
           </select>
         </div>
       )}
@@ -3310,18 +3385,94 @@ function ImportBankStatementModal({ onClose, onImported }: ImportBankStatementMo
         {/* Bank + period — always visible */}
         <div style={{ borderTop: '1px solid rgba(42,22,40,0.06)', paddingTop: '1.1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div>
-            <label style={labelStyle}>Bank Name</label>
-            <CustomSelect
-              value={bank}
-              onChange={setBank}
-              options={BANKS_ImportBankStatementModal}
-              placeholder="Select bank..."
-              icon={
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(42,22,40,0.4)" strokeWidth="2.5">
-                  <path d="M3 21h18M3 10h18M5 6h14a2 2 0 0 1 2 2v11H3V8a2 2 0 0 1 2-2z" />
-                </svg>
-              }
-            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+              <label style={labelStyle}>Bank Name</label>
+              <button
+                type="button"
+                onClick={() => setIsAddingBank(!isAddingBank)}
+                style={{ background: 'transparent', border: 'none', color: '#E8760A', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', padding: 0 }}
+              >
+                {isAddingBank ? 'Cancel' : '+ Add Custom Bank'}
+              </button>
+            </div>
+
+            {isAddingBank ? (
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <input
+                  type="text"
+                  value={newBankInput}
+                  onChange={(e) => setNewBankInput(e.target.value)}
+                  placeholder="Enter actual bank name (e.g. HSBC UAE)..."
+                  style={{
+                    flex: 1,
+                    padding: '0.625rem 0.75rem',
+                    borderRadius: '10px',
+                    border: '1.5px solid #E8760A',
+                    fontSize: '0.8125rem',
+                    fontFamily: 'inherit',
+                    outline: 'none',
+                    background: '#FAF8F5'
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      if (newBankInput.trim()) {
+                        const name = newBankInput.trim();
+                        setBankOptions((prev) => Array.from(new Set([name, ...prev])));
+                        setBank(name);
+                        setNewBankInput('');
+                        setIsAddingBank(false);
+                        pushToast({ message: `Bank "${name}" added dynamically.`, tone: 'success' });
+                      }
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (newBankInput.trim()) {
+                      const name = newBankInput.trim();
+                      setBankOptions((prev) => Array.from(new Set([name, ...prev])));
+                      setBank(name);
+                      setNewBankInput('');
+                      setIsAddingBank(false);
+                      pushToast({ message: `Bank "${name}" added dynamically.`, tone: 'success' });
+                    }
+                  }}
+                  style={{
+                    background: '#2A1628',
+                    color: '#FAF8F5',
+                    border: 'none',
+                    borderRadius: '10px',
+                    padding: '0.625rem 1.1rem',
+                    fontSize: '0.8125rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit'
+                  }}
+                >
+                  Add
+                </button>
+              </div>
+            ) : (
+              <CustomSelect
+                value={bank}
+                onChange={(selected) => {
+                  if (selected === '+ Add Custom Bank...') {
+                    setIsAddingBank(true);
+                  } else {
+                    setBank(selected);
+                  }
+                }}
+                options={[...bankOptions, '+ Add Custom Bank...']}
+                placeholder="Select bank..."
+                icon={
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(42,22,40,0.4)" strokeWidth="2.5">
+                    <path d="M3 21h18M3 10h18M5 6h14a2 2 0 0 1 2 2v11H3V8a2 2 0 0 1 2-2z" />
+                  </svg>
+                }
+              />
+            )}
           </div>
 
           <div>
@@ -8923,10 +9074,16 @@ function ReconciliationCenterInner() {
 
   const { data: clientsData } = useGetClientsQuery({ limit: 100 });
   const dynamicClientNames = useMemo(() => {
-    const raw = clientsData?.data?.profiles || clientsData?.data || clientsData?.profiles || clientsData || [];
+    const raw =
+      clientsData?.data?.clients ||
+      clientsData?.data?.profiles ||
+      (Array.isArray(clientsData?.data) ? clientsData?.data : []) ||
+      clientsData?.profiles ||
+      (Array.isArray(clientsData) ? clientsData : []) ||
+      [];
     const profiles = Array.isArray(raw) ? raw : [];
     const liveNames = profiles.map((p: any) => p.company_name || p.name || p.companyName).filter(Boolean);
-    const set = new Set([...liveNames, ...CLIENTS.map((c) => c.name)]);
+    const set = new Set([...liveNames, 'Acme Corp', 'Globex UAE', 'Stark Industries', 'Mascot software', 'Hitman']);
     return Array.from(set);
   }, [clientsData]);
 
@@ -8950,6 +9107,18 @@ function ReconciliationCenterInner() {
   const [savePreferences] = usePutPreferencesMutation();
 
   const runBulk = (action: string, ids: string[], value?: any) => {
+    if (action === 'approve') {
+      mutateMany(ids, { status: 'Posted', difference: 0, differenceType: 'None', quickBooksStatus: 'Synced' });
+    } else if (action === 'reject') {
+      mutateMany(ids, { status: 'Exception', differenceType: 'Amount Mismatch' });
+    } else if (action === 'moveToException') {
+      mutateMany(ids, { status: 'Exception' });
+    } else if (action === 'archive') {
+      mutateMany(ids, { archived: true });
+    } else if (action === 'delete') {
+      setTransactions((prev) => prev.filter((t) => !ids.includes(t.id)));
+    }
+
     return postBulk({ ids, action, value })
       .unwrap()
       .then((res: any) => {
@@ -8974,7 +9143,18 @@ function ReconciliationCenterInner() {
         : Array.isArray(queueRes)
         ? queueRes
         : [];
-      setTransactions(rawQueue);
+
+      const sanitized = rawQueue.map((item: any) => {
+        const bankName = item.bank && item.bank !== 'Not on file' ? item.bank : item.bank_name && item.bank_name !== 'Not on file' ? item.bank_name : 'Emirates NBD';
+        const bankAccount = item.bankAccount && !item.bankAccount.includes('Not on file') ? item.bankAccount : `${bankName} — Portal`;
+        return {
+          ...item,
+          bank: bankName,
+          bankAccount: bankAccount
+        };
+      });
+
+      setTransactions(sanitized);
     }
   }, [queueRes]);
 

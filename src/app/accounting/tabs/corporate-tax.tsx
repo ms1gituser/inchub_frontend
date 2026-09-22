@@ -491,7 +491,7 @@ export default function CorporateTaxTab() {
   const { data: statsRes } = useGetStatsQuery();
   const { data: analyticsRes } = useGetAnalyticsQuery();
   const { data: metaRes } = useGetMetadataQuery();
-  const [fileReturn] = usePostFileMutation();
+  const [fileReturn, { isLoading: isFilingCt }] = usePostFileMutation();
   const [addCtReturn] = useAddCtReturnMutation();
   const [postBulk] = usePostBulkMutation();
   const [importReturns] = useImportReturnsMutation();
@@ -766,6 +766,13 @@ export default function CorporateTaxTab() {
   const drawerDocuments = drawerDetailsRes?.data?.documents || [];
   const drawerNotes = drawerDetailsRes?.data?.notes || [];
   const [quickCtNote, setQuickCtNote] = useState('');
+
+  const ctDrawerTabRef = useRef<HTMLDivElement>(null);
+  const scrollCtDrawerTabs = (dir: 'left' | 'right') => {
+    if (ctDrawerTabRef.current) {
+      ctDrawerTabRef.current.scrollBy({ left: dir === 'left' ? -150 : 150, behavior: 'smooth' });
+    }
+  };
 
   // Active drawer transaction details object
   const activeTx = useMemo(() => {
@@ -1444,11 +1451,13 @@ export default function CorporateTaxTab() {
                   return (
                     <tr
                       key={item.id}
+                      onClick={() => { setDrawerTxId(item.id); setDrawerTab('overview'); }}
                       style={{
                         borderBottom: idx < pagedData.length - 1 ? '1px solid rgba(42,22,40,0.04)' : 'none',
                         background: isSelected ? 'rgba(232,118,10,0.02)' : 'transparent',
+                        cursor: 'pointer'
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(42,22,40,0.01)')}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(42,22,40,0.02)')}
                       onMouseLeave={(e) => (e.currentTarget.style.background = isSelected ? 'rgba(232,118,10,0.02)' : 'transparent')}
                     >
                       <td
@@ -1796,9 +1805,44 @@ export default function CorporateTaxTab() {
               </button>
             </div>
 
-            {/* Tab strip */}
-            <div className="hide-scrollbar" style={{ width: '100%', overflowX: 'auto', borderBottom: '1px solid rgba(42,22,40,0.06)', flexShrink: 0, scrollBehavior: 'smooth' }}>
-              <div style={{ display: 'flex', gap: '1.25rem', padding: '0.5rem 1.75rem', minWidth: 'max-content' }}>
+            {/* Tab strip with scroll arrows */}
+            <div style={{ display: 'flex', alignItems: 'center', position: 'relative', width: '100%', borderBottom: '1px solid rgba(42,22,40,0.06)', background: '#FAF8F5', flexShrink: 0 }}>
+              <button
+                type="button"
+                onClick={() => scrollCtDrawerTabs('left')}
+                title="Scroll left"
+                style={{
+                  background: '#ffffff',
+                  border: 'none',
+                  borderRight: '1px solid rgba(42,22,40,0.08)',
+                  cursor: 'pointer',
+                  padding: '0.6rem 0.6rem',
+                  color: '#2A1628',
+                  fontSize: '1rem',
+                  fontWeight: 800,
+                  zIndex: 2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  boxShadow: '2px 0 6px rgba(0,0,0,0.04)'
+                }}
+              >
+                ‹
+              </button>
+
+              <div
+                ref={ctDrawerTabRef}
+                className="client-table-scroll"
+                style={{
+                  width: '100%',
+                  overflowX: 'auto',
+                  scrollBehavior: 'smooth',
+                  display: 'flex',
+                  gap: '1.25rem',
+                  padding: '0.4rem 1rem',
+                }}
+              >
                 {[
                   { key: 'overview' as const, label: 'Overview' },
                   { key: 'financials' as const, label: 'Financial Statements' },
@@ -1818,16 +1862,16 @@ export default function CorporateTaxTab() {
                       type="button"
                       onClick={() => setDrawerTab(t.key)}
                       style={{
-                        padding: '0.6rem 0',
+                        padding: '0.5rem 0.25rem',
                         border: 'none',
                         outline: 'none',
                         boxShadow: 'none',
                         background: 'transparent',
-                        color: isTab ? '#E8760A' : 'rgba(42,22,40,0.5)',
+                        color: isTab ? '#E8760A' : 'rgba(42,22,40,0.6)',
                         fontSize: '0.8125rem',
                         fontWeight: isTab ? 700 : 600,
                         cursor: 'pointer',
-                        borderBottom: isTab ? '2px solid #E8760A' : '2px solid transparent',
+                        borderBottom: isTab ? '2.5px solid #E8760A' : '2.5px solid transparent',
                         whiteSpace: 'nowrap',
                         fontFamily: 'inherit',
                         flexShrink: 0,
@@ -1838,6 +1882,30 @@ export default function CorporateTaxTab() {
                   );
                 })}
               </div>
+
+              <button
+                type="button"
+                onClick={() => scrollCtDrawerTabs('right')}
+                title="Scroll right"
+                style={{
+                  background: '#ffffff',
+                  border: 'none',
+                  borderLeft: '1px solid rgba(42,22,40,0.08)',
+                  cursor: 'pointer',
+                  padding: '0.6rem 0.6rem',
+                  color: '#2A1628',
+                  fontSize: '1rem',
+                  fontWeight: 800,
+                  zIndex: 2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  boxShadow: '-2px 0 6px rgba(0,0,0,0.04)'
+                }}
+              >
+                ›
+              </button>
             </div>
 
             {/* Drawer Body Scroll */}
@@ -2130,9 +2198,17 @@ export default function CorporateTaxTab() {
             <div style={{ padding: '1.25rem 2rem 1.75rem', background: '#FAF8F5', display: 'flex', gap: '0.75rem', flexShrink: 0 }}>
               <button
                 type="button"
+                disabled={isFilingCt}
                 onClick={() => {
                   if (activeTx.status === 'Filed') {
-                    pushToast('Corporate Tax Return PDF download started.', 'info');
+                    const apiHost = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '') : 'http://localhost:5000/api/v1';
+                    const link = document.createElement('a');
+                    link.href = `${apiHost}/corporate-tax/export?format=xlsx&ids=${activeTx.id}`;
+                    link.download = `CT_Return_${activeTx.client.replace(/\s+/g, '_')}_${activeTx.financialYear}.xlsx`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    pushToast(`Downloading filed Corporate Tax Return statement for ${activeTx.client}...`, 'success');
                   } else {
                     fileReturn({ id: activeTx.id })
                       .unwrap()
@@ -2144,9 +2220,34 @@ export default function CorporateTaxTab() {
                       .catch(() => pushToast('Failed to file Corporate Tax return.', 'danger'));
                   }
                 }}
-                style={{ flex: 1, padding: '0.6rem', background: activeTx.status === 'Filed' ? '#137333' : '#E8760A', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}
+                style={{
+                  flex: 1,
+                  padding: '0.6rem',
+                  background: isFilingCt ? 'rgba(232,118,10,0.7)' : (activeTx.status === 'Filed' ? '#137333' : '#E8760A'),
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontSize: '0.8125rem',
+                  fontWeight: 700,
+                  cursor: isFilingCt ? 'wait' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem'
+                }}
               >
-                {activeTx.status === 'Filed' ? 'Download Filed Return' : 'Approve & File Return'}
+                {isFilingCt ? (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'spin 1s linear infinite' }}>
+                      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                    </svg>
+                    Filing Return...
+                  </>
+                ) : activeTx.status === 'Filed' ? (
+                  'Download Filed Return'
+                ) : (
+                  'Approve & File Return'
+                )}
               </button>
               <button
                 type="button"
@@ -2614,8 +2715,20 @@ export default function CorporateTaxTab() {
                 <button
                   type="button"
                   onClick={() => {
+                    const apiHost = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '') : 'http://localhost:5000/api/v1';
+                    let idsQuery = '';
+                    if (exportScope === 'selected' && selectedIds.length > 0) {
+                      idsQuery = `&ids=${selectedIds.join(',')}`;
+                    }
+                    const fmt = exportFormat === 'csv' ? 'csv' : 'xlsx';
+                    const link = document.createElement('a');
+                    link.href = `${apiHost}/corporate-tax/export?format=${fmt}${idsQuery}`;
+                    link.download = `Corporate_Tax_Returns_Export.${fmt}`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
                     setPopup({ type: null });
-                    pushToast(`${exportFormat === 'excel' ? 'XLSX' : exportFormat.toUpperCase()} CT return registry export started.`, 'success');
+                    pushToast(`Corporate Tax returns export downloaded (${fmt.toUpperCase()}).`, 'success');
                   }}
                   style={{ background: '#E8760A', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'inherit', boxShadow: '0 4px 12px rgba(232,118,10,0.25)' }}
                 >

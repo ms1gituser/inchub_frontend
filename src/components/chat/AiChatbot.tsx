@@ -89,6 +89,28 @@ export default function AiChatbot() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const recognitionRef = useRef<any>(null);
+
+  const stopAudioTracks = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+  }, []);
+
+  const stopRecording = useCallback(() => {
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch {}
+      recognitionRef.current = null;
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try { mediaRecorderRef.current.stop(); } catch {}
+      mediaRecorderRef.current = null;
+    }
+    stopAudioTracks();
+    setIsRecording(false);
+  }, [stopAudioTracks]);
 
   // ── Keyboard shortcut Ctrl+/ ──────────────────────────────────────────────
   useEffect(() => {
@@ -106,6 +128,12 @@ export default function AiChatbot() {
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      stopRecording();
+    }
+  }, [isOpen, stopRecording]);
 
   // ── Fetch conversation history ────────────────────────────────────────────
   const fetchHistory = useCallback(async () => {
@@ -221,12 +249,13 @@ export default function AiChatbot() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  // Removed duplicate fetchHistory declaration from bottom
-
   // ── Send message ──────────────────────────────────────────────────────────
   const handleSend = (text?: string) => {
     const msg = (text || inputValue).trim();
     if (!msg) return;
+
+    // Automatically stop voice recording and release microphone when message is sent
+    stopRecording();
 
     const userMsg: Message = {
       id: `user-${getNowTimestamp()}`,
@@ -255,44 +284,106 @@ export default function AiChatbot() {
   // ── Voice recording ───────────────────────────────────────────────────────
   const handleVoice = async () => {
     if (isRecording) {
-      mediaRecorderRef.current?.stop();
+      stopRecording();
+      return;
+    }
+
+    let stream: MediaStream | null = null;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+    } catch (err: any) {
+      console.warn('[Voice] Microphone access denied or unsupported:', err);
+      alert('Microphone access is blocked by your browser. Please allow microphone permissions in your browser address bar.');
       setIsRecording(false);
       return;
     }
 
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mr = new MediaRecorder(stream);
-      audioChunksRef.current = [];
-      mr.ondataavailable = (e) => audioChunksRef.current.push(e.data);
-      mr.onstop = async () => {
-        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const reader = new FileReader();
-        reader.onload = async () => {
-          const base64 = (reader.result as string).split(',')[1];
-          try {
-            const token = resolveToken();
-            const baseUrl = process.env.NEXT_PUBLIC_API_URL ? `${process.env.NEXT_PUBLIC_API_URL}/v1` : 'http://localhost:5000/api/v1';
-            const res = await fetch(`${baseUrl}/chat/transcribe`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-              body: JSON.stringify({ audio_base64: base64, mime_type: 'audio/webm' }),
-            });
-            if (res.ok) {
-              const data = await res.json();
-              const transcript = data.data?.transcript || '';
-              if (transcript) setInputValue(transcript);
-            }
-          } catch { /* ignore */ }
+    setIsRecording(true);
+
+    // Try Web Speech API for real-time speech input
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      try {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+
+        recognition.onresult = (event: any) => {
+          let currentTranscript = '';
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            currentTranscript += event.results[i][0].transcript;
+          }
+          if (currentTranscript.trim()) {
+            setInputValue(currentTranscript);
+          }
         };
-        reader.readAsDataURL(blob);
-        stream.getTracks().forEach(t => t.stop());
-      };
-      mediaRecorderRef.current = mr;
-      mr.start();
-      setIsRecording(true);
-    } catch {
-      console.warn('[Voice] Microphone access denied');
+
+        recognition.onerror = (err: any) => {
+          console.warn('[Voice] SpeechRecognition error:', err?.error);
+        };
+
+        recognition.onend = () => {
+          recognitionRef.current = null;
+          if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') {
+            stopAudioTracks();
+            setIsRecording(false);
+          }
+        };
+
+        recognitionRef.current = recognition;
+        recognition.start();
+      } catch (err) {
+        console.warn('[Voice] SpeechRecognition start failed:', err);
+      }
+    }
+
+    // Start MediaRecorder audio capture fallback
+    if (stream) {
+      try {
+        const mr = new MediaRecorder(stream);
+        audioChunksRef.current = [];
+        mr.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
+        };
+        mr.onstop = async () => {
+          mediaRecorderRef.current = null;
+          stopAudioTracks();
+          setIsRecording(false);
+
+          if (audioChunksRef.current.length > 0) {
+            const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+            const reader = new FileReader();
+            reader.onload = async () => {
+              const base64 = (reader.result as string).split(',')[1];
+              try {
+                const token = resolveToken();
+                const baseUrl = process.env.NEXT_PUBLIC_API_URL ? `${process.env.NEXT_PUBLIC_API_URL}/v1` : 'http://localhost:5000/api/v1';
+                const res = await fetch(`${baseUrl}/chat/transcribe`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                  body: JSON.stringify({ audio_base64: base64, mime_type: 'audio/webm' }),
+                });
+                if (res.ok) {
+                  const data = await res.json();
+                  const transcript = data.data?.transcript || '';
+                  if (transcript) {
+                    setInputValue(prev => prev.trim() ? prev : transcript);
+                  }
+                }
+              } catch (fetchErr) {
+                console.error('[Voice] Transcribe request failed:', fetchErr);
+              }
+            };
+            reader.readAsDataURL(blob);
+          }
+        };
+        mediaRecorderRef.current = mr;
+        mr.start();
+      } catch (err) {
+        console.warn('[Voice] MediaRecorder failed:', err);
+      }
     }
   };
 
