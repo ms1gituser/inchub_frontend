@@ -91,7 +91,16 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
 
-    # 3. Copy docker-compose.prod.yml to EC2 host via SCP
+    # 3. Ensure target directory exists on EC2 host
+    - name: Create Target Directory on EC2
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USER || 'ubuntu' }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: mkdir -p /home/${{ secrets.EC2_USER || 'ubuntu' }}/Inchub2021/CRM_Frontend
+
+    # 4. Copy docker-compose.prod.yml to EC2 host via SCP
     - name: Copy docker-compose.prod.yml via SCP
       uses: appleboy/scp-action@v0.1.7
       with:
