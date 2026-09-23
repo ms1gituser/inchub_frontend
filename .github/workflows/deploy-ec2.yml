@@ -91,26 +91,28 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
 
-    # 3. Ensure target directory exists on EC2
-    - name: Create target directory on EC2
+    # 3. Copy docker-compose.prod.yml to EC2 via SSH (cat heredoc — no SCP needed)
+    - name: Copy docker-compose.prod.yml via SSH
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.EC2_HOST }}
         username: ${{ secrets.EC2_USER || 'ubuntu' }}
         key: ${{ secrets.EC2_SSH_KEY }}
-        script: mkdir -p /home/${{ secrets.EC2_USER || 'ubuntu' }}/Inchub2021/CRM_Frontend
+        script: |
+          mkdir -p /home/${{ secrets.EC2_USER || 'ubuntu' }}/Inchub2021/CRM_Frontend
+          cat > /home/${{ secrets.EC2_USER || 'ubuntu' }}/Inchub2021/CRM_Frontend/docker-compose.prod.yml << 'COMPOSE_EOF'
+          version: '3.8'
 
-    # 4. Copy docker-compose.prod.yml to EC2 host via SCP
-    - name: Copy docker-compose.prod.yml via SCP
-      uses: appleboy/scp-action@v0.1.7
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USER || 'ubuntu' }}
-        key: ${{ secrets.EC2_SSH_KEY }}
-        source: "docker-compose.prod.yml"
-        target: "/home/${{ secrets.EC2_USER || 'ubuntu' }}/Inchub2021/CRM_Frontend/"
-        strip_components: 0
-        overwrite: true
+          services:
+            frontend:
+              image: ${ECR_REGISTRY}/crm-frontend:latest
+              container_name: crm-frontend-prod
+              restart: always
+              ports:
+                - "3000:3000"
+              env_file:
+                - .env
+          COMPOSE_EOF
 
     # 5. Get ECR login password on the runner (has AWS CLI) to pass to EC2
     - name: Get ECR Login Token
