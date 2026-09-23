@@ -91,8 +91,8 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
 
-    # 3. Ensure target directory exists on EC2 host
-    - name: Create Target Directory on EC2
+    # 3. Ensure target directory exists on EC2
+    - name: Create target directory on EC2
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.EC2_HOST }}
@@ -110,12 +110,12 @@ jobs:
         source: "docker-compose.prod.yml"
         target: "/home/${{ secrets.EC2_USER || 'ubuntu' }}/Inchub2021/CRM_Frontend"
 
-    # 4. Get ECR login password on the runner (has AWS CLI) to pass to EC2
+    # 5. Get ECR login password on the runner (has AWS CLI) to pass to EC2
     - name: Get ECR Login Token
       id: ecr-token
       run: echo "password=$(aws ecr get-login-password --region ${{ secrets.AWS_REGION || 'me-central-1' }})" >> $GITHUB_OUTPUT
 
-    # 5. SSH into EC2, login to ECR, pull and restart containers
+    # 6. SSH into EC2, login to ECR, pull and restart containers
     - name: Deploy to EC2 via SSH
       uses: appleboy/ssh-action@v1.0.3
       env:
