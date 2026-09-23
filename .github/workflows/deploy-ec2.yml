@@ -108,7 +108,9 @@ jobs:
         username: ${{ secrets.EC2_USER || 'ubuntu' }}
         key: ${{ secrets.EC2_SSH_KEY }}
         source: "docker-compose.prod.yml"
-        target: "/home/${{ secrets.EC2_USER || 'ubuntu' }}/Inchub2021/CRM_Frontend"
+        target: "/home/${{ secrets.EC2_USER || 'ubuntu' }}/Inchub2021/CRM_Frontend/"
+        strip_components: 0
+        overwrite: true
 
     # 5. Get ECR login password on the runner (has AWS CLI) to pass to EC2
     - name: Get ECR Login Token
