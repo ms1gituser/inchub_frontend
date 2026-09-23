@@ -387,18 +387,24 @@ const FOCUSABLE = 'a[href], button:not([disabled]), textarea, input, select, [ta
 function FocusTrap({ children, onEscape, active = true }: FocusTrapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
+  const onEscapeRef = useRef(onEscape);
+  onEscapeRef.current = onEscape;
 
   useEffect(() => {
     if (!active) return;
     previouslyFocused.current = document.activeElement as HTMLElement;
     const container = containerRef.current;
+    
+    // Auto-focus only once when component mounts
     const focusable = container?.querySelectorAll<HTMLElement>(FOCUSABLE);
-    focusable?.[0]?.focus();
+    if (focusable && focusable.length > 0 && !container?.contains(document.activeElement)) {
+      focusable[0]?.focus();
+    }
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && onEscape) {
+      if (e.key === 'Escape' && onEscapeRef.current) {
         e.stopPropagation();
-        onEscape();
+        onEscapeRef.current();
         return;
       }
       if (e.key !== 'Tab' || !container) return;
@@ -422,7 +428,7 @@ function FocusTrap({ children, onEscape, active = true }: FocusTrapProps) {
       document.removeEventListener('keydown', handleKeyDown, true);
       previouslyFocused.current?.focus?.();
     };
-  }, [active, onEscape]);
+  }, [active]);
 
   return <div ref={containerRef} style={{ display: 'contents' }}>{children}</div>;
 }
@@ -641,7 +647,7 @@ function Portal({ children }: { children: React.ReactNode }) {
 export default function VatCenterTab() {
   const { data: queueRes, isLoading: queueLoading, refetch } = useGetQueueQuery({ limit: 1000 });
   const { data: clientsRes } = useGetClientsQuery({ limit: 100 });
-  const [fileReturn] = usePostFileMutation();
+  const [fileReturn, { isLoading: isFilingVat }] = usePostFileMutation();
   const [amendReturn] = usePostAmendMutation();
   const [addVatReturn] = useAddVatReturnMutation();
   const [postBulk] = usePostBulkMutation();
@@ -731,6 +737,12 @@ export default function VatCenterTab() {
   // Drawer details state
   const [drawerTxId, setDrawerTxId] = useState<string | null>(null);
   const [drawerTab, setDrawerTab] = useState<'overview' | 'transactions' | 'breakdown' | 'validation' | 'timeline' | 'activity' | 'documents' | 'history' | 'notes' | 'quickBooksSync'>('overview');
+  const vatDrawerTabRef = useRef<HTMLDivElement>(null);
+  const scrollVatDrawerTabs = (dir: 'left' | 'right') => {
+    if (vatDrawerTabRef.current) {
+      vatDrawerTabRef.current.scrollBy({ left: dir === 'left' ? -150 : 150, behavior: 'smooth' });
+    }
+  };
 
   // Filter bar states
   const [filterClient, setFilterClient] = useState('All');
@@ -1453,11 +1465,13 @@ export default function VatCenterTab() {
                 return (
                   <tr
                     key={item.id}
+                    onClick={() => { setDrawerTxId(item.id); setDrawerTab('overview'); }}
                     style={{
                       borderBottom: idx < pagedData.length - 1 ? '1px solid rgba(42,22,40,0.04)' : 'none',
                       background: isSelected ? 'rgba(232,118,10,0.02)' : 'transparent',
+                      cursor: 'pointer'
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(42,22,40,0.01)')}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(42,22,40,0.02)')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = isSelected ? 'rgba(232,118,10,0.02)' : 'transparent')}
                   >
                     <td
@@ -1471,163 +1485,154 @@ export default function VatCenterTab() {
                       />
                     </td>
                     {columns.map((col) => {
+                      const isClient = col.key === 'client';
+                      const cellVal = item[col.key as keyof VatReturnItem];
+                      let tdContent: React.ReactNode = String(cellVal ?? '');
+                      let tdStyle: React.CSSProperties = {
+                        padding: '0.625rem 1rem',
+                        whiteSpace: 'nowrap',
+                      };
+
                       if (col.key === 'client') {
-                        return (
-                          <td
-                            key={col.key}
-                            style={{ padding: '0.625rem 1rem', position: 'sticky', left: '48px', background: isSelected ? '#FAF4EE' : '#ffffff', zIndex: 9, borderRight: '1px solid rgba(42,22,40,0.06)' }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', whiteSpace: 'nowrap' }}>
-                              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(232, 118, 10, 0.08)', color: '#E8760A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, flexShrink: 0 }}>
-                                {item.client.split(' ').map((x) => x[0]).join('').substr(0, 2)}
-                              </div>
-                              <div style={{ overflow: 'hidden' }}>
-                                <div style={{ fontWeight: 700, color: '#2A1628', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{item.client}</div>
-                                <div style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.45)', marginTop: '0.1rem', whiteSpace: 'nowrap' }}>{item.vatType}</div>
-                              </div>
+                        tdStyle = {
+                          padding: '0.625rem 1rem',
+                          position: 'sticky',
+                          left: '48px',
+                          background: isSelected ? '#FAF4EE' : '#ffffff',
+                          zIndex: 9,
+                          borderRight: '1px solid rgba(42,22,40,0.06)',
+                        };
+                        tdContent = (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', whiteSpace: 'nowrap' }}>
+                            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(232, 118, 10, 0.08)', color: '#E8760A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, flexShrink: 0 }}>
+                              {item.client.split(' ').map((x) => x[0]).join('').substr(0, 2)}
                             </div>
-                          </td>
+                            <div style={{ overflow: 'hidden' }}>
+                              <div style={{ fontWeight: 700, color: '#2A1628', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{item.client}</div>
+                              <div style={{ fontSize: '0.7rem', color: 'rgba(42,22,40,0.45)', marginTop: '0.1rem', whiteSpace: 'nowrap' }}>{item.vatType}</div>
+                            </div>
+                          </div>
+                        );
+                      } else if (col.key === 'trn') {
+                        tdStyle = { ...tdStyle, color: 'rgba(42,22,40,0.75)', fontWeight: 500 };
+                      } else if (col.key === 'quarter') {
+                        tdStyle = { ...tdStyle, textAlign: 'center' };
+                        tdContent = (
+                          <span style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            padding: '0.2rem 0.55rem',
+                            borderRadius: '20px',
+                            display: 'inline-block',
+                            background:
+                              item.quarter === 'Q1' ? '#E8F0FE'
+                              : item.quarter === 'Q2' ? '#E6F4EA'
+                              : item.quarter === 'Q3' ? 'rgba(124,58,237,0.08)'
+                              : item.quarter === 'Q4' ? 'rgba(180,83,9,0.08)'
+                              : 'rgba(42,22,40,0.06)',
+                            color:
+                              item.quarter === 'Q1' ? '#1A73E8'
+                              : item.quarter === 'Q2' ? '#047857'
+                              : item.quarter === 'Q3' ? '#7c3aed'
+                              : item.quarter === 'Q4' ? '#b45309'
+                              : '#2A1628',
+                            border:
+                              item.quarter === 'Q1' ? '1px solid rgba(26,115,232,0.2)'
+                              : item.quarter === 'Q2' ? '1px solid rgba(4,120,87,0.2)'
+                              : item.quarter === 'Q3' ? '1px solid rgba(124,58,237,0.2)'
+                              : item.quarter === 'Q4' ? '1px solid rgba(180,83,9,0.2)'
+                              : '1px solid rgba(42,22,40,0.08)',
+                          }}>
+                            {item.quarter}
+                          </span>
+                        );
+                      } else if (col.key === 'year') {
+                        tdStyle = { ...tdStyle, color: '#2A1628', fontWeight: 600, textAlign: 'center' };
+                      } else if (col.key === 'outputVat') {
+                        tdStyle = { ...tdStyle, textAlign: 'right', fontWeight: 600 };
+                        tdContent = `AED ${item.outputVat.toLocaleString()}`;
+                      } else if (col.key === 'inputVat') {
+                        tdStyle = { ...tdStyle, textAlign: 'right', fontWeight: 600 };
+                        tdContent = `AED ${item.inputVat.toLocaleString()}`;
+                      } else if (col.key === 'netVat') {
+                        tdStyle = { ...tdStyle, textAlign: 'right', fontWeight: 700, color: item.netVat >= 0 ? '#2A1628' : '#047857' };
+                        tdContent = `AED ${item.netVat.toLocaleString()}`;
+                      } else if (col.key === 'status') {
+                        tdContent = (
+                          <span style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            padding: '0.25rem 0.5rem',
+                            borderRadius: '4px',
+                            background:
+                              item.status === 'Filed'
+                                ? '#E6F4EA'
+                                : item.status === 'Overdue'
+                                ? '#FEE2E2'
+                                : item.status === 'Ready To File'
+                                ? '#E8F0FE'
+                                : '#F1F3F4',
+                            color:
+                              item.status === 'Filed'
+                                ? '#137333'
+                                : item.status === 'Overdue'
+                                ? '#D32F2F'
+                                : item.status === 'Ready To File'
+                                ? '#1A73E8'
+                                : '#5F6368',
+                          }}>
+                            {item.status}
+                          </span>
+                        );
+                      } else if (col.key === 'reviewer') {
+                        tdStyle = { ...tdStyle, color: '#2A1628', fontWeight: 600 };
+                      } else if (col.key === 'dueDate') {
+                        tdStyle = { ...tdStyle, fontWeight: 600 };
+                      } else if (col.key === 'risk') {
+                        tdContent = (
+                          <span style={{
+                            fontSize: '0.65rem',
+                            fontWeight: 700,
+                            padding: '0.15rem 0.4rem',
+                            borderRadius: '4px',
+                            background:
+                              item.risk === 'High'
+                                ? 'rgba(185,28,28,0.1)'
+                                : item.risk === 'Medium'
+                                ? 'rgba(180,83,9,0.1)'
+                                : 'rgba(4,120,87,0.1)',
+                            color:
+                              item.risk === 'High'
+                                ? '#b91c1c'
+                                : item.risk === 'Medium'
+                                ? '#b45309'
+                                : '#047857',
+                          }}>
+                            {item.risk}
+                          </span>
                         );
                       }
-                      if (col.key === 'trn') {
-                        return (
-                          <td key={col.key} style={{ padding: '0.625rem 1rem', color: 'rgba(42,22,40,0.75)', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                            {item.trn}
-                          </td>
-                        );
-                      }
-                      if (col.key === 'quarter') {
-                        return (
-                          <td key={col.key} style={{ padding: '0.625rem 1rem', whiteSpace: 'nowrap', textAlign: 'center' }}>
-                            <span style={{
-                              fontSize: '0.7rem',
-                              fontWeight: 700,
-                              padding: '0.2rem 0.55rem',
-                              borderRadius: '20px',
-                              display: 'inline-block',
-                              background:
-                                item.quarter === 'Q1' ? '#E8F0FE'
-                                : item.quarter === 'Q2' ? '#E6F4EA'
-                                : item.quarter === 'Q3' ? 'rgba(124,58,237,0.08)'
-                                : item.quarter === 'Q4' ? 'rgba(180,83,9,0.08)'
-                                : 'rgba(42,22,40,0.06)',
-                              color:
-                                item.quarter === 'Q1' ? '#1A73E8'
-                                : item.quarter === 'Q2' ? '#047857'
-                                : item.quarter === 'Q3' ? '#7c3aed'
-                                : item.quarter === 'Q4' ? '#b45309'
-                                : '#2A1628',
-                              border:
-                                item.quarter === 'Q1' ? '1px solid rgba(26,115,232,0.2)'
-                                : item.quarter === 'Q2' ? '1px solid rgba(4,120,87,0.2)'
-                                : item.quarter === 'Q3' ? '1px solid rgba(124,58,237,0.2)'
-                                : item.quarter === 'Q4' ? '1px solid rgba(180,83,9,0.2)'
-                                : '1px solid rgba(42,22,40,0.08)',
-                            }}>
-                              {item.quarter}
-                            </span>
-                          </td>
-                        );
-                      }
-                      if (col.key === 'year') {
-                        return (
-                          <td key={col.key} style={{ padding: '0.625rem 1rem', color: '#2A1628', fontWeight: 600, whiteSpace: 'nowrap', textAlign: 'center' }}>
-                            {item.year}
-                          </td>
-                        );
-                      }
-                      if (col.key === 'outputVat') {
-                        return (
-                          <td key={col.key} style={{ padding: '0.625rem 1rem', textAlign: 'right', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                            AED {item.outputVat.toLocaleString()}
-                          </td>
-                        );
-                      }
-                      if (col.key === 'inputVat') {
-                        return (
-                          <td key={col.key} style={{ padding: '0.625rem 1rem', textAlign: 'right', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                            AED {item.inputVat.toLocaleString()}
-                          </td>
-                        );
-                      }
-                      if (col.key === 'netVat') {
-                        return (
-                          <td key={col.key} style={{ padding: '0.625rem 1rem', textAlign: 'right', fontWeight: 700, color: item.netVat >= 0 ? '#2A1628' : '#047857', whiteSpace: 'nowrap' }}>
-                            AED {item.netVat.toLocaleString()}
-                          </td>
-                        );
-                      }
-                      if (col.key === 'status') {
-                        return (
-                          <td key={col.key} style={{ padding: '0.625rem 1rem', whiteSpace: 'nowrap' }}>
-                            <span style={{
-                              fontSize: '0.7rem',
-                              fontWeight: 700,
-                              padding: '0.25rem 0.5rem',
-                              borderRadius: '4px',
-                              background:
-                                item.status === 'Filed'
-                                  ? '#E6F4EA'
-                                  : item.status === 'Overdue'
-                                  ? '#FEE2E2'
-                                  : item.status === 'Ready To File'
-                                  ? '#E8F0FE'
-                                  : '#F1F3F4',
-                              color:
-                                item.status === 'Filed'
-                                  ? '#137333'
-                                  : item.status === 'Overdue'
-                                  ? '#D32F2F'
-                                  : item.status === 'Ready To File'
-                                  ? '#1A73E8'
-                                  : '#5F6368',
-                            }}>
-                              {item.status}
-                            </span>
-                          </td>
-                        );
-                      }
-                      if (col.key === 'reviewer') {
-                        return (
-                          <td key={col.key} style={{ padding: '0.625rem 1rem', color: '#2A1628', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                            {item.reviewer}
-                          </td>
-                        );
-                      }
-                      if (col.key === 'dueDate') {
-                        return (
-                          <td key={col.key} style={{ padding: '0.625rem 1rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                            {item.dueDate}
-                          </td>
-                        );
-                      }
-                      if (col.key === 'risk') {
-                        return (
-                          <td key={col.key} style={{ padding: '0.625rem 1rem', whiteSpace: 'nowrap' }}>
-                            <span style={{
-                              fontSize: '0.65rem',
-                              fontWeight: 700,
-                              padding: '0.15rem 0.4rem',
-                              borderRadius: '4px',
-                              background:
-                                item.risk === 'High'
-                                  ? 'rgba(185,28,28,0.1)'
-                                  : item.risk === 'Medium'
-                                  ? 'rgba(180,83,9,0.1)'
-                                  : 'rgba(4,120,87,0.1)',
-                              color:
-                                item.risk === 'High'
-                                  ? '#b91c1c'
-                                  : item.risk === 'Medium'
-                                  ? '#b45309'
-                                  : '#047857',
-                            }}>
-                              {item.risk}
-                            </span>
-                          </td>
-                        );
-                      }
-                      return null;
+
+                      return (
+                        <td
+                          key={col.key}
+                          onClick={() => {
+                            setDrawerTxId(item.id);
+                            setDrawerTab('overview');
+                          }}
+                          style={{
+                            ...tdStyle,
+                            position: isClient ? 'sticky' : tdStyle.position,
+                            left: isClient ? '48px' : tdStyle.left,
+                            background: isClient ? (isSelected ? '#FAF4EE' : '#ffffff') : (isSelected ? 'rgba(232,118,10,0.02)' : undefined),
+                            zIndex: isClient ? 8 : tdStyle.zIndex,
+                            cursor: 'pointer',
+                            textAlign: col.align as 'left' | 'right' | 'center' || tdStyle.textAlign,
+                          }}
+                        >
+                          {tdContent}
+                        </td>
+                      );
                     })}
                     <td
                       style={{ padding: '0.625rem 1rem', textAlign: 'center' }}
@@ -1870,9 +1875,44 @@ export default function VatCenterTab() {
 
             <div style={{ width: '100%', height: '1px', background: 'rgba(42,22,40,0.06)' }} />
 
-            {/* Tab strip */}
-            <div className="hide-scrollbar" style={{ width: '100%', overflowX: 'auto', borderBottom: '1px solid rgba(42,22,40,0.06)', flexShrink: 0, scrollBehavior: 'smooth' }}>
-              <div style={{ display: 'flex', gap: '1rem', padding: '0.5rem 2rem', minWidth: 'max-content' }}>
+            {/* Tab strip with scroll arrows */}
+            <div style={{ display: 'flex', alignItems: 'center', position: 'relative', width: '100%', borderBottom: '1px solid rgba(42,22,40,0.06)', background: '#FAF8F5', flexShrink: 0 }}>
+              <button
+                type="button"
+                onClick={() => scrollVatDrawerTabs('left')}
+                title="Scroll left"
+                style={{
+                  background: '#ffffff',
+                  border: 'none',
+                  borderRight: '1px solid rgba(42,22,40,0.08)',
+                  cursor: 'pointer',
+                  padding: '0.6rem 0.6rem',
+                  color: '#2A1628',
+                  fontSize: '1rem',
+                  fontWeight: 800,
+                  zIndex: 2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  boxShadow: '2px 0 6px rgba(0,0,0,0.04)'
+                }}
+              >
+                ‹
+              </button>
+
+              <div
+                ref={vatDrawerTabRef}
+                className="client-table-scroll"
+                style={{
+                  width: '100%',
+                  overflowX: 'auto',
+                  scrollBehavior: 'smooth',
+                  display: 'flex',
+                  gap: '1rem',
+                  padding: '0.4rem 1rem',
+                }}
+              >
                 {[
                   { key: 'overview' as const, label: 'Overview' },
                   { key: 'transactions' as const, label: 'Transactions' },
@@ -1891,16 +1931,16 @@ export default function VatCenterTab() {
                       type="button"
                       onClick={() => setDrawerTab(t.key)}
                       style={{
-                        padding: '0.6rem 0',
+                        padding: '0.5rem 0.25rem',
                         border: 'none',
                         outline: 'none',
                         boxShadow: 'none',
                         background: 'transparent',
-                        color: isTab ? '#E8760A' : 'rgba(42,22,40,0.5)',
+                        color: isTab ? '#E8760A' : 'rgba(42,22,40,0.6)',
                         fontSize: '0.8125rem',
                         fontWeight: isTab ? 700 : 600,
                         cursor: 'pointer',
-                        borderBottom: isTab ? '2px solid #E8760A' : '2px solid transparent',
+                        borderBottom: isTab ? '2.5px solid #E8760A' : '2.5px solid transparent',
                         whiteSpace: 'nowrap',
                         fontFamily: 'inherit',
                         flexShrink: 0,
@@ -1911,6 +1951,30 @@ export default function VatCenterTab() {
                   );
                 })}
               </div>
+
+              <button
+                type="button"
+                onClick={() => scrollVatDrawerTabs('right')}
+                title="Scroll right"
+                style={{
+                  background: '#ffffff',
+                  border: 'none',
+                  borderLeft: '1px solid rgba(42,22,40,0.08)',
+                  cursor: 'pointer',
+                  padding: '0.6rem 0.6rem',
+                  color: '#2A1628',
+                  fontSize: '1rem',
+                  fontWeight: 800,
+                  zIndex: 2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  boxShadow: '-2px 0 6px rgba(0,0,0,0.04)'
+                }}
+              >
+                ›
+              </button>
             </div>
 
             {/* Tab Body */}
@@ -2218,9 +2282,17 @@ export default function VatCenterTab() {
             <div style={{ padding: '1.25rem 2rem 1.75rem', background: '#FAF8F5', display: 'flex', gap: '0.75rem', flexShrink: 0 }}>
               <button
                 type="button"
+                disabled={isFilingVat}
                 onClick={() => {
                   if (activeTx.status === 'Filed') {
-                    pushToast('VAT Return PDF download started.', 'info');
+                    const apiHost = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '') : 'http://localhost:5000/api/v1';
+                    const link = document.createElement('a');
+                    link.href = `${apiHost}/vat/export?format=xlsx&ids=${activeTx.id}`;
+                    link.download = `VAT_Return_${activeTx.client.replace(/\s+/g, '_')}_${activeTx.quarter}_${activeTx.year}.xlsx`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    pushToast(`Downloading filed VAT Return statement for ${activeTx.client}...`, 'success');
                   } else {
                     fileReturn({ id: activeTx.id })
                       .unwrap()
@@ -2231,9 +2303,34 @@ export default function VatCenterTab() {
                       .catch(() => pushToast('Failed to file VAT return.', 'danger'));
                   }
                 }}
-                style={{ flex: 1, padding: '0.6rem', background: activeTx.status === 'Filed' ? '#137333' : '#E8760A', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}
+                style={{
+                  flex: 1,
+                  padding: '0.6rem',
+                  background: isFilingVat ? 'rgba(232,118,10,0.7)' : (activeTx.status === 'Filed' ? '#137333' : '#E8760A'),
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontSize: '0.8125rem',
+                  fontWeight: 700,
+                  cursor: isFilingVat ? 'wait' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem'
+                }}
               >
-                {activeTx.status === 'Filed' ? 'Download Filed Return' : 'Approve & File Return'}
+                {isFilingVat ? (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'spin 1s linear infinite' }}>
+                      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                    </svg>
+                    Filing Return...
+                  </>
+                ) : activeTx.status === 'Filed' ? (
+                  'Download Filed Return'
+                ) : (
+                  'Approve & File Return'
+                )}
               </button>
               <button
                 type="button"
@@ -2671,8 +2768,20 @@ export default function VatCenterTab() {
                 <button
                   type="button"
                   onClick={() => {
+                    const apiHost = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '') : 'http://localhost:5000/api/v1';
+                    let idsQuery = '';
+                    if (exportScope === 'selected' && selectedIds.length > 0) {
+                      idsQuery = `&ids=${selectedIds.join(',')}`;
+                    }
+                    const fmt = exportFormat === 'csv' ? 'csv' : 'xlsx';
+                    const link = document.createElement('a');
+                    link.href = `${apiHost}/vat/export?format=${fmt}${idsQuery}`;
+                    link.download = `VAT_Returns_Export.${fmt}`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
                     setPopup({ type: null });
-                    pushToast(`${exportFormat.toUpperCase()} return registry export started.`, 'success');
+                    pushToast(`VAT returns export downloaded (${fmt.toUpperCase()}).`, 'success');
                   }}
                   style={{ background: '#E8760A', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.625rem 1.5rem', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'inherit', boxShadow: '0 4px 12px rgba(232,118,10,0.25)' }}
                 >

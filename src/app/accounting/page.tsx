@@ -973,168 +973,126 @@ export default function AccountingPage() {
       {/* Tab Section Wrapper to restrict sticky boundary */}
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {!tabParam && (
-          <div style={{ 
-            display: 'flex', 
-            gap: '1rem', 
-            position: 'sticky', 
-            top: '-1.75rem', 
-            zIndex: 50, 
-            background: '#FAF6F0', 
-            marginTop: '-1.75rem', 
-            paddingTop: '1.75rem', 
-            marginLeft: '-2rem', 
-            marginRight: '-2rem', 
-            paddingLeft: '2rem', 
-            paddingRight: '2rem', 
-            borderBottom: '2px solid rgba(42,22,40,0.08)', 
-            paddingBottom: '0.75rem', 
-            overflowX: 'auto', 
-            whiteSpace: 'nowrap', 
-            scrollbarWidth: 'none' 
+          <div style={{
+            position: 'sticky',
+            top: '-1.75rem',
+            zIndex: 50,
+            background: '#FAF6F0',
+            marginTop: '-1.75rem',
+            paddingTop: '1.75rem',
+            marginLeft: '-2rem',
+            marginRight: '-2rem',
+            borderBottom: '1px solid rgba(42,22,40,0.1)',
+            display: 'flex',
+            alignItems: 'center',
           }}>
             <button
-              onClick={() => setActiveWorkspaceTab('ocr')}
+              type="button"
+              onClick={() => {
+                const el = document.getElementById('accounting-workspace-tabs-scroll');
+                if (el) el.scrollBy({ left: -220, behavior: 'smooth' });
+              }}
+              aria-label="Scroll left"
               style={{
-                background: 'transparent',
-                border: 'none',
-                borderBottom: activeWorkspaceTab === 'ocr' ? '3px solid #2A1628' : 'none',
-                color: activeWorkspaceTab === 'ocr' ? '#2A1628' : 'rgba(42,22,40,0.5)',
-                fontSize: '0.85rem',
-                fontWeight: 800,
+                background: '#ffffff',
+                border: '1px solid #DDD0C4',
                 cursor: 'pointer',
-                padding: '0.5rem 1rem',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                flexShrink: 0
+                padding: '0.45rem 0.65rem',
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                color: '#2A1628',
+                zIndex: 5,
+                borderRadius: '6px',
+                marginLeft: '1rem',
+                flexShrink: 0,
+                boxShadow: '0 2px 4px rgba(42,22,40,0.03)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}
             >
-              OCR Ingestion
+              ‹
             </button>
-            <button
-              onClick={() => setActiveWorkspaceTab('kyc')}
+
+            <div
+              id="accounting-workspace-tabs-scroll"
+              className="hide-scrollbar"
               style={{
-                background: 'transparent',
-                border: 'none',
-                borderBottom: activeWorkspaceTab === 'kyc' ? '3px solid #2A1628' : 'none',
-                color: activeWorkspaceTab === 'kyc' ? '#2A1628' : 'rgba(42,22,40,0.5)',
-                fontSize: '0.85rem',
-                fontWeight: 800,
-                cursor: 'pointer',
-                padding: '0.5rem 1rem',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                flexShrink: 0
+                display: 'flex',
+                gap: '1.25rem',
+                overflowX: 'auto',
+                whiteSpace: 'nowrap',
+                scrollBehavior: 'smooth',
+                paddingLeft: '1rem',
+                paddingRight: '1rem',
+                paddingBottom: '0.5rem',
+                flex: 1,
               }}
             >
-              KYC Compliance
-            </button>
+              {[
+                { id: 'ocr', label: 'OCR Ingestion' },
+                { id: 'kyc', label: 'KYC Compliance' },
+                { id: 'reconciliation', label: 'Reconciliation Panel' },
+                { id: 'suspense', label: 'Suspense Workspace' },
+                { id: 'quickbooks', label: 'QuickBooks Integration' },
+                { id: 'period-locks', label: 'Bookkeeping Period Locks' },
+                { id: 'corporate-tax', label: 'Corporate Tax' },
+                { id: 'chart-of-accounts', label: 'Chart of Accounts' },
+              ].map((tab) => {
+                const isActive = activeWorkspaceTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveWorkspaceTab(tab.id as any)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      outline: 'none',
+                      borderBottom: isActive ? '2.5px solid #E8760A' : '2.5px solid transparent',
+                      color: isActive ? '#E8760A' : 'rgba(42,22,40,0.6)',
+                      fontSize: '0.8125rem',
+                      fontWeight: isActive ? 700 : 600,
+                      cursor: 'pointer',
+                      padding: '0.5rem 0.25rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                      flexShrink: 0,
+                      transition: 'all 150ms ease',
+                      fontFamily: 'inherit'
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
             <button
-              onClick={() => setActiveWorkspaceTab('reconciliation')}
+              type="button"
+              onClick={() => {
+                const el = document.getElementById('accounting-workspace-tabs-scroll');
+                if (el) el.scrollBy({ left: 220, behavior: 'smooth' });
+              }}
+              aria-label="Scroll right"
               style={{
-                background: 'transparent',
-                border: 'none',
-                borderBottom: activeWorkspaceTab === 'reconciliation' ? '3px solid #2A1628' : 'none',
-                color: activeWorkspaceTab === 'reconciliation' ? '#2A1628' : 'rgba(42,22,40,0.5)',
-                fontSize: '0.85rem',
-                fontWeight: 800,
+                background: '#ffffff',
+                border: '1px solid #DDD0C4',
                 cursor: 'pointer',
-                padding: '0.5rem 1rem',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                flexShrink: 0
+                padding: '0.45rem 0.65rem',
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                color: '#2A1628',
+                zIndex: 5,
+                borderRadius: '6px',
+                marginRight: '1rem',
+                flexShrink: 0,
+                boxShadow: '0 2px 4px rgba(42,22,40,0.03)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}
             >
-              Reconciliation Panel
-            </button>
-            <button
-              onClick={() => setActiveWorkspaceTab('suspense')}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                borderBottom: activeWorkspaceTab === 'suspense' ? '3px solid #2A1628' : 'none',
-                color: activeWorkspaceTab === 'suspense' ? '#2A1628' : 'rgba(42,22,40,0.5)',
-                fontSize: '0.85rem',
-                fontWeight: 800,
-                cursor: 'pointer',
-                padding: '0.5rem 1rem',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                flexShrink: 0
-              }}
-            >
-              Suspense Workspace
-            </button>
-            <button
-              onClick={() => setActiveWorkspaceTab('quickbooks')}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                borderBottom: activeWorkspaceTab === 'quickbooks' ? '3px solid #2A1628' : 'none',
-                color: activeWorkspaceTab === 'quickbooks' ? '#2A1628' : 'rgba(42,22,40,0.5)',
-                fontSize: '0.85rem',
-                fontWeight: 800,
-                cursor: 'pointer',
-                padding: '0.5rem 1rem',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                flexShrink: 0
-              }}
-            >
-              QuickBooks Integration
-            </button>
-            <button
-              onClick={() => setActiveWorkspaceTab('period-locks')}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                borderBottom: activeWorkspaceTab === 'period-locks' ? '3px solid #2A1628' : 'none',
-                color: activeWorkspaceTab === 'period-locks' ? '#2A1628' : 'rgba(42,22,40,0.5)',
-                fontSize: '0.85rem',
-                fontWeight: 800,
-                cursor: 'pointer',
-                padding: '0.5rem 1rem',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                flexShrink: 0
-              }}
-            >
-              Bookkeeping Period Locks
-            </button>
-            <button
-              onClick={() => setActiveWorkspaceTab('corporate-tax')}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                borderBottom: activeWorkspaceTab === 'corporate-tax' ? '3px solid #2A1628' : 'none',
-                color: activeWorkspaceTab === 'corporate-tax' ? '#2A1628' : 'rgba(42,22,40,0.5)',
-                fontSize: '0.85rem',
-                fontWeight: 800,
-                cursor: 'pointer',
-                padding: '0.5rem 1rem',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                flexShrink: 0
-              }}
-            >
-              Corporate Tax
-            </button>
-            <button
-              onClick={() => setActiveWorkspaceTab('chart-of-accounts')}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                borderBottom: activeWorkspaceTab === 'chart-of-accounts' ? '3px solid #2A1628' : 'none',
-                color: activeWorkspaceTab === 'chart-of-accounts' ? '#2A1628' : 'rgba(42,22,40,0.5)',
-                fontSize: '0.85rem',
-                fontWeight: 800,
-                cursor: 'pointer',
-                padding: '0.5rem 1rem',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                flexShrink: 0
-              }}
-            >
-              Chart of Accounts
+              ›
             </button>
           </div>
         )}

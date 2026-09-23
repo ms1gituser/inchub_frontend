@@ -1168,14 +1168,15 @@ export default function VendorsTab() {
                   return (
                     <tr
                       key={item.id}
-                      style={{ borderBottom: idx < data.length - 1 ? '1px solid rgba(42,22,40,0.04)' : 'none', background: isSelected ? 'rgba(232,118,10,0.02)' : 'transparent' }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(42,22,40,0.01)')}
+                      onClick={() => { setDrawerTxId(item.id); setDrawerTab('overview'); }}
+                      style={{ borderBottom: idx < data.length - 1 ? '1px solid rgba(42,22,40,0.04)' : 'none', background: isSelected ? 'rgba(232,118,10,0.02)' : 'transparent', cursor: 'pointer' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(42,22,40,0.02)')}
                       onMouseLeave={(e) => (e.currentTarget.style.background = isSelected ? 'rgba(232,118,10,0.02)' : 'transparent')}
                     >
                       <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center', position: 'sticky', left: 0, background: isSelected ? '#FAF4EE' : '#ffffff', zIndex: 9 }} onClick={(e) => e.stopPropagation()}>
                         <input type="checkbox" checked={isSelected} onChange={() => handleSelectRow(item.id)} />
                       </td>
-                      <td style={{ padding: '0.625rem 1rem', position: 'sticky', left: '48px', background: isSelected ? '#FAF4EE' : '#ffffff', zIndex: 9, borderRight: '1px solid rgba(42,22,40,0.06)' }} onClick={() => { setDrawerTxId(item.id); setDrawerTab('overview'); }}>
+                      <td style={{ padding: '0.625rem 1rem', position: 'sticky', left: '48px', background: isSelected ? '#FAF4EE' : '#ffffff', zIndex: 9, borderRight: '1px solid rgba(42,22,40,0.06)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', whiteSpace: 'nowrap' }}>
                           <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(232, 118, 10, 0.08)', color: '#E8760A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, flexShrink: 0 }}>
                             {item.name.split(' ').map((x) => x[0]).join('').substr(0, 2)}
@@ -1409,33 +1410,89 @@ export default function VendorsTab() {
             <div style={{ width: '100%', height: '1px', background: 'rgba(42,22,40,0.06)' }} />
 
             {/* Tab switchers header strip */}
-            <div className="hide-scrollbar" style={{ display: 'flex', gap: '1rem', padding: '0.5rem 2rem', borderBottom: '1px solid rgba(42,22,40,0.06)', overflowX: 'auto', flexShrink: 0 }}>
-              {[
-                { key: 'overview' as const, label: 'Overview' },
-                { key: 'company' as const, label: 'Company Details' },
-                { key: 'contacts' as const, label: 'Contacts' },
-                { key: 'bank' as const, label: 'Bank Info' },
-                { key: 'transactions' as const, label: 'Transactions' },
-                { key: 'po' as const, label: 'Purchase Orders' },
-                { key: 'bills' as const, label: 'Bills & Payments' },
-                { key: 'documents' as const, label: 'Documents' },
-                { key: 'compliance' as const, label: 'Compliance & KYC' },
-                { key: 'timeline' as const, label: 'Timeline' },
-                { key: 'activity' as const, label: 'Activity' },
-                { key: 'notes' as const, label: 'Notes' }
-              ].map((tab) => {
-                const isTabActive = drawerTab === tab.key;
-                return (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    onClick={() => setDrawerTab(tab.key)}
-                    style={{ padding: '0.6rem 0', border: 'none', background: 'transparent', color: isTabActive ? '#E8760A' : 'rgba(42,22,40,0.5)', fontSize: '0.8125rem', fontWeight: isTabActive ? 700 : 600, cursor: 'pointer', borderBottom: isTabActive ? '2px solid #E8760A' : 'none', whiteSpace: 'nowrap', fontFamily: 'inherit' }}
-                  >
-                    {tab.label}
-                  </button>
-                );
-              })}
+            <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid rgba(42,22,40,0.06)', flexShrink: 0, background: '#FAF8F5' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById('vendor-drawer-tabs-scroll');
+                  if (el) el.scrollBy({ left: -180, behavior: 'smooth' });
+                }}
+                aria-label="Scroll left"
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid #DDD0C4',
+                  cursor: 'pointer',
+                  padding: '0.35rem 0.55rem',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  color: '#2A1628',
+                  zIndex: 5,
+                  borderRadius: '6px',
+                  marginLeft: '0.75rem',
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ‹
+              </button>
+
+              <div id="vendor-drawer-tabs-scroll" className="hide-scrollbar" style={{ display: 'flex', gap: '1.25rem', padding: '0.5rem 1rem', overflowX: 'auto', flex: 1, scrollBehavior: 'smooth', whiteSpace: 'nowrap' }}>
+                {[
+                  { key: 'overview' as const, label: 'Overview' },
+                  { key: 'company' as const, label: 'Company Details' },
+                  { key: 'contacts' as const, label: 'Contacts' },
+                  { key: 'bank' as const, label: 'Bank Info' },
+                  { key: 'transactions' as const, label: 'Transactions' },
+                  { key: 'po' as const, label: 'Purchase Orders' },
+                  { key: 'bills' as const, label: 'Bills & Payments' },
+                  { key: 'documents' as const, label: 'Documents' },
+                  { key: 'compliance' as const, label: 'Compliance & KYC' },
+                  { key: 'timeline' as const, label: 'Timeline' },
+                  { key: 'activity' as const, label: 'Activity' },
+                  { key: 'notes' as const, label: 'Notes' }
+                ].map((tab) => {
+                  const isTabActive = drawerTab === tab.key;
+                  return (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setDrawerTab(tab.key)}
+                      style={{ padding: '0.6rem 0.25rem', border: 'none', background: 'transparent', color: isTabActive ? '#E8760A' : 'rgba(42,22,40,0.5)', fontSize: '0.8125rem', fontWeight: isTabActive ? 700 : 600, cursor: 'pointer', borderBottom: isTabActive ? '2.5px solid #E8760A' : '2.5px solid transparent', whiteSpace: 'nowrap', fontFamily: 'inherit', flexShrink: 0 }}
+                    >
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById('vendor-drawer-tabs-scroll');
+                  if (el) el.scrollBy({ left: 180, behavior: 'smooth' });
+                }}
+                aria-label="Scroll right"
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid #DDD0C4',
+                  cursor: 'pointer',
+                  padding: '0.35rem 0.55rem',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  color: '#2A1628',
+                  zIndex: 5,
+                  borderRadius: '6px',
+                  marginRight: '0.75rem',
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ›
+              </button>
             </div>
 
              {/* Tab Body */}

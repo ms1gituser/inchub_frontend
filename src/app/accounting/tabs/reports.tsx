@@ -1401,45 +1401,71 @@ export default function ReportsTab() {
             </div>
 
             {/* Drawer Segment tabs */}
-            <div className="hide-scrollbar" style={{ width: '100%', overflowX: 'auto', borderBottom: '1px solid rgba(42,22,40,0.06)', flexShrink: 0, scrollBehavior: 'smooth' }}>
-              <div style={{ display: 'flex', gap: '1.25rem', padding: '0.5rem 2rem', minWidth: 'max-content' }}>
-                {[
-                  { key: 'overview' as const, label: 'Overview' },
-                  { key: 'charts' as const, label: 'Charts' },
-                  { key: 'transactions' as const, label: 'Transactions' },
-                  { key: 'attachments' as const, label: 'Attachments' },
-                  { key: 'history' as const, label: 'History' },
-                  { key: 'sharing' as const, label: 'Sharing' },
-                  { key: 'export' as const, label: 'Export' },
-                  { key: 'notes' as const, label: 'Notes' }
-                ].map((tab) => {
-                  const isActive = drawerTab === tab.key;
-                  return (
-                    <button
-                      key={tab.key}
-                      type="button"
-                      onClick={() => setDrawerTab(tab.key)}
-                      style={{
-                        padding: '0.6rem 0',
-                        border: 'none',
-                        outline: 'none',
-                        boxShadow: 'none',
-                        background: 'transparent',
-                        color: isActive ? '#E8760A' : 'rgba(42,22,40,0.5)',
-                        fontSize: '0.8125rem',
-                        fontWeight: isActive ? 700 : 600,
-                        cursor: 'pointer',
-                        borderBottom: isActive ? '2px solid #E8760A' : '2px solid transparent',
-                        whiteSpace: 'nowrap',
-                        fontFamily: 'inherit',
-                        flexShrink: 0,
-                      }}
-                    >
-                      {tab.label}
-                    </button>
-                  );
-                })}
+            <div style={{ position: 'relative', width: '100%', borderBottom: '1px solid rgba(42,22,40,0.06)', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById('report-detail-tabs-scroll');
+                  if (el) el.scrollBy({ left: -150, behavior: 'smooth' });
+                }}
+                aria-label="Scroll left"
+                style={{ background: '#FAF8F5', border: 'none', cursor: 'pointer', padding: '0.3rem 0.5rem', fontSize: '1rem', fontWeight: 700, color: '#2A1628', zIndex: 5, borderRadius: '4px', marginLeft: '0.5rem' }}
+              >
+                ‹
+              </button>
+
+              <div id="report-detail-tabs-scroll" className="hide-scrollbar" style={{ flex: 1, overflowX: 'auto', scrollBehavior: 'smooth' }}>
+                <div style={{ display: 'flex', gap: '1.25rem', padding: '0.5rem 1rem', minWidth: 'max-content' }}>
+                  {[
+                    { key: 'overview' as const, label: 'Overview' },
+                    { key: 'charts' as const, label: 'Charts' },
+                    { key: 'transactions' as const, label: 'Transactions' },
+                    { key: 'attachments' as const, label: 'Attachments' },
+                    { key: 'history' as const, label: 'History' },
+                    { key: 'sharing' as const, label: 'Sharing' },
+                    { key: 'export' as const, label: 'Export' },
+                    { key: 'notes' as const, label: 'Notes' }
+                  ].map((tab) => {
+                    const isActive = drawerTab === tab.key;
+                    return (
+                      <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => setDrawerTab(tab.key)}
+                        style={{
+                          padding: '0.6rem 0',
+                          border: 'none',
+                          outline: 'none',
+                          boxShadow: 'none',
+                          background: 'transparent',
+                          color: isActive ? '#E8760A' : 'rgba(42,22,40,0.5)',
+                          fontSize: '0.8125rem',
+                          fontWeight: isActive ? 700 : 600,
+                          cursor: 'pointer',
+                          borderBottom: isActive ? '2px solid #E8760A' : '2px solid transparent',
+                          whiteSpace: 'nowrap',
+                          fontFamily: 'inherit',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {tab.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById('report-detail-tabs-scroll');
+                  if (el) el.scrollBy({ left: 150, behavior: 'smooth' });
+                }}
+                aria-label="Scroll right"
+                style={{ background: '#FAF8F5', border: 'none', cursor: 'pointer', padding: '0.3rem 0.5rem', fontSize: '1rem', fontWeight: 700, color: '#2A1628', zIndex: 5, borderRadius: '4px', marginRight: '0.5rem' }}
+              >
+                ›
+              </button>
             </div>
 
             {/* Drawer Content */}

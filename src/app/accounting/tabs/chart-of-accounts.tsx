@@ -213,8 +213,8 @@ export default function ChartOfAccountsTab() {
       {loading ? (
           <div style={{ textAlign: 'center', padding: '3rem', color: 'rgba(42,22,40,0.5)' }}>Loading chart of accounts...</div>
       ) : (
-          <div style={{ background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: '12px', overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <div style={{ background: '#ffffff', border: '1px solid #DDD0C4', borderRadius: '12px', overflowX: 'auto' }}>
+            <table style={{ width: '100%', minWidth: '750px', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
                 <tr style={{ background: '#FAF8F5', borderBottom: '1px solid #DDD0C4' }}>
                   <th style={{ padding: '0.875rem 1.25rem', fontSize: '0.75rem', fontWeight: 700, color: 'rgba(42,22,40,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Account Code</th>

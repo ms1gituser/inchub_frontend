@@ -91,22 +91,49 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
 
-    # 3. Copy docker-compose.prod.yml to EC2 host via SCP
-    - name: Copy docker-compose.prod.yml via SCP
-      uses: appleboy/scp-action@v0.1.7
+    # 3. Free up disk space on EC2 (remove old Docker images/containers)
+    - name: Cleanup disk space on EC2
+      uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.EC2_HOST }}
         username: ${{ secrets.EC2_USER || 'ubuntu' }}
         key: ${{ secrets.EC2_SSH_KEY }}
-        source: "docker-compose.prod.yml"
-        target: "/home/${{ secrets.EC2_USER || 'ubuntu' }}/Inchub2021/CRM_Frontend"
+        script: |
+          echo "=== Disk usage before cleanup ==="
+          df -h /
+          docker system prune -af --volumes || true
+          echo "=== Disk usage after cleanup ==="
+          df -h /
 
-    # 4. Get ECR login password on the runner (has AWS CLI) to pass to EC2
+    # 4. Copy docker-compose.prod.yml to EC2 via SSH (cat heredoc — no SCP needed)
+    - name: Copy docker-compose.prod.yml via SSH
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USER || 'ubuntu' }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          mkdir -p /home/${{ secrets.EC2_USER || 'ubuntu' }}/Inchub2021/CRM_Frontend
+          cat > /home/${{ secrets.EC2_USER || 'ubuntu' }}/Inchub2021/CRM_Frontend/docker-compose.prod.yml << 'COMPOSE_EOF'
+          version: '3.8'
+
+          services:
+            frontend:
+              image: ${ECR_REGISTRY}/crm-frontend:latest
+              container_name: crm-frontend-prod
+              restart: always
+              ports:
+                - "3000:3000"
+              env_file:
+                - .env
+          COMPOSE_EOF
+
+    # 5. Get ECR login password on the runner (has AWS CLI) to pass to EC2
     - name: Get ECR Login Token
       id: ecr-token
       run: echo "password=$(aws ecr get-login-password --region ${{ secrets.AWS_REGION || 'me-central-1' }})" >> $GITHUB_OUTPUT
 
-    # 5. SSH into EC2, login to ECR, pull and restart containers
+    # 6. SSH into EC2, login to ECR, pull and restart containers
     - name: Deploy to EC2 via SSH
       uses: appleboy/ssh-action@v1.0.3
       env:
