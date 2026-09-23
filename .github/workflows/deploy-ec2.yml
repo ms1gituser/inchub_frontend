@@ -91,7 +91,21 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
 
-    # 3. Copy docker-compose.prod.yml to EC2 via SSH (cat heredoc — no SCP needed)
+    # 3. Free up disk space on EC2 (remove old Docker images/containers)
+    - name: Cleanup disk space on EC2
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USER || 'ubuntu' }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          echo "=== Disk usage before cleanup ==="
+          df -h /
+          docker system prune -af --volumes || true
+          echo "=== Disk usage after cleanup ==="
+          df -h /
+
+    # 4. Copy docker-compose.prod.yml to EC2 via SSH (cat heredoc — no SCP needed)
     - name: Copy docker-compose.prod.yml via SSH
       uses: appleboy/ssh-action@v1.0.3
       with:
